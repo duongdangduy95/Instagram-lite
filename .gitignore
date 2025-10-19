@@ -42,3 +42,21 @@ yarn-error.log*
 next-env.d.ts
 
 public/uploads/
+
+# LaTeX auxiliary files
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.run.xml
+*.bcf
+*.pdf
+*.nav
+*.snm
