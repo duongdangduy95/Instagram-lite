@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
   }
 
-  // ✅ Lấy dữ liệu từ FormData
+  // Lấy dữ liệu từ FormData
   const form = await req.formData()
   const caption = form.get('caption') as string
   const file = form.get('image') as File
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Caption and image are required' }, { status: 400 })
   }
 
-  // ✅ Đọc dữ liệu ảnh và lưu tạm (hoặc upload lên dịch vụ như Cloudinary, v.v.)
+  // Đọc dữ liệu ảnh và lưu tạm (hoặc upload lên dịch vụ như Cloudinary, v.v.)
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
 
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
   const imageUrl = `/uploads/${filename}`
 
-  // ✅ Lưu bài viết vào DB
+  // Lưu bài viết vào DB
   try {
     const blog = await prisma.blog.create({
       data: {
