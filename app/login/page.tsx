@@ -47,8 +47,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: "url('/background_login.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat"
+      }}
+    >
+      {/* Overlay để form dễ nhìn */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/30 to-transparent"></div>
+      
+      <div className="w-full max-w-md relative z-10">
         {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 backdrop-blur-sm border border-white/20">
           {/* Header */}
