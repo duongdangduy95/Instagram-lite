@@ -1,7 +1,7 @@
 // app/api/me/route.ts
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { prisma } from '@/lib/prisma'  // hoặc tạo PrismaClient trực tiếp
+import { prisma } from '@/lib/prisma'  
 
 export async function GET() {
   const cookieStore = cookies()

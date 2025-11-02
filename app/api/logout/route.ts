@@ -10,7 +10,7 @@ export async function POST() {
     serialize('token', '', {
       httpOnly: true,
       path: '/',
-      expires: new Date(0), // Xóa cookie
+      expires: new Date(0), 
     })
   )
 

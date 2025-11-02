@@ -8,7 +8,7 @@ async function getCurrentUserId() {
   const userId = session.split(':')[0];
   return userId;
 }
-// Lấy tất cả comment (dạng cây nhưng client sẽ làm phẳng)
+
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const comments = await prisma.comment.findMany({
     where: { blogId: params.id },

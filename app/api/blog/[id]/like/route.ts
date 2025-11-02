@@ -5,10 +5,10 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const cookieStore = await cookies() // ✅ Phải await
+  const cookieStore = await cookies() 
   console.log('All cookies:', cookieStore.getAll())
 
-  const session = cookieStore.get('session') // ✅ OK rồi
+  const session = cookieStore.get('session') 
   console.log('Session cookie:', session)
 
   if (!session) {
@@ -33,13 +33,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   let liked: boolean
 
   if (existingLike) {
-    // Unlike
+   
     await prisma.like.delete({
       where: { id: existingLike.id },
     })
     liked = false
   } else {
-    // Like
+   
     await prisma.like.create({
       data: {
         userId,
