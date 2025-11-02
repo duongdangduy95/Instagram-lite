@@ -23,7 +23,7 @@ export default function LoginPage() {
   headers: {
     'Content-Type': 'application/json',
   },
-  credentials: 'include', // ⚠️ Bắt buộc để browser lưu cookie
+  credentials: 'include', // browser lưu cookie
 })
 
 

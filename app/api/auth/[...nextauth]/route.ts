@@ -43,7 +43,7 @@ const handler = NextAuth({
     strategy: 'jwt',
   },
   jwt: {
-    secret: process.env.NEXTAUTH_SECRET, // ⬅️ Bổ sung dòng này
+    secret: process.env.NEXTAUTH_SECRET, 
   },
 })
 

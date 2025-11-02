@@ -75,7 +75,7 @@ export default function CreateBlogPage() {
       })
 
       if (res.ok) {
-        router.push('/profile') // Redirect to profile after successful post
+        router.push('/profile') 
       } else if (res.status === 401) {
         alert('Please login to continue.')
         router.push('/login')
