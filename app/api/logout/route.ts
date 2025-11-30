@@ -1,7 +1,7 @@
 // /api/logout/route.ts
 import { NextResponse } from 'next/server'
 import { serialize } from 'cookie'
-
+//chuc nang logout xoa cookie token
 export async function POST() {
   const res = NextResponse.json({ success: true })
 
