@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
-
+// Update signup
 const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
