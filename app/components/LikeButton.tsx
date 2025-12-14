@@ -7,9 +7,17 @@ interface LikeButtonProps {
   blogId: string
   initialLiked?: boolean
   initialCount?: number
+  userId?: string | null
+  onLikeChange?: (newCount: number) => void
 }
 
-export default function LikeButton({ blogId, initialLiked = false, initialCount = 0 }: LikeButtonProps) {
+export default function LikeButton({ 
+  blogId, 
+  initialLiked = false, 
+  initialCount = 0,
+  userId,
+  onLikeChange
+}: LikeButtonProps) {
   const router = useRouter()
   const [liked, setLiked] = useState(initialLiked)
   const [likeCount, setLikeCount] = useState(initialCount)
@@ -80,7 +88,13 @@ export default function LikeButton({ blogId, initialLiked = false, initialCount 
       console.log('Like response:', data)
 
       setLiked(data.liked)
-      setLikeCount(prev => data.liked ? prev + 1 : prev - 1)
+      const newCount = data.liked ? likeCount + 1 : likeCount - 1
+      setLikeCount(newCount)
+      
+      // Gọi callback để update parent component
+      if (onLikeChange) {
+        onLikeChange(newCount)
+      }
     } catch (error) {
       console.error('Like error:', error)
       if (error instanceof Error && error.message.includes('401')) {

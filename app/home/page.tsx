@@ -5,6 +5,7 @@ import { formatTimeAgo } from '@/lib/formatTimeAgo';
 import { cookies } from 'next/headers';
 import LikeButton from '@/app/components/LikeButton';
 import CommentToggle from '../components/CommentToggle';
+import Navigation from '../components/Navigation';
 
 // Lấy người dùng hiện tại từ session cookie
 async function getCurrentUser() {
@@ -44,23 +45,8 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* HEADER */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-blue-600">
-              InstaClone
-            </Link>
-            <div className="hidden md:block">
-              <input
-                type="search"
-                placeholder="Tìm kiếm..."
-                className="px-4 py-2 bg-gray-100 rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* NAVIGATION */}
+      <Navigation />
 
       {/* MAIN CONTENT */}
       <main className="max-w-2xl mx-auto p-4 pt-6">

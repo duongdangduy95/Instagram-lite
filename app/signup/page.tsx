@@ -2,7 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+
 export default function SignupPage() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     username: '',
     fullname: '',
@@ -28,7 +31,7 @@ export default function SignupPage() {
   }
 
   const validateForm = () => {
-    const errors: any = {}
+    const errors: Record<string, string> = {}
     
     if (formData.username.length < 3) {
       errors.username = 'Username phải có ít nhất 3 ký tự'
@@ -88,11 +91,16 @@ export default function SignupPage() {
           password: ''
         })
         setConfirmPassword('')
+        
+        // Redirect to login after 1.5 seconds
+        setTimeout(() => {
+          router.push('/login')
+        }, 1500)
       } else {
         setMessage(data.message || 'Đăng ký thất bại')
         setMessageType('error')
       }
-    } catch (error) {
+    } catch (_error) {
       setMessage('Có lỗi xảy ra, vui lòng thử lại')
       setMessageType('error')
     } finally {

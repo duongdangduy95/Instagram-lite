@@ -21,7 +21,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
   }
 
-  const blogId = params.id
+  const { id: blogId } = await params
 
   const existingLike = await prisma.like.findFirst({
     where: {

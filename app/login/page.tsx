@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 
 export default function LoginPage() {
   const [usernameOrEmail, setUsernameOrEmail] = useState('')
@@ -17,23 +18,18 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const res = await fetch('/api/login', {
-  method: 'POST',
-  body: JSON.stringify({ usernameOrEmail, password }),
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  credentials: 'include', // ⚠️ Bắt buộc để browser lưu cookie
-})
+      const result = await signIn('credentials', {
+        email: usernameOrEmail,
+        password: password,
+        redirect: false,
+      })
 
-
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'Đăng nhập thất bại')
-      } else {
+      if (result?.error) {
+        setError('Email hoặc mật khẩu không chính xác')
+      } else if (result?.ok) {
         router.push('/profile')
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Có lỗi xảy ra, vui lòng thử lại')
     } finally {
       setIsLoading(false)

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import LikeButton from "../components/LikeButton";
+import LikeButton from "../components/LikeButton"
+import Navigation from "../components/Navigation"
 
 interface Blog {
   _count: {
@@ -15,7 +16,7 @@ interface Blog {
   caption: string
   imageUrl: string
   createdAt: string
-  likes: Array<{ userId: string }> // Thêm thông tin likes để check user đã like chưa
+  likes: Array<{ userId: string }> 
 }
 
 interface Like {
@@ -23,7 +24,6 @@ interface Like {
 }
 
 export default function ProfilePage() {
-  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [myBlogs, setMyBlogs] = useState<Blog[]>([])
   const [likedBlogs, setLikedBlogs] = useState<Blog[]>([])
@@ -34,6 +34,13 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
+  const [showEditProfileModal, setShowEditProfileModal] = useState<boolean>(false)
+  const [editProfileData, setEditProfileData] = useState({
+    fullname: '',
+    email: '',
+    phone: ''
+  })
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,9 +60,8 @@ export default function ProfilePage() {
     fetchData()
   }, [])
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (_event: MouseEvent) => {
       if (showDropdown) {
         setShowDropdown(null)
       }
@@ -88,11 +94,15 @@ export default function ProfilePage() {
 
       if (response.ok) {
         const result = await response.json()
-        // Update the blog in state
         setMyBlogs(prevBlogs => 
           prevBlogs.map(blog => 
             blog.id === blogId 
-              ? { ...blog, caption: result.blog.caption, imageUrl: result.blog.imageUrl || blog.imageUrl }
+              ? { 
+                  ...blog, 
+                  caption: result.blog.caption, 
+                  imageUrl: result.blog.imageUrl || blog.imageUrl,
+                  _count: blog._count // ✅ Giữ lại _count (likes, comments)
+                }
               : blog
           )
         )
@@ -126,7 +136,6 @@ export default function ProfilePage() {
       })
 
       if (response.ok) {
-        // Remove the blog from state
         setMyBlogs(prevBlogs => prevBlogs.filter(blog => blog.id !== blogId))
         setShowDeleteModal(null)
         alert('Xóa bài viết thành công!')
@@ -141,9 +150,7 @@ export default function ProfilePage() {
     }
   }
 
-  // Hàm để cập nhật like count trong state
   const handleLikeUpdate = (blogId: string, newCount: number, isLiked: boolean) => {
-    // Cập nhật trong myBlogs
     setMyBlogs(prevBlogs => 
       prevBlogs.map(blog => 
         blog.id === blogId 
@@ -161,7 +168,6 @@ export default function ProfilePage() {
       )
     )
 
-    // Cập nhật trong likedBlogs
     setLikedBlogs(prevBlogs => 
       prevBlogs.map(blog => 
         blog.id === blogId 
@@ -179,9 +185,82 @@ export default function ProfilePage() {
       )
     )
 
-    // Nếu user unlike một bài viết, remove nó khỏi tab "Đã thích"
     if (!isLiked && activeTab === 'liked') {
       setLikedBlogs(prevBlogs => prevBlogs.filter(blog => blog.id !== blogId))
+    }
+  }
+
+  const handleOpenEditProfile = () => {
+    setEditProfileData({
+      fullname: user.fullname,
+      email: user.email,
+      phone: user.phone || ''
+    })
+    setProfileErrors({})
+    setShowEditProfileModal(true)
+  }
+
+  const validateProfileData = () => {
+    const errors: Record<string, string> = {}
+
+    if (!editProfileData.fullname.trim()) {
+      errors.fullname = 'Họ và tên không được để trống'
+    } else if (editProfileData.fullname.trim().length < 2) {
+      errors.fullname = 'Họ và tên phải có ít nhất 2 ký tự'
+    } else if (editProfileData.fullname.trim().length > 50) {
+      errors.fullname = 'Họ và tên không được quá 50 ký tự'
+    }
+
+    if (!editProfileData.email.trim()) {
+      errors.email = 'Email không được để trống'
+    } else if (!/\S+@\S+\.\S+/.test(editProfileData.email)) {
+      errors.email = 'Email không hợp lệ'
+    }
+
+    if (editProfileData.phone.trim()) {
+      const phoneRegex = /^[0-9]{10,11}$/
+      if (!phoneRegex.test(editProfileData.phone.replace(/\s/g, ''))) {
+        errors.phone = 'Số điện thoại phải có 10-11 chữ số'
+      }
+    }
+
+    setProfileErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSaveProfile = async () => {
+    // Validate trước khi submit
+    if (!validateProfileData()) {
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editProfileData),
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setUser(result)
+        setShowEditProfileModal(false)
+        setProfileErrors({})
+        alert('Cập nhật hồ sơ thành công!')
+      } else {
+        const data = await response.json()
+        if (response.status === 409) {
+          setProfileErrors({ email: 'Email đã được sử dụng' })
+        } else {
+          alert(data.error || 'Không thể cập nhật hồ sơ')
+        }
+      }
+    } catch (error) {
+      alert('Có lỗi xảy ra')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -198,6 +277,9 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* NAVIGATION */}
+      <Navigation />
+
       {/* Cover Photo & Profile Section */}
       <div className="bg-white">
         {/* Cover Photo */}
@@ -259,7 +341,10 @@ export default function ProfilePage() {
               >
                 + Thêm bài viết
               </Link>
-              <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+              <button 
+                onClick={handleOpenEditProfile}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
                 ✏️ Chỉnh sửa trang cá nhân
               </button>
             </div>
@@ -319,13 +404,17 @@ export default function ProfilePage() {
           {/* Stats Card */}
           <div className="bg-white rounded-lg shadow-sm p-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Thống kê</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-3 bg-blue-50 rounded-lg">
                 <div className="text-xl font-bold text-blue-600">{myBlogs.length}</div>
                 <div className="text-xs text-gray-600">Bài viết</div>
               </div>
               <div className="text-center p-3 bg-pink-50 rounded-lg">
-                <div className="text-xl font-bold text-pink-600">{likedBlogs.length}</div>
+                <div className="text-xl font-bold text-pink-600">{myBlogs.reduce((sum, blog) => sum + (blog._count?.likes || 0), 0)}</div>
+                <div className="text-xs text-gray-600">Tổng like</div>
+              </div>
+              <div className="text-center p-3 bg-purple-50 rounded-lg">
+                <div className="text-xl font-bold text-purple-600">{likedBlogs.length}</div>
                 <div className="text-xs text-gray-600">Đã thích</div>
               </div>
             </div>
@@ -485,7 +574,7 @@ export default function ProfilePage() {
                   <div className="flex items-center justify-between text-gray-500 text-sm mb-3">
                     <div className="flex items-center space-x-1">
                       <span className="text-blue-500">👍</span>
-                      <span>{blog._count?.likes || 0}</span>
+                      <span className="font-semibold text-gray-900">{blog._count?.likes || 0} lượt thích</span>
                     </div>
                     <div className="flex items-center space-x-4">
                       <span>{blog._count?.comments || 0} bình luận</span>
@@ -496,9 +585,24 @@ export default function ProfilePage() {
                     {/* Thay thế button Like cũ bằng LikeButton component */}
                     <LikeButton 
                       blogId={blog.id}
-                      initialLiked={blog.likes?.some(like => like.userId === user.id) || false}
-                      initialCount={blog._count?.likes || 0}
-                      onLikeChange={handleLikeUpdate}
+                      userId={user?.id}
+                      initialLikes={blog._count?.likes || 0}
+                      onLikeChange={(newCount) => {
+                        setMyBlogs(prevBlogs =>
+                          prevBlogs.map(b =>
+                            b.id === blog.id
+                              ? { ...b, _count: { ...b._count, likes: newCount } }
+                              : b
+                          )
+                        )
+                        setLikedBlogs(prevBlogs =>
+                          prevBlogs.map(b =>
+                            b.id === blog.id
+                              ? { ...b, _count: { ...b._count, likes: newCount } }
+                              : b
+                          )
+                        )
+                      }}
                     />
                     <Link
                       href={`/blog/${blog.id}`}
@@ -565,6 +669,106 @@ export default function ProfilePage() {
               <button
                 onClick={() => setShowDeleteModal(null)}
                 className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Profile Modal */}
+      {showEditProfileModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-slideUp">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Chỉnh sửa hồ sơ</h3>
+              <button
+                onClick={() => setShowEditProfileModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-5">
+              {/* Full Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">👤 Họ và tên</label>
+                <input
+                  type="text"
+                  value={editProfileData.fullname}
+                  onChange={(e) => {
+                    setEditProfileData({...editProfileData, fullname: e.target.value})
+                    if (profileErrors.fullname) setProfileErrors({...profileErrors, fullname: ''})
+                  }}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    profileErrors.fullname ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                  placeholder="Nhập họ và tên"
+                />
+                {profileErrors.fullname && (
+                  <p className="text-red-500 text-sm mt-1">⚠️ {profileErrors.fullname}</p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">📧 Email</label>
+                <input
+                  type="email"
+                  value={editProfileData.email}
+                  onChange={(e) => {
+                    setEditProfileData({...editProfileData, email: e.target.value})
+                    if (profileErrors.email) setProfileErrors({...profileErrors, email: ''})
+                  }}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    profileErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                  placeholder="Nhập email"
+                />
+                {profileErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">⚠️ {profileErrors.email}</p>
+                )}
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">📱 Số điện thoại</label>
+                <input
+                  type="tel"
+                  value={editProfileData.phone}
+                  onChange={(e) => {
+                    setEditProfileData({...editProfileData, phone: e.target.value})
+                    if (profileErrors.phone) setProfileErrors({...profileErrors, phone: ''})
+                  }}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    profileErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                  placeholder="Nhập số điện thoại"
+                />
+                {profileErrors.phone && (
+                  <p className="text-red-500 text-sm mt-1">⚠️ {profileErrors.phone}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex items-center space-x-3 mt-8">
+              <button
+                onClick={handleSaveProfile}
+                disabled={isLoading || Object.keys(profileErrors).length > 0}
+                className={`flex-1 px-4 py-3 rounded-lg transition-all font-semibold transform active:scale-95 ${
+                  Object.keys(profileErrors).length > 0
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 hover:scale-105'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {isLoading ? '⏳ Đang lưu...' : '✓ Lưu thay đổi'}
+              </button>
+              <button
+                onClick={() => setShowEditProfileModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all font-semibold transform hover:scale-105 active:scale-95"
               >
                 Hủy
               </button>

@@ -80,8 +80,8 @@ export default function CreateBlogPage() {
         alert('Please login to continue.')
         router.push('/login')
       } else {
-        const error = await res.json().catch(() => ({ error: 'Unknown error' }))
-        alert(`Failed: ${error.error}`)
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        alert(`Failed: ${errorData.error}`)
       }
     } catch (error) {
       alert('Network error. Try again.')
