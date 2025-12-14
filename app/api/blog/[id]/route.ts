@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 const prisma = new PrismaClient()
 
 // PATCH - Update blog
+// Thay đổi status 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const cookieStore = cookies()
   const session = (await cookieStore).get('session')

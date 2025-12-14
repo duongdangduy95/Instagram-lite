@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       username: user.username,
     },
   })
-
+// session tồn tại trong 1 ngày
   res.cookies.set('session', sessionToken, {
     httpOnly: true,
     path: '/',
