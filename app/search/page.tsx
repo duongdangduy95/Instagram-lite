@@ -1,11 +1,11 @@
 // app/search/page.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<Record<string, unknown>[]>([])
 
   const handleSearch = async () => {
     const res = await fetch(`/api/search?q=${query}`)

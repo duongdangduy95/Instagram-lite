@@ -35,8 +35,8 @@ export async function POST(req: Request) {
 
   // Ví dụ: lưu vào thư mục công khai (chỉ dùng tạm để thử)
   const filename = `${Date.now()}-${file.name}`
-  const fs = require('fs')
-  const path = require('path')
+  const fs = await import('fs')
+  const path = await import('path')
   const filepath = path.join(process.cwd(), 'public', 'uploads', filename)
 
   fs.writeFileSync(filepath, buffer)
