@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { PrismaClient } from '@prisma/client'
-
+//Update like
 const prisma = new PrismaClient()
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
