@@ -1,36 +1,41 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import { prisma } from '@/lib/prisma';
-import { formatTimeAgo } from '@/lib/formatTimeAgo';
-import { cookies } from 'next/headers';
-import LikeButton from '@/app/components/LikeButton';
-import CommentToggle from '../components/CommentToggle';
+// app/page.tsx
+import Link from 'next/link'
+import Image from 'next/image'
+import { prisma } from '@/lib/prisma'
+import { formatTimeAgo } from '@/lib/formatTimeAgo'
+import { cookies } from 'next/headers'
+import LikeButton from '@/app/components/LikeButton'
+import CommentToggle from '@/app/components/CommentToggle'
+import FollowButton from '@/app/components/FollowButton'
 
-// Lấy người dùng hiện tại từ session cookie
 async function getCurrentUser() {
-  const session = (await cookies()).get('session')?.value;
-  if (!session) return null;
-
-  const [userId] = session.split(':');
-  if (!userId) return null;
+  const session = (await cookies()).get('session')?.value
+  if (!session) return null
+  const [userId] = session.split(':')
+  if (!userId) return null
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-  });
+  })
 
-  return user;
+  return user
 }
 
 export default async function HomePage() {
-  const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUser()
 
+  // Lấy tất cả blogs
   const blogs = await prisma.blog.findMany({
-    orderBy: { createdAt: 'desc' },
     include: {
       author: {
         select: {
           id: true,
           fullname: true,
+          followers: currentUser
+            ? {
+                where: { followerId: currentUser.id }, // Kiểm tra user hiện tại đã follow tác giả chưa
+              }
+            : false,
         },
       },
       _count: {
@@ -40,7 +45,21 @@ export default async function HomePage() {
         },
       },
     },
-  });
+  })
+
+  // Sắp xếp: ưu tiên người đã follow, sau đó theo createdAt
+  const sortedBlogs = currentUser
+    ? blogs.sort((a, b) => {
+        const aFollowed = a.author.followers?.length > 0 ? 1 : 0
+        const bFollowed = b.author.followers?.length > 0 ? 1 : 0
+
+        if (aFollowed === bFollowed) {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        }
+
+        return bFollowed - aFollowed // ưu tiên người follow trước
+      })
+    : blogs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -67,13 +86,12 @@ export default async function HomePage() {
         <h1 className="text-2xl font-bold mb-6 text-gray-800">News Feed</h1>
 
         <div className="space-y-4">
-          {blogs.map((blog) => {
-            if (!blog?.id || !blog?.author) return null;
+          {sortedBlogs.map((blog) => {
+            if (!blog?.id || !blog?.author) return null
 
-            const isCurrentUser = blog.author.id === currentUser?.id;
-            const profileLink = isCurrentUser
-              ? '/profile'
-              : `/profile/${blog.author.id}`;
+            const isCurrentUser = blog.author.id === currentUser?.id
+            const profileLink = isCurrentUser ? '/profile' : `/profile/${blog.author.id}`
+            const isFollowing = blog.author.followers?.length > 0
 
             return (
               <div
@@ -81,7 +99,7 @@ export default async function HomePage() {
                 className="bg-white rounded-lg shadow-md border hover:shadow-lg transition-shadow"
               >
                 {/* Header */}
-                <div className="p-4 border-b">
+                <div className="p-4 border-b flex justify-between items-center">
                   <Link href={profileLink}>
                     <div className="flex items-center space-x-3 hover:bg-gray-50 -m-2 p-2 rounded-lg transition-colors">
                       <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
@@ -99,14 +117,21 @@ export default async function HomePage() {
                       </div>
                     </div>
                   </Link>
+
+                  {/* Follow / Unfollow button nếu không phải bản thân */}
+                  {!isCurrentUser && currentUser && (
+                    <FollowButton
+                      currentUserId={currentUser.id}
+                      targetUserId={blog.author.id}
+                      initialIsFollowing={isFollowing}
+                    />
+                  )}
                 </div>
 
                 {/* Caption */}
                 {blog.caption && (
                   <div className="px-4 py-3">
-                    <p className="text-gray-800 leading-relaxed">
-                      {blog.caption}
-                    </p>
+                    <p className="text-gray-800 leading-relaxed">{blog.caption}</p>
                   </div>
                 )}
 
@@ -161,10 +186,10 @@ export default async function HomePage() {
                   </div>
                 </div>
               </div>
-            );
+            )
           })}
         </div>
       </main>
     </div>
-  );
+  )
 }
