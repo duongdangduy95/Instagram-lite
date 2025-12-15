@@ -2,24 +2,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { prisma } from '@/lib/prisma';
 import { formatTimeAgo } from '@/lib/formatTimeAgo';
-import { cookies } from 'next/headers';
 import LikeButton from '@/app/components/LikeButton';
 import CommentToggle from '../components/CommentToggle';
-
-// Lấy người dùng hiện tại từ session cookie
-async function getCurrentUser() {
-  const session = (await cookies()).get('session')?.value;
-  if (!session) return null;
-
-  const [userId] = session.split(':');
-  if (!userId) return null;
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  return user;
-}
+import { getCurrentUser } from '@/lib/getCurrentUser';
 
 export default async function HomePage() {
   const currentUser = await getCurrentUser();
@@ -51,12 +36,47 @@ export default async function HomePage() {
             <Link href="/" className="text-2xl font-bold text-blue-600">
               InstaClone
             </Link>
-            <div className="hidden md:block">
-              <input
-                type="search"
-                placeholder="Tìm kiếm..."
-                className="px-4 py-2 bg-gray-100 rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            <div className="flex items-center space-x-4">
+              <div className="hidden md:block">
+                <input
+                  type="search"
+                  placeholder="Tìm kiếm..."
+                  className="px-4 py-2 bg-gray-100 rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {currentUser ? (
+                <Link
+                  href={`/profile/${currentUser.id}`}
+                  className="flex items-center space-x-3 px-3 py-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <div className="w-10 h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold">
+                    {currentUser.fullname?.charAt(0)?.toUpperCase() ||
+                      currentUser.username?.charAt(0)?.toUpperCase() ||
+                      'U'}
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <p className="text-sm font-semibold text-gray-800">
+                      {currentUser.fullname}
+                    </p>
+                    <p className="text-xs text-gray-500">@{currentUser.username}</p>
+                  </div>
+                </Link>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <Link
+                    href="/login"
+                    className="px-4 py-2 rounded-full border border-blue-500 text-blue-600 font-semibold hover:bg-blue-50 transition-colors"
+                  >
+                    Đăng nhập
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="px-4 py-2 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Đăng ký
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>

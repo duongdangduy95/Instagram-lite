@@ -1,0 +1,53 @@
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: instagram_lite_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: instagram_user
+      POSTGRES_PASSWORD: instagram_pass
+      POSTGRES_DB: instagram_lite
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U instagram_user -d instagram_lite"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # Next.js Application (Frontend + Backend API)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: instagram_lite_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - DATABASE_URL=postgresql://instagram_user:instagram_pass@database:5432/instagram_lite?schema=public
+      - NEXTAUTH_SECRET=instagram-lite-dev-secret-key-12345
+      - NODE_ENV=development
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - app-network
+    command: sh -c "npx prisma generate && npm run dev"
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+

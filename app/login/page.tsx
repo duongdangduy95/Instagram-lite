@@ -31,7 +31,7 @@ export default function LoginPage() {
       if (!res.ok) {
         setError(data.error || 'Đăng nhập thất bại')
       } else {
-        router.push('/profile')
+        router.push('/home')
       }
     } catch (err) {
       setError('Có lỗi xảy ra, vui lòng thử lại')
