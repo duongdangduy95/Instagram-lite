@@ -7,6 +7,7 @@ import { cookies } from 'next/headers'
 import LikeButton from '@/app/components/LikeButton'
 import CommentToggle from '@/app/components/CommentToggle'
 import FollowButton from '@/app/components/FollowButton'
+import ShareButton from '@/app/components/ShareButton'
 
 async function getCurrentUser() {
   const session = (await cookies()).get('session')?.value
@@ -14,17 +15,14 @@ async function getCurrentUser() {
   const [userId] = session.split(':')
   if (!userId) return null
 
-  const user = await prisma.user.findUnique({
+  return prisma.user.findUnique({
     where: { id: userId },
   })
-
-  return user
 }
 
 export default async function HomePage() {
   const currentUser = await getCurrentUser()
 
-  // Lấy tất cả blogs
   const blogs = await prisma.blog.findMany({
     include: {
       author: {
@@ -32,12 +30,23 @@ export default async function HomePage() {
           id: true,
           fullname: true,
           followers: currentUser
-            ? {
-                where: { followerId: currentUser.id }, // Kiểm tra user hiện tại đã follow tác giả chưa
-              }
+            ? { where: { followerId: currentUser.id } }
             : false,
         },
       },
+
+      // 👇 LẤY BÀI GỐC NẾU LÀ SHARE
+      sharedFrom: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              fullname: true,
+            },
+          },
+        },
+      },
+
       _count: {
         select: {
           likes: true,
@@ -45,150 +54,127 @@ export default async function HomePage() {
         },
       },
     },
+    orderBy: { createdAt: 'desc' },
   })
-
-  // Sắp xếp: ưu tiên người đã follow, sau đó theo createdAt
-  const sortedBlogs = currentUser
-    ? blogs.sort((a, b) => {
-        const aFollowed = a.author.followers?.length > 0 ? 1 : 0
-        const bFollowed = b.author.followers?.length > 0 ? 1 : 0
-
-        if (aFollowed === bFollowed) {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        }
-
-        return bFollowed - aFollowed // ưu tiên người follow trước
-      })
-    : blogs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* HEADER */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-blue-600">
-              InstaClone
-            </Link>
-            <div className="hidden md:block">
-              <input
-                type="search"
-                placeholder="Tìm kiếm..."
-                className="px-4 py-2 bg-gray-100 rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+      <header className="bg-white border-b sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between">
+          <Link href="/" className="text-2xl font-bold text-blue-600">
+            InstaClone
+          </Link>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <main className="max-w-2xl mx-auto p-4 pt-6">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">News Feed</h1>
+      <main className="max-w-2xl mx-auto p-4 space-y-4">
+        {blogs.map((blog) => {
+          const isShared = !!blog.sharedFrom
+          const displayBlog = blog.sharedFrom ?? blog
 
-        <div className="space-y-4">
-          {sortedBlogs.map((blog) => {
-            if (!blog?.id || !blog?.author) return null
 
-            const isCurrentUser = blog.author.id === currentUser?.id
-            const profileLink = isCurrentUser ? '/profile' : `/profile/${blog.author.id}`
-            const isFollowing = blog.author.followers?.length > 0
+          const isCurrentUser = blog.author.id === currentUser?.id
+          const isFollowing = blog.author.followers?.length > 0
 
-            return (
-              <div
-                key={blog.id}
-                className="bg-white rounded-lg shadow-md border hover:shadow-lg transition-shadow"
-              >
-                {/* Header */}
-                <div className="p-4 border-b flex justify-between items-center">
-                  <Link href={profileLink}>
-                    <div className="flex items-center space-x-3 hover:bg-gray-50 -m-2 p-2 rounded-lg transition-colors">
-                      <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 font-semibold text-sm">
-                          {blog.author.fullname.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-800 hover:underline">
-                          {blog.author.fullname}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatTimeAgo(blog.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-
-                  {/* Follow / Unfollow button nếu không phải bản thân */}
-                  {!isCurrentUser && currentUser && (
-                    <FollowButton
-                      currentUserId={currentUser.id}
-                      targetUserId={blog.author.id}
-                      initialIsFollowing={isFollowing}
-                    />
-                  )}
+          return (
+            <div
+              key={blog.id}
+              className="bg-white rounded-lg border shadow"
+            >
+              {/* ===== NGƯỜI SHARE ===== */}
+              {isShared && (
+                <div className="px-4 pt-4 text-sm text-gray-600">
+                  <span className="font-semibold">{blog.author.fullname}</span> đã chia sẻ
                 </div>
+              )}
 
-                {/* Caption */}
-                {blog.caption && (
-                  <div className="px-4 py-3">
-                    <p className="text-gray-800 leading-relaxed">{blog.caption}</p>
-                  </div>
-                )}
-
-                {/* Image */}
-                <Link href={`/blog/${blog.id}`}>
-                  <div className="cursor-pointer">
-                    <Image
-                      src={blog.imageUrl}
-                      alt={blog.caption || 'Blog image'}
-                      width={600}
-                      height={400}
-                      className="w-full h-auto object-cover hover:opacity-95 transition-opacity"
-                    />
+              {/* ===== HEADER BÀI GỐC ===== */}
+              <div className="p-4 flex justify-between items-center">
+                <Link href={`/profile/${displayBlog.author.id}`}>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                      <span className="font-bold text-gray-700">
+                        {displayBlog.author.fullname.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-semibold">
+                        {displayBlog.author.fullname}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatTimeAgo(displayBlog.createdAt)}
+                      </p>
+                    </div>
                   </div>
                 </Link>
 
-                {/* Likes & Comment count */}
-                <div className="p-4">
-                  <div className="flex items-center justify-between text-gray-500 text-sm mb-3">
-                    <div className="flex items-center space-x-1">
-                      <span className="text-blue-500">👍</span>
-                      <span>{blog._count.likes} lượt thích</span>
-                    </div>
-                    <div>
-                      <span>{blog._count.comments} bình luận</span>
-                    </div>
+                {!isCurrentUser && currentUser && (
+                  <FollowButton
+                    currentUserId={currentUser.id}
+                    targetUserId={displayBlog.author.id}
+                    initialIsFollowing={isFollowing}
+                  />
+                )}
+              </div>
+
+              {/* ===== CAPTION SHARE ===== */}
+              {isShared && blog.caption && (
+                <div className="px-4 pb-2 text-gray-800">
+                  {blog.caption}
+                </div>
+              )}
+
+              {/* ===== KHUNG BÀI GỐC ===== */}
+              <div className="mx-4 mb-4 border rounded-lg overflow-hidden bg-gray-50">
+                {displayBlog.caption && (
+                  <div className="p-3 text-gray-800">
+                    {displayBlog.caption}
                   </div>
+                )}
 
-                  {/* Actions */}
-                  <div className="flex flex-col border-t border-gray-200 pt-2 -mx-2">
-                    <div className="flex items-center">
-                      <LikeButton
-                        blogId={blog.id}
-                        userId={currentUser?.id || null}
-                        initialLikes={blog._count.likes}
-                      />
+                <Link href={`/blog/${displayBlog.id}`}>
+                  <Image
+                    src={displayBlog.imageUrl}
+                    alt="blog image"
+                    width={600}
+                    height={400}
+                    className="w-full object-cover"
+                  />
+                </Link>
+              </div>
 
-                      <CommentToggle
-                        blogId={blog.id}
-                        currentUser={
-                          currentUser
-                            ? { id: currentUser.id, fullname: currentUser.fullname }
-                            : null
-                        }
-                      />
+              {/* ===== LIKE / COMMENT ===== */}
+              <div className="px-4 pb-4">
+                <div className="flex justify-between text-sm text-gray-500 mb-2">
+                  <span>{blog._count.likes} lượt thích</span>
+                  <span>{blog._count.comments} bình luận</span>
+                </div>
 
-                      <button className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 rounded-lg flex-1 justify-center transition-colors">
-                        <span className="text-gray-600">📤</span>
-                        <span className="text-gray-600 font-medium">Chia sẻ</span>
-                      </button>
-                    </div>
-                  </div>
+                <div className="flex space-x-4 border-t pt-2">
+                  <LikeButton
+                    blogId={blog.id}
+                    userId={currentUser?.id || null}
+                    initialLikes={blog._count.likes}
+                  />
+
+                  <CommentToggle
+                    blogId={blog.id}
+                    currentUser={
+                      currentUser
+                        ? { id: currentUser.id, fullname: currentUser.fullname }
+                        : null
+                    }
+                  />
+
+                  <ShareButton
+                    blogId={displayBlog.id}
+                    imageUrl={displayBlog.imageUrl}
+                  />
                 </div>
               </div>
-            )
-          })}
-        </div>
+            </div>
+          )
+        })}
       </main>
     </div>
   )
