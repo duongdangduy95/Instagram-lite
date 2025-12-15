@@ -4,6 +4,7 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import LikeButton from "../../components/LikeButton"; // nếu dùng từ file nằm trong app/
+import ShareButton from "@/app/components/ShareButton";
 
 
 export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -136,10 +137,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
                       <span className="text-gray-600">💬</span>
                       <span className="text-gray-600 font-medium">Bình luận</span>
                     </Link>
-                    <button className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors flex-1 justify-center">
-                      <span className="text-gray-600">📤</span>
-                      <span className="text-gray-600 font-medium">Chia sẻ</span>
-                    </button>
+                    <ShareButton blogId={blog.id} imageUrl={blog.imageUrl} />
+
                   </div>
                 </div>
               </div>

@@ -6,6 +6,9 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import LikeButton from "../components/LikeButton"
 import FollowModal from "../components/FollowModal"
+import ShareButton from '../components/ShareButton'
+
+
 
 interface Blog {
   _count: {
@@ -35,7 +38,8 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
-  
+    const [shareBlog, setShareBlog] = useState<Blog | null>(null)
+const [shareCaption, setShareCaption] = useState('')
   // Thêm state cho follow
   const [showFollowModal, setShowFollowModal] = useState<'followers' | 'following' | null>(null)
   const [followersCount, setFollowersCount] = useState(0)
@@ -528,10 +532,14 @@ export default function ProfilePage() {
                       <span className="text-gray-600">💬</span>
                       <span className="text-gray-600 font-medium">Bình luận</span>
                     </Link>
-                    <button className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors flex-1 justify-center">
-                      <span className="text-gray-600">📤</span>
-                      <span className="text-gray-600 font-medium">Chia sẻ</span>
-                    </button>
+                    <ShareButton
+  blogId={blog.id}
+  onShared={() => {
+    router.refresh()
+  }}
+/>
+
+
                   </div>
                 </div>
               </div>

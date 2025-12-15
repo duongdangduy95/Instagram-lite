@@ -47,12 +47,18 @@ model Blog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  String
+  authorId String
+  author   User @relation(fields: [authorId], references: [id])
 
-  comments  Comment[]
-  likes     Like[]
+  // ===== SHARE POST =====
+  sharedFromId String?
+  sharedFrom   Blog?  @relation("BlogShare", fields: [sharedFromId], references: [id])
+  shares       Blog[] @relation("BlogShare")
+
+  comments Comment[]
+  likes    Like[]
 }
+
 
 model Comment {
   id        String   @id @default(cuid())
