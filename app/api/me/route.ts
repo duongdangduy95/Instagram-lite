@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'  
-// Import prisma client
+
 export async function GET() {
   const cookieStore = cookies()
   const session = (await cookieStore).get('session')?.value
@@ -24,6 +24,14 @@ export async function GET() {
               author: true,
             },
           },
+        },
+      },
+      _count: {
+        select: {
+          blogs: true,
+          likes: true,
+          followers: true, 
+          following: true,  
         },
       },
     },

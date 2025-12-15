@@ -32,6 +32,12 @@ model User {
   blogs     Blog[]
   comments  Comment[]
   likes     Like[]
+
+  // Danh sách người đang follow mình (followers)
+  followers  Follow[] @relation("UserFollowing")
+  
+  // Danh sách người mình đang follow (following)
+  following  Follow[] @relation("UserFollowers")
 }
 
 model Blog {
@@ -74,4 +80,21 @@ model Like {
   blogId    String
 
   @@unique([userId, blogId]) // Một người chỉ like một blog một lần
+}
+model Follow {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  
+  // Người follow (follower)
+  follower    User     @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  followerId  String
+  
+  // Người được follow (following)
+  following   User     @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+  followingId String
+  
+  // Đảm bảo một người chỉ follow một người khác một lần
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }

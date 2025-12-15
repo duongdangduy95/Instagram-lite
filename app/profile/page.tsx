@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import LikeButton from "../components/LikeButton";
+import LikeButton from "../components/LikeButton"
+import FollowModal from "../components/FollowModal"
 
 interface Blog {
   _count: {
@@ -15,7 +16,7 @@ interface Blog {
   caption: string
   imageUrl: string
   createdAt: string
-  likes: Array<{ userId: string }> // Thêm thông tin likes để check user đã like chưa
+  likes: Array<{ userId: string }>
 }
 
 interface Like {
@@ -34,6 +35,11 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
+  
+  // Thêm state cho follow
+  const [showFollowModal, setShowFollowModal] = useState<'followers' | 'following' | null>(null)
+  const [followersCount, setFollowersCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,6 +54,10 @@ export default function ProfilePage() {
       setUser(data)
       setMyBlogs(data.blogs)
       setLikedBlogs(data.likes.map((like: Like) => like.blog))
+      
+      // Cập nhật follow counts
+      setFollowersCount(data._count?.followers || 0)
+      setFollowingCount(data._count?.following || 0)
     }
 
     fetchData()
@@ -88,7 +98,6 @@ export default function ProfilePage() {
 
       if (response.ok) {
         const result = await response.json()
-        // Update the blog in state
         setMyBlogs(prevBlogs => 
           prevBlogs.map(blog => 
             blog.id === blogId 
@@ -126,7 +135,6 @@ export default function ProfilePage() {
       })
 
       if (response.ok) {
-        // Remove the blog from state
         setMyBlogs(prevBlogs => prevBlogs.filter(blog => blog.id !== blogId))
         setShowDeleteModal(null)
         alert('Xóa bài viết thành công!')
@@ -141,9 +149,7 @@ export default function ProfilePage() {
     }
   }
 
-  // Hàm để cập nhật like count trong state
   const handleLikeUpdate = (blogId: string, newCount: number, isLiked: boolean) => {
-    // Cập nhật trong myBlogs
     setMyBlogs(prevBlogs => 
       prevBlogs.map(blog => 
         blog.id === blogId 
@@ -161,7 +167,6 @@ export default function ProfilePage() {
       )
     )
 
-    // Cập nhật trong likedBlogs
     setLikedBlogs(prevBlogs => 
       prevBlogs.map(blog => 
         blog.id === blogId 
@@ -179,7 +184,6 @@ export default function ProfilePage() {
       )
     )
 
-    // Nếu user unlike một bài viết, remove nó khỏi tab "Đã thích"
     if (!isLiked && activeTab === 'liked') {
       setLikedBlogs(prevBlogs => prevBlogs.filter(blog => blog.id !== blogId))
     }
@@ -316,7 +320,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Stats Card */}
+          {/* Stats Card - CẬP NHẬT PHẦN NÀY */}
           <div className="bg-white rounded-lg shadow-sm p-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Thống kê</h3>
             <div className="grid grid-cols-2 gap-4">
@@ -328,6 +332,24 @@ export default function ProfilePage() {
                 <div className="text-xl font-bold text-pink-600">{likedBlogs.length}</div>
                 <div className="text-xs text-gray-600">Đã thích</div>
               </div>
+              
+              {/* NÚT XEM FOLLOWERS */}
+              <button
+                onClick={() => setShowFollowModal('followers')}
+                className="text-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer"
+              >
+                <div className="text-xl font-bold text-purple-600">{followersCount}</div>
+                <div className="text-xs text-gray-600">Người theo dõi</div>
+              </button>
+              
+              {/* NÚT XEM FOLLOWING */}
+              <button
+                onClick={() => setShowFollowModal('following')}
+                className="text-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors cursor-pointer"
+              >
+                <div className="text-xl font-bold text-green-600">{followingCount}</div>
+                <div className="text-xs text-gray-600">Đang theo dõi</div>
+              </button>
             </div>
           </div>
         </div>
@@ -493,7 +515,6 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="flex items-center justify-around border-t pt-2">
-                    {/* Thay thế button Like cũ bằng LikeButton component */}
                     <LikeButton 
                       blogId={blog.id}
                       initialLiked={blog.likes?.some(like => like.userId === user.id) || false}
@@ -572,6 +593,14 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* THÊM FOLLOW MODAL */}
+      <FollowModal
+        isOpen={showFollowModal !== null}
+        onClose={() => setShowFollowModal(null)}
+        userId={user?.id || ''}
+        type={showFollowModal || 'followers'}
+      />
     </div>
   )
 }
