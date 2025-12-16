@@ -2,13 +2,12 @@
 
 import { useState } from 'react'
 
-export default function ShareButton({
-  blogId,
-  onShared,
-}: {
+interface ShareButtonProps {
   blogId: string
   onShared?: () => void
-}) {
+}
+
+export default function ShareButton({ blogId, onShared }: ShareButtonProps) {
   const [open, setOpen] = useState(false)
   const [caption, setCaption] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,19 +15,22 @@ export default function ShareButton({
   const handleShare = async () => {
     setLoading(true)
 
-    await fetch('/api/blog/share', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        blogId,
-        caption,
-      }),
-    })
+    try {
+      await fetch('/api/blog/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blogId, caption }),
+      })
 
-    setLoading(false)
-    setOpen(false)
-    setCaption('')
-    onShared?.()
+      onShared?.() // gọi callback để refresh dữ liệu
+      setOpen(false)
+      setCaption('')
+    } catch (error) {
+      console.error('Error sharing blog:', error)
+      alert('Chia sẻ bài viết thất bại.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -45,7 +47,6 @@ export default function ShareButton({
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 w-full max-w-md">
             <h3 className="font-semibold mb-2">Chia sẻ bài viết</h3>
-
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
@@ -53,7 +54,6 @@ export default function ShareButton({
               className="w-full border rounded p-2 mb-3"
               rows={3}
             />
-
             <div className="flex justify-end space-x-2">
               <button onClick={() => setOpen(false)}>Hủy</button>
               <button
