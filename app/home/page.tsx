@@ -7,6 +7,7 @@ import LikeButton from '@/app/components/LikeButton';
 import CommentToggle from '../components/CommentToggle';
 import Navigation from '../components/Navigation';
 import FollowButton from '../components/FollowButton';
+import ShareButton from '../components/ShareButton';
 
 // Lấy người dùng hiện tại từ session cookie
 async function getCurrentUser() {
