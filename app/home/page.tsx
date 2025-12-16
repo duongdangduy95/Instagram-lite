@@ -21,6 +21,15 @@ async function getCurrentUser() {
 export default async function HomePage() {
   const currentUser = await getCurrentUser()
 
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      fullname: true,
+      username: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
   const blogs = await prisma.blog.findMany({
     include: {
       author: {
@@ -69,11 +78,14 @@ export default async function HomePage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-black">
       {/* NAVIGATION */}
       <Navigation />
 
-      <main className="max-w-2xl mx-auto p-4 space-y-4">
+      <div className="ml-64 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-0">
+        {/* Main Content - Căn giữa */}
+        <main className="flex justify-center px-4 py-4">
+          <div className="w-full max-w-2xl space-y-4">
         {blogs.map((blog) => {
           const isShared = !!blog.sharedFrom
           const displayBlog = blog.sharedFrom ?? blog
@@ -86,29 +98,29 @@ export default async function HomePage() {
           return (
             <div
               key={blog.id}
-              className="bg-white rounded-lg border shadow"
+              className="bg-black text-gray-100"
             >
               {/* ===== NGƯỜI SHARE ===== */}
               {isShared && (
-                <div className="px-4 pt-4 text-sm text-gray-600">
+                <div className="px-4 pt-4 text-sm text-gray-300">
                   <span className="font-semibold">{blog.author.fullname}</span> đã chia sẻ
                 </div>
               )}
 
               {/* ===== HEADER BÀI GỐC ===== */}
-              <div className="p-4 flex justify-between items-center">
+              <div className="px-4 py-3 flex justify-between items-center">
                 <Link href={`/profile/${displayBlog.author.id}`}>
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                      <span className="font-bold text-gray-700">
+                    <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                      <span className="font-bold text-white">
                         {displayBlog.author.fullname.charAt(0)}
                       </span>
                     </div>
                     <div>
-                      <p className="font-semibold">
+                      <p className="font-semibold text-gray-100">
                         {displayBlog.author.fullname}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         {formatTimeAgo(displayBlog.createdAt)}
                       </p>
                     </div>
@@ -125,29 +137,32 @@ export default async function HomePage() {
 
               {/* ===== CAPTION SHARE ===== */}
               {isShared && blog.caption && (
-                <div className="px-4 pb-2 text-gray-800">
+                <div className="px-4 pb-2 text-gray-200">
                   {blog.caption}
                 </div>
               )}
 
-              {/* ===== KHUNG BÀI GỐC ===== */}
-              <div className="mx-4 mb-4 border rounded-lg overflow-hidden bg-gray-50">
-                {displayBlog.caption && (
-                  <div className="p-3 text-gray-800">
-                    {displayBlog.caption}
-                  </div>
-                )}
+              {/* ===== CAPTION BÀI GỐC (LÊN TRƯỚC ẢNH) ===== */}
+              {displayBlog.caption && (
+                <div className="px-4 pb-2 text-gray-200">
+                  {displayBlog.caption}
+                </div>
+              )}
 
-                <Link href={`/blog/${displayBlog.id}`}>
-                  <Image
-                    src={displayBlog.imageUrl}
-                    alt="blog image"
-                    width={600}
-                    height={400}
-                    className="w-full object-cover"
-                  />
-                </Link>
-              </div>
+              {/* ===== ẢNH BÀI GỐC ===== */}
+              <Link href={`/blog/${displayBlog.id}`}>
+                <div className="px-4 pb-4">
+                  <div className="rounded-lg overflow-hidden">
+                    <Image
+                      src={displayBlog.imageUrl}
+                      alt="blog image"
+                      width={600}
+                      height={400}
+                      className="w-full object-cover"
+                    />
+                  </div>
+                </div>
+              </Link>
 
               {/* ===== LIKE / COMMENT ===== */}
               <BlogActions
@@ -165,7 +180,38 @@ export default async function HomePage() {
             </div>
           )
         })}
-      </main>
+          </div>
+        </main>
+
+        {/* USER LIST SIDE BAR */}
+        <aside className="hidden lg:block px-6 py-4 space-y-3 border-l border-gray-800 bg-black sticky top-0 h-screen overflow-y-auto">
+          <p className="text-gray-300 font-semibold mb-2">Gợi ý theo dõi</p>
+          <div className="space-y-3">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-900 transition-colors"
+              >
+                <Link
+                  href={`/profile/${user.id}`}
+                  className="flex items-center space-x-3 flex-1 min-w-0"
+                >
+                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                    {user.fullname.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-gray-100 font-semibold truncate">{user.fullname}</p>
+                    <p className="text-gray-400 text-sm truncate">@{user.username}</p>
+                  </div>
+                </Link>
+                <button className="ml-2 px-4 py-1.5 text-sm font-semibold text-white bg-[#877EFF] hover:bg-[#7565E6] rounded-lg transition-colors flex-shrink-0">
+                  Theo dõi
+                </button>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
     </div>
   )
 }
