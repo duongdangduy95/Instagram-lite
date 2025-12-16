@@ -5,35 +5,57 @@ import { formatTimeAgo } from '@/lib/formatTimeAgo';
 import { cookies } from 'next/headers';
 import LikeButton from '@/app/components/LikeButton';
 import CommentToggle from '../components/CommentToggle';
+import FollowButton from '../components/FollowButton';
+import ShareButton from '../components/ShareButton';
 import Navigation from '../components/Navigation';
 
 // Lấy người dùng hiện tại từ session cookie
 async function getCurrentUser() {
-  const session = (await cookies()).get('session')?.value;
-  if (!session) return null;
+  const session = (await cookies()).get('session')?.value
+  if (!session) return null
+  const [userId] = session.split(':')
+  if (!userId) return null
 
-  const [userId] = session.split(':');
-  if (!userId) return null;
-
-  const user = await prisma.user.findUnique({
+  return prisma.user.findUnique({
     where: { id: userId },
-  });
-
-  return user;
+  })
 }
 
 export default async function HomePage() {
-  const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUser()
 
   const blogs = await prisma.blog.findMany({
-    orderBy: { createdAt: 'desc' },
     include: {
       author: {
         select: {
           id: true,
           fullname: true,
+          username: true,
+          followers: currentUser
+            ? { where: { followerId: currentUser.id } }
+            : false,
         },
       },
+
+      // 👇 LẤY BÀI GỐC NẾU LÀ SHARE
+      sharedFrom: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              fullname: true,
+              username: true,
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+            },
+          },
+        },
+      },
+
       _count: {
         select: {
           likes: true,
@@ -41,116 +63,121 @@ export default async function HomePage() {
         },
       },
     },
-  });
+    orderBy: { createdAt: 'desc' },
+  })
 
   return (
     <div className="min-h-screen bg-gray-100">
       {/* NAVIGATION */}
       <Navigation />
 
-      {/* MAIN CONTENT */}
-      <main className="max-w-2xl mx-auto p-4 pt-6">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">News Feed</h1>
+      <main className="max-w-2xl mx-auto p-4 space-y-4">
+        {blogs.map((blog) => {
+          const isShared = !!blog.sharedFrom
+          const displayBlog = blog.sharedFrom ?? blog
 
-        <div className="space-y-4">
-          {blogs.map((blog) => {
-            if (!blog?.id || !blog?.author) return null;
 
-            const isCurrentUser = blog.author.id === currentUser?.id;
-            const profileLink = isCurrentUser
-              ? '/profile'
-              : `/profile/${blog.author.id}`;
+          const isCurrentUser = blog.author.id === currentUser?.id
+          const isFollowing = blog.author.followers?.length > 0
 
-            return (
-              <div
-                key={blog.id}
-                className="bg-white rounded-lg shadow-md border hover:shadow-lg transition-shadow"
-              >
-                {/* Header */}
-                <div className="p-4 border-b">
-                  <Link href={profileLink}>
-                    <div className="flex items-center space-x-3 hover:bg-gray-50 -m-2 p-2 rounded-lg transition-colors">
-                      <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 font-semibold text-sm">
-                          {blog.author.fullname.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-800 hover:underline">
-                          {blog.author.fullname}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatTimeAgo(blog.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
+          return (
+            <div
+              key={blog.id}
+              className="bg-white rounded-lg border shadow"
+            >
+              {/* ===== NGƯỜI SHARE ===== */}
+              {isShared && (
+                <div className="px-4 pt-4 text-sm text-gray-600">
+                  <span className="font-semibold">{blog.author.fullname}</span> đã chia sẻ
                 </div>
+              )}
 
-                {/* Caption */}
-                {blog.caption && (
-                  <div className="px-4 py-3">
-                    <p className="text-gray-800 leading-relaxed">
-                      {blog.caption}
-                    </p>
-                  </div>
-                )}
-
-                {/* Image */}
-                <Link href={`/blog/${blog.id}`}>
-                  <div className="cursor-pointer">
-                    <Image
-                      src={blog.imageUrl}
-                      alt={blog.caption || 'Blog image'}
-                      width={600}
-                      height={400}
-                      className="w-full h-auto object-cover hover:opacity-95 transition-opacity"
-                    />
+              {/* ===== HEADER BÀI GỐC ===== */}
+              <div className="p-4 flex justify-between items-center">
+                <Link href={`/profile/${displayBlog.author.id}`}>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                      <span className="font-bold text-gray-700">
+                        {displayBlog.author.fullname.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-semibold">
+                        {displayBlog.author.fullname}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatTimeAgo(displayBlog.createdAt)}
+                      </p>
+                    </div>
                   </div>
                 </Link>
 
-                {/* Likes & Comment count */}
-                <div className="p-4">
-                  <div className="flex items-center justify-between text-gray-500 text-sm mb-3">
-                    <div className="flex items-center space-x-1">
-                      <span className="text-blue-500">👍</span>
-                      <span>{blog._count.likes} lượt thích</span>
-                    </div>
-                    <div>
-                      <span>{blog._count.comments} bình luận</span>
-                    </div>
+                {!isCurrentUser && currentUser && (
+                  <FollowButton
+                    targetUserId={displayBlog.author.id}
+                    initialIsFollowing={isFollowing}
+                  />
+                )}
+              </div>
+
+              {/* ===== CAPTION SHARE ===== */}
+              {isShared && blog.caption && (
+                <div className="px-4 pb-2 text-gray-800">
+                  {blog.caption}
+                </div>
+              )}
+
+              {/* ===== KHUNG BÀI GỐC ===== */}
+              <div className="mx-4 mb-4 border rounded-lg overflow-hidden bg-gray-50">
+                {displayBlog.caption && (
+                  <div className="p-3 text-gray-800">
+                    {displayBlog.caption}
                   </div>
+                )}
 
-                  {/* Actions */}
-                  <div className="flex flex-col border-t border-gray-200 pt-2 -mx-2">
-                    <div className="flex items-center">
-                      <LikeButton
-                        blogId={blog.id}
-                        userId={currentUser?.id || null}
-                        initialLikes={blog._count.likes}
-                      />
+                <Link href={`/blog/${displayBlog.id}`}>
+                  <Image
+                    src={displayBlog.imageUrl}
+                    alt="blog image"
+                    width={600}
+                    height={400}
+                    className="w-full object-cover"
+                  />
+                </Link>
+              </div>
 
-                      <CommentToggle
-                        blogId={blog.id}
-                        currentUser={
-                          currentUser
-                            ? { id: currentUser.id, fullname: currentUser.fullname }
-                            : null
-                        }
-                      />
+              {/* ===== LIKE / COMMENT ===== */}
+              <div className="px-4 pb-4">
+                <div className="flex justify-between text-sm text-gray-500 mb-2">
+                  <span>{blog._count.likes} lượt thích</span>
+                  <span>{blog._count.comments} bình luận</span>
+                </div>
 
-                      <button className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 rounded-lg flex-1 justify-center transition-colors">
-                        <span className="text-gray-600">📤</span>
-                        <span className="text-gray-600 font-medium">Chia sẻ</span>
-                      </button>
-                    </div>
-                  </div>
+                <div className="flex space-x-4 border-t pt-2">
+                  <LikeButton
+                    blogId={blog.id}
+                    initialLiked={false}
+                    initialCount={blog._count.likes}
+                  />
+
+                  <CommentToggle
+                    blogId={blog.id}
+                    currentUser={
+                      currentUser
+                        ? { id: currentUser.id, fullname: currentUser.fullname, username: currentUser.username }
+                        : null
+                    }
+                  />
+
+                  <ShareButton
+                    blogId={displayBlog.id}
+                  />
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          )
+        })}
       </main>
     </div>
-  );
+  )
 }

@@ -1,36 +1,112 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { prisma } from '@/lib/prisma'  // hoặc tạo PrismaClient trực tiếp
+import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export async function GET() {
-  const cookieStore = cookies()
-  const session = (await cookieStore).get('session')?.value
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized: no session' }, { status: 401 })
+  const session = await getServerSession(authOptions)
+  
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const userId = (session.user as any).id
+  const userId = session.user.id
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
-      blogs: { orderBy: { createdAt: 'desc' } },
+      blogs: {
+        include: {
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+            },
+          },
+          likes: {
+            select: {
+              userId: true,
+            },
+          },
+          author: {
+            select: {
+              id: true,
+              fullname: true,
+              username: true,
+            }
+          },
+          // ĐÂY LÀ PHẦN QUAN TRỌNG - lấy thông tin bài gốc nếu là bài share
+          sharedFrom: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  fullname: true,
+                  username: true,
+                }
+              },
+              _count: {
+                select: {
+                  likes: true,
+                  comments: true,
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
       likes: {
         include: {
           blog: {
             include: {
-              author: true,
+              _count: {
+                select: {
+                  likes: true,
+                  comments: true,
+                },
+              },
+              likes: {
+                select: {
+                  userId: true,
+                },
+              },
+              author: {
+                select: {
+                  id: true,
+                  fullname: true,
+                  username: true,
+                }
+              },
+              sharedFrom: {
+                include: {
+                  author: {
+                    select: {
+                      id: true,
+                      fullname: true,
+                      username: true,
+                    }
+                  },
+                  _count: {
+                    select: {
+                      likes: true,
+                      comments: true,
+                    }
+                  }
+                }
+              }
             },
           },
         },
       },
       _count: {
         select: {
-          followers: true,
           following: true,
         },
       },
+      following: true,
     },
   })
 
@@ -44,11 +120,11 @@ export async function GET() {
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions)
 
-  if (!session || !session.user) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const userId = (session.user as any).id
+  const userId = session.user.id
   const { fullname, email, phone } = await req.json()
 
   try {

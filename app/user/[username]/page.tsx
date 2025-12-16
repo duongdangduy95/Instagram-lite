@@ -1,12 +1,13 @@
 import { prisma } from '@/lib/prisma'
 
 interface Props {
-  params: { username: string }
+  params: Promise<{ username: string }>
 }
 
 export default async function UserProfilePage({ params }: Props) {
+  const { username } = await params
   const user = await prisma.user.findUnique({
-    where: { username: params.username },
+    where: { username },
     include: {
       blogs: {
         orderBy: { createdAt: 'desc' },

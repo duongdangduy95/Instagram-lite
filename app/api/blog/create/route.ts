@@ -2,22 +2,19 @@
 
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
-<<<<<<< HEAD
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/authConfig'
-=======
 import { cookies } from 'next/headers'
 
 const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions)
+  const cookieStore = cookies()
+  const session = (await cookieStore).get('session')
 
-  if (!session || !session.user) {
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const userId = (session.user as any).id
+  const [userId] = session.value.split(':')
 
   if (!userId) {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 })

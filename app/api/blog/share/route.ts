@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   const sharedBlog = await prisma.blog.create({
     data: {
       caption: caption || '',
-      imageUrl: originalBlog.imageUrl,
+      imageUrl: '', // Bài share không cần ảnh riêng
       authorId: userId,
       sharedFromId: originalBlog.id,
     },

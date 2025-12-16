@@ -5,9 +5,10 @@ import { cookies } from 'next/headers'
 // POST - Follow user
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: targetUserId } = await params
     const cookieStore = cookies()
     const session = (await cookieStore).get('session')?.value
 
@@ -16,7 +17,6 @@ export async function POST(
     }
 
     const [userId] = session.split(':') // Lấy userId hiện tại
-    const targetUserId = params.id
 
     // Không thể follow chính mình
     if (userId === targetUserId) {
@@ -63,9 +63,10 @@ export async function POST(
 // DELETE - Unfollow user
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: targetUserId } = await params
     const cookieStore = cookies()
     const session = (await cookieStore).get('session')?.value
 
@@ -74,7 +75,6 @@ export async function DELETE(
     }
 
     const [userId] = session.split(':') // Lấy userId hiện tại
-    const targetUserId = params.id
 
     // Xóa follow
     await prisma.follow.delete({
