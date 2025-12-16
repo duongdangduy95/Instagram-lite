@@ -120,9 +120,6 @@ export default function LikeButton({
       <span className={`font-medium ${liked ? 'text-blue-600' : 'text-gray-600'}`}>
         {loading ? 'Đang xử lý...' : liked ? 'Đã thích' : 'Thích'}
       </span>
-      {likeCount > 0 && (
-        <span className="text-sm text-gray-500">({likeCount})</span>
-      )}
     </button>
   )
 }

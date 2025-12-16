@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { cookies } from 'next/headers'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 // POST - Follow user
 export async function POST(
@@ -9,14 +10,13 @@ export async function POST(
 ) {
   try {
     const { id: targetUserId } = await params
-    const cookieStore = cookies()
-    const session = (await cookieStore).get('session')?.value
+    const session = await getServerSession(authOptions)
 
-    if (!session) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const [userId] = session.split(':') // Lấy userId hiện tại
+    const userId = session.user.id
 
     // Không thể follow chính mình
     if (userId === targetUserId) {
@@ -67,14 +67,13 @@ export async function DELETE(
 ) {
   try {
     const { id: targetUserId } = await params
-    const cookieStore = cookies()
-    const session = (await cookieStore).get('session')?.value
+    const session = await getServerSession(authOptions)
 
-    if (!session) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const [userId] = session.split(':') // Lấy userId hiện tại
+    const userId = session.user.id
 
     // Xóa follow
     await prisma.follow.delete({
