@@ -59,7 +59,7 @@ export default function ProfilePage() {
       
       // Cập nhật follow counts
       setFollowersCount(data._count?.followers || 0)
-      setFollowingCount(data._count?.following || 0)
+      setFollowersCount(data._count?.following || 0)
     }
 
     fetchData()
@@ -804,4 +804,8 @@ export default function ProfilePage() {
       )}
     </div>
   )
+}
+
+function setFollowersCount(arg0: any) {
+  throw new Error('Function not implemented.')
 }
