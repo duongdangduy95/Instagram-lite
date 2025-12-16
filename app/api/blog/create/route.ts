@@ -2,8 +2,11 @@
 
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
+<<<<<<< HEAD
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authConfig'
+=======
+import { cookies } from 'next/headers'
 
 const prisma = new PrismaClient()
 
@@ -29,11 +32,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Caption and image are required' }, { status: 400 })
   }
 
-  // Đọc dữ liệu ảnh và lưu tạm (hoặc upload lên dịch vụ như Cloudinary, v.v.)
+  // Đọc dữ liệu ảnh và lưu tạm (hoặc upload lên Cloudinary, v.v.)
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
 
-  // Ví dụ: lưu vào thư mục công khai (chỉ dùng tạm để thử)
   const filename = `${Date.now()}-${file.name}`
   const fs = await import('fs')
   const path = await import('path')

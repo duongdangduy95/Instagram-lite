@@ -1,13 +1,12 @@
-// app/api/me/route.ts
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { prisma } from '@/lib/prisma'
-import { authOptions } from '@/lib/authConfig'
+import { cookies } from 'next/headers'
+import { prisma } from '@/lib/prisma'  // hoặc tạo PrismaClient trực tiếp
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
+  const cookieStore = cookies()
+  const session = (await cookieStore).get('session')?.value
 
-  if (!session || !session.user) {
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized: no session' }, { status: 401 })
   }
 
@@ -16,24 +15,20 @@ export async function GET() {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
-      blogs: {
-        orderBy: { createdAt: 'desc' },
-        include: {
-          _count: {
-            select: { likes: true, comments: true }
-          }
-        }
-      },
+      blogs: { orderBy: { createdAt: 'desc' } },
       likes: {
         include: {
           blog: {
             include: {
               author: true,
-              _count: {
-                select: { likes: true, comments: true }
-              }
             },
           },
+        },
+      },
+      _count: {
+        select: {
+          followers: true,
+          following: true,
         },
       },
     },

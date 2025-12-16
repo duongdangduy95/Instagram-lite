@@ -6,6 +6,8 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import LikeButton from "../components/LikeButton"
 import Navigation from "../components/Navigation"
+import router from 'next/router'
+import ShareButton from '../components/ShareButton'
 
 interface Blog {
   _count: {
@@ -35,6 +37,9 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
   const [showEditProfileModal, setShowEditProfileModal] = useState<boolean>(false)
+  const [followersCount, setFollowersCount] = useState<number>(0)
+const [followingCount, setFollowingCount] = useState<number>(0)
+
   const [editProfileData, setEditProfileData] = useState({
     fullname: '',
     email: '',
@@ -50,10 +55,10 @@ export default function ProfilePage() {
 
     if (!data || data.error) return
 
-    setUser(data)
-    setMyBlogs(data.blogs)
-    setLikedBlogs(data.likes.map((like: Like) => like.blog))
-  }
+      setUser(data)
+      setMyBlogs(data.blogs)
+      setLikedBlogs(data.likes.map((like: Like) => like.blog))
+    }
 
   useEffect(() => {
     fetchUserData()
@@ -293,6 +298,10 @@ export default function ProfilePage() {
     )
   }
 
+  function setShowFollowModal(arg0: string): void {
+    throw new Error('Function not implemented.')
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* NAVIGATION */}
@@ -419,7 +428,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Stats Card */}
+          {/* Stats Card - CẬP NHẬT PHẦN NÀY */}
           <div className="bg-white rounded-lg shadow-sm p-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Thống kê</h3>
             <div className="grid grid-cols-3 gap-4">
@@ -435,6 +444,24 @@ export default function ProfilePage() {
                 <div className="text-xl font-bold text-purple-600">{likedBlogs.length}</div>
                 <div className="text-xs text-gray-600">Đã thích</div>
               </div>
+              
+              {/* NÚT XEM FOLLOWERS */}
+              <button
+                onClick={() => setShowFollowModal('followers')}
+                className="text-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer"
+              >
+                <div className="text-xl font-bold text-purple-600">{followersCount}</div>
+                <div className="text-xs text-gray-600">Người theo dõi</div>
+              </button>
+              
+              {/* NÚT XEM FOLLOWING */}
+              <button
+                onClick={() => setShowFollowModal('following')}
+                className="text-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors cursor-pointer"
+              >
+                <div className="text-xl font-bold text-green-600">{followingCount}</div>
+                <div className="text-xs text-gray-600">Đang theo dõi</div>
+              </button>
             </div>
           </div>
         </div>
@@ -600,31 +627,28 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="flex items-center justify-around border-t pt-2">
-                    {/* Like Button */}
-                    <div className="flex-1">
-                      <LikeButton 
-                        blogId={blog.id}
-                        userId={user?.id}
-                        initialCount={blog._count?.likes || 0}
-                        onLikeChange={(newCount) => {
-                          setMyBlogs(prevBlogs =>
-                            prevBlogs.map(b =>
-                              b.id === blog.id
-                                ? { ...b, _count: { ...b._count, likes: newCount } }
-                                : b
-                            )
+                    {/* Thay thế button Like cũ bằng LikeButton component */}
+                    <LikeButton 
+                      blogId={blog.id}
+                      userId={user?.id}
+                      initialLikes={blog._count?.likes || 0}
+                      onLikeChange={(newCount) => {
+                        setMyBlogs(prevBlogs =>
+                          prevBlogs.map(b =>
+                            b.id === blog.id
+                              ? { ...b, _count: { ...b._count, likes: newCount } }
+                              : b
                           )
-                          setLikedBlogs(prevBlogs =>
-                            prevBlogs.map(b =>
-                              b.id === blog.id
-                                ? { ...b, _count: { ...b._count, likes: newCount } }
-                                : b
-                            )
+                        )
+                        setLikedBlogs(prevBlogs =>
+                          prevBlogs.map(b =>
+                            b.id === blog.id
+                              ? { ...b, _count: { ...b._count, likes: newCount } }
+                              : b
                           )
-                        }}
-                        onRefetch={fetchUserData}
-                      />
-                    </div>
+                        )
+                      }}
+                    />
                     <Link
                       href={`/blog/${blog.id}`}
                       className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors flex-1 justify-center"
@@ -632,10 +656,14 @@ export default function ProfilePage() {
                       <span className="text-gray-600">💬</span>
                       <span className="text-gray-600 font-medium">Bình luận</span>
                     </Link>
-                    <button className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors flex-1 justify-center">
-                      <span className="text-gray-600">📤</span>
-                      <span className="text-gray-600 font-medium">Chia sẻ</span>
-                    </button>
+                    <ShareButton
+  blogId={blog.id}
+  onShared={() => {
+    router.refresh()
+  }}
+/>
+
+
                   </div>
                 </div>
               </div>
@@ -799,4 +827,8 @@ export default function ProfilePage() {
       )}
     </div>
   )
+}
+
+function setFollowersCount(arg0: any) {
+  throw new Error('Function not implemented.')
 }
