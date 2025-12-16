@@ -12,7 +12,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const [userId] = session.value.split(':')
-  const blogId = params.id
+  const { id: blogId } = await params
 
   const form = await req.formData()
   const caption = form.get('caption') as string
@@ -23,8 +23,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     const filename = `${Date.now()}-${file.name}`
-    const fs = require('fs')
-    const path = require('path')
+    const fs = await import('fs')
+    const path = await import('path')
     const filepath = path.join(process.cwd(), 'public', 'uploads', filename)
     fs.writeFileSync(filepath, buffer)
     imageUrl = `/uploads/${filename}`
@@ -54,7 +54,7 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const [userId] = session.value.split(':')
-  const blogId = params.id
+  const { id: blogId } = await params
 
   try {
     const blog = await prisma.blog.findUnique({ where: { id: blogId } })

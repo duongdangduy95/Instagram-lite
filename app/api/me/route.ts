@@ -114,3 +114,57 @@ export async function GET() {
 
   return NextResponse.json(user)
 }
+
+export async function PATCH(req: Request) {
+  const cookieStore = await cookies()
+  const session = (await cookieStore).get('session')?.value
+
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const [userId] = session.split(':')
+  const { fullname, email, phone } = await req.json()
+
+  try {
+    // Kiểm tra email đã tồn tại không (nếu thay đổi)
+    if (email) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email }
+      })
+      
+      if (existingUser && existingUser.id !== userId) {
+        return NextResponse.json(
+          { error: 'Email đã được sử dụng' },
+          { status: 409 }
+        )
+      }
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(fullname && { fullname }),
+        ...(email && { email }),
+        ...(phone && { phone }),
+      },
+      include: {
+        blogs: { orderBy: { createdAt: 'desc' } },
+        likes: {
+          include: {
+            blog: {
+              include: {
+                author: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    return NextResponse.json(updatedUser)
+  } catch (error) {
+    console.error('Error updating user:', error)
+    return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
+  }
+}

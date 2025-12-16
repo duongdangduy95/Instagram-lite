@@ -12,8 +12,13 @@ const handler = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const user = await prisma.user.findUnique({
-          where: { email: credentials?.email },
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: credentials?.email },
+              { username: credentials?.email }
+            ]
+          }
         })
 
         if (!user) throw new Error('No user found')
@@ -43,7 +48,10 @@ const handler = NextAuth({
     strategy: 'jwt',
   },
   jwt: {
-    secret: process.env.NEXTAUTH_SECRET, 
+    secret: process.env.NEXTAUTH_SECRET,
+  },
+  pages: {
+    signIn: '/login',
   },
 })
 

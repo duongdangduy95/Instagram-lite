@@ -36,6 +36,8 @@ export async function POST(req: Request) {
   const buffer = Buffer.from(bytes)
 
   const filename = `${Date.now()}-${file.name}`
+  const fs = await import('fs')
+  const path = await import('path')
   const filepath = path.join(process.cwd(), 'public', 'uploads', filename)
 
   fs.writeFileSync(filepath, buffer)

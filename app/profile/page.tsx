@@ -5,10 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import LikeButton from "../components/LikeButton"
-import FollowModal from "../components/FollowModal"
-import ShareButton from '../components/ShareButton'
-
-
+import Navigation from "../components/Navigation"
 
 interface Blog {
   _count: {
@@ -19,7 +16,7 @@ interface Blog {
   caption: string
   imageUrl: string
   createdAt: string
-  likes: Array<{ userId: string }>
+  likes: Array<{ userId: string }> // Thêm thông tin likes để check user đã like chưa
 }
 
 interface Like {
@@ -27,7 +24,6 @@ interface Like {
 }
 
 export default function ProfilePage() {
-  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [myBlogs, setMyBlogs] = useState<Blog[]>([])
   const [likedBlogs, setLikedBlogs] = useState<Blog[]>([])
@@ -38,12 +34,6 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
-    const [shareBlog, setShareBlog] = useState<Blog | null>(null)
-const [shareCaption, setShareCaption] = useState('')
-  // Thêm state cho follow
-  const [showFollowModal, setShowFollowModal] = useState<'followers' | 'following' | null>(null)
-  const [followersCount, setFollowersCount] = useState(0)
-  const [followingCount, setFollowingCount] = useState(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,9 +57,8 @@ const [shareCaption, setShareCaption] = useState('')
     fetchData()
   }, [])
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (_event: MouseEvent) => {
       if (showDropdown) {
         setShowDropdown(null)
       }
@@ -105,7 +94,12 @@ const [shareCaption, setShareCaption] = useState('')
         setMyBlogs(prevBlogs => 
           prevBlogs.map(blog => 
             blog.id === blogId 
-              ? { ...blog, caption: result.blog.caption, imageUrl: result.blog.imageUrl || blog.imageUrl }
+              ? { 
+                  ...blog, 
+                  caption: result.blog.caption, 
+                  imageUrl: result.blog.imageUrl || blog.imageUrl,
+                  _count: blog._count // ✅ Giữ lại _count (likes, comments)
+                }
               : blog
           )
         )
@@ -193,6 +187,80 @@ const [shareCaption, setShareCaption] = useState('')
     }
   }
 
+  const handleOpenEditProfile = () => {
+    setEditProfileData({
+      fullname: user.fullname,
+      email: user.email,
+      phone: user.phone || ''
+    })
+    setProfileErrors({})
+    setShowEditProfileModal(true)
+  }
+
+  const validateProfileData = () => {
+    const errors: Record<string, string> = {}
+
+    if (!editProfileData.fullname.trim()) {
+      errors.fullname = 'Họ và tên không được để trống'
+    } else if (editProfileData.fullname.trim().length < 2) {
+      errors.fullname = 'Họ và tên phải có ít nhất 2 ký tự'
+    } else if (editProfileData.fullname.trim().length > 50) {
+      errors.fullname = 'Họ và tên không được quá 50 ký tự'
+    }
+
+    if (!editProfileData.email.trim()) {
+      errors.email = 'Email không được để trống'
+    } else if (!/\S+@\S+\.\S+/.test(editProfileData.email)) {
+      errors.email = 'Email không hợp lệ'
+    }
+
+    if (editProfileData.phone.trim()) {
+      const phoneRegex = /^[0-9]{10,11}$/
+      if (!phoneRegex.test(editProfileData.phone.replace(/\s/g, ''))) {
+        errors.phone = 'Số điện thoại phải có 10-11 chữ số'
+      }
+    }
+
+    setProfileErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSaveProfile = async () => {
+    // Validate trước khi submit
+    if (!validateProfileData()) {
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editProfileData),
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setUser(result)
+        setShowEditProfileModal(false)
+        setProfileErrors({})
+        alert('Cập nhật hồ sơ thành công!')
+      } else {
+        const data = await response.json()
+        if (response.status === 409) {
+          setProfileErrors({ email: 'Email đã được sử dụng' })
+        } else {
+          alert(data.error || 'Không thể cập nhật hồ sơ')
+        }
+      }
+    } catch (error) {
+      alert('Có lỗi xảy ra')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -206,6 +274,9 @@ const [shareCaption, setShareCaption] = useState('')
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* NAVIGATION */}
+      <Navigation />
+
       {/* Cover Photo & Profile Section */}
       <div className="bg-white">
         {/* Cover Photo */}
@@ -267,7 +338,10 @@ const [shareCaption, setShareCaption] = useState('')
               >
                 + Thêm bài viết
               </Link>
-              <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+              <button 
+                onClick={handleOpenEditProfile}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
                 ✏️ Chỉnh sửa trang cá nhân
               </button>
             </div>
@@ -327,13 +401,17 @@ const [shareCaption, setShareCaption] = useState('')
           {/* Stats Card - CẬP NHẬT PHẦN NÀY */}
           <div className="bg-white rounded-lg shadow-sm p-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Thống kê</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-3 bg-blue-50 rounded-lg">
                 <div className="text-xl font-bold text-blue-600">{myBlogs.length}</div>
                 <div className="text-xs text-gray-600">Bài viết</div>
               </div>
               <div className="text-center p-3 bg-pink-50 rounded-lg">
-                <div className="text-xl font-bold text-pink-600">{likedBlogs.length}</div>
+                <div className="text-xl font-bold text-pink-600">{myBlogs.reduce((sum, blog) => sum + (blog._count?.likes || 0), 0)}</div>
+                <div className="text-xs text-gray-600">Tổng like</div>
+              </div>
+              <div className="text-center p-3 bg-purple-50 rounded-lg">
+                <div className="text-xl font-bold text-purple-600">{likedBlogs.length}</div>
                 <div className="text-xs text-gray-600">Đã thích</div>
               </div>
               
@@ -511,7 +589,7 @@ const [shareCaption, setShareCaption] = useState('')
                   <div className="flex items-center justify-between text-gray-500 text-sm mb-3">
                     <div className="flex items-center space-x-1">
                       <span className="text-blue-500">👍</span>
-                      <span>{blog._count?.likes || 0}</span>
+                      <span className="font-semibold text-gray-900">{blog._count?.likes || 0} lượt thích</span>
                     </div>
                     <div className="flex items-center space-x-4">
                       <span>{blog._count?.comments || 0} bình luận</span>
@@ -521,9 +599,24 @@ const [shareCaption, setShareCaption] = useState('')
                   <div className="flex items-center justify-around border-t pt-2">
                     <LikeButton 
                       blogId={blog.id}
-                      initialLiked={blog.likes?.some(like => like.userId === user.id) || false}
-                      initialCount={blog._count?.likes || 0}
-                      onLikeChange={handleLikeUpdate}
+                      userId={user?.id}
+                      initialLikes={blog._count?.likes || 0}
+                      onLikeChange={(newCount) => {
+                        setMyBlogs(prevBlogs =>
+                          prevBlogs.map(b =>
+                            b.id === blog.id
+                              ? { ...b, _count: { ...b._count, likes: newCount } }
+                              : b
+                          )
+                        )
+                        setLikedBlogs(prevBlogs =>
+                          prevBlogs.map(b =>
+                            b.id === blog.id
+                              ? { ...b, _count: { ...b._count, likes: newCount } }
+                              : b
+                          )
+                        )
+                      }}
                     />
                     <Link
                       href={`/blog/${blog.id}`}
@@ -601,14 +694,6 @@ const [shareCaption, setShareCaption] = useState('')
           </div>
         </div>
       )}
-
-      {/* THÊM FOLLOW MODAL */}
-      <FollowModal
-        isOpen={showFollowModal !== null}
-        onClose={() => setShowFollowModal(null)}
-        userId={user?.id || ''}
-        type={showFollowModal || 'followers'}
-      />
     </div>
   )
 }

@@ -1,10 +1,9 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { Providers } from "./providers"
-
-// Thay Geist bằng Inter - font ổn định hơn
-const inter = Inter({
+import { Providers } from "./providers" 
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",

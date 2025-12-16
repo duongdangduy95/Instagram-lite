@@ -10,8 +10,9 @@ async function getCurrentUserId() {
 }
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
+  const { id: blogId } = await params
   const comments = await prisma.comment.findMany({
-    where: { blogId: params.id },
+    where: { blogId },
     include: {
       author: { select: { fullname: true, username: true } },
     },
@@ -27,7 +28,7 @@ export async function POST(
   const userId = await getCurrentUserId();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const blogId = params.id;
+  const { id: blogId } = await params;
   const body = await req.json();
   const { content, parentId } = body;
 
