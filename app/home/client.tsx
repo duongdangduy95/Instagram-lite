@@ -24,7 +24,7 @@ interface Blog {
 
 export default function HomePageClient() {
   const [blogs, setBlogs] = useState<Blog[]>([])
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [currentUser, setCurrentUser] = useState<{ id: string; fullname: string; username: string } | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchData = async () => {
@@ -43,8 +43,8 @@ export default function HomePageClient() {
         const blogsData = await blogsRes.json()
         setBlogs(blogsData)
       }
-    } catch (error) {
-    } finally {
+    } catch (_error) {
+      // Error fetching data finally {
       setLoading(false)
     }
   }
@@ -155,7 +155,6 @@ export default function HomePageClient() {
                     <LikeButton
                       blogId={blog.id}
                       initialCount={blog._count.likes}
-                      userId={currentUser?.id}
                       onLikeChange={(newCount) => {
                         setBlogs(blogs.map(b =>
                           b.id === blog.id
@@ -166,7 +165,14 @@ export default function HomePageClient() {
                     />
                   </div>
                   <div className="flex-1">
-                    <CommentToggle blogId={blog.id} />
+                    <CommentToggle 
+                      blogId={blog.id} 
+                      currentUser={currentUser ? {
+                        id: currentUser.id,
+                        fullname: currentUser.fullname,
+                        username: currentUser.username
+                      } : null}
+                    />
                   </div>
                 </div>
               </div>

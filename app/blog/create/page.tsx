@@ -83,7 +83,7 @@ export default function CreateBlogPage() {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
         alert(`Failed: ${errorData.error}`)
       }
-    } catch (error) {
+    } catch (_error) {
       alert('Network error. Try again.')
     } finally {
       setIsLoading(false)

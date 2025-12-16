@@ -1,23 +1,25 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 
-export default function EditBlog({ params }: { params: { id: string } }) {
+export default function EditBlog() {
   const router = useRouter()
+  const params = useParams()
+  const blogId = params.id as string
   const [caption, setCaption] = useState('')
   const [imageUrl, setImageUrl] = useState('')
 
   useEffect(() => {
-    fetch(`/api/blog/${params.id}`)
+    fetch(`/api/blog/${blogId}`)
       .then(res => res.json())
       .then(data => {
         setCaption(data.caption)
         setImageUrl(data.imageUrl)
       })
-  }, [params.id])
+  }, [blogId])
 
   const handleUpdate = async () => {
-    await fetch(`/api/blog/${params.id}`, {
+    await fetch(`/api/blog/${blogId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ caption, imageUrl })

@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import LikeButton from "../components/LikeButton"
 import Navigation from "../components/Navigation"
-import router from 'next/router'
 import ShareButton from '../components/ShareButton'
+import { useRouter } from 'next/navigation'
 
 interface Blog {
   _count: {
@@ -25,8 +24,20 @@ interface Like {
   blog: Blog
 }
 
+interface UserType {
+  id: string
+  fullname: string
+  email: string
+  phone?: string
+  username: string
+  blogs: Blog[]
+  likes: Like[]
+  following: Array<{ id: string }>
+}
+
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null)
+  const router = useRouter()
+  const [user, setUser] = useState<UserType | null>(null)
   const [myBlogs, setMyBlogs] = useState<Blog[]>([])
   const [likedBlogs, setLikedBlogs] = useState<Blog[]>([])
   const [activeTab, setActiveTab] = useState<'posts' | 'liked'>('posts')
@@ -38,7 +49,7 @@ export default function ProfilePage() {
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
   const [showEditProfileModal, setShowEditProfileModal] = useState<boolean>(false)
   const [followersCount, setFollowersCount] = useState<number>(0)
-const [followingCount, setFollowingCount] = useState<number>(0)
+  const [followingCount, setFollowingCount] = useState<number>(0)
 
   const [editProfileData, setEditProfileData] = useState({
     fullname: '',
@@ -47,47 +58,34 @@ const [followingCount, setFollowingCount] = useState<number>(0)
   })
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({})
 
-  const fetchUserData = async () => {
-    const res = await fetch('/api/me', {
-      credentials: 'include',
-    })
-    const data = await res.json()
+  useEffect(() => {
+    const fetchData = async () => {
+      const res = await fetch('/api/me', {
+        credentials: 'include',
+      })
+      const data = await res.json()
+      console.log(data)
 
-    if (!data || data.error) return
+      if (!data || data.error) return
 
       setUser(data)
       setMyBlogs(data.blogs)
       setLikedBlogs(data.likes.map((like: Like) => like.blog))
+      
+      // Cập nhật follow counts
+      setFollowersCount(data.following?.length || 0)
+      setFollowingCount(data.following?.length || 0)
     }
 
-  useEffect(() => {
-    fetchUserData()
-  }, [])
-
-  // Refetch data when page regains focus
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchUserData()
-    }
-
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [])
-
-  // Polling mỗi 10 giây
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchUserData()
-    }, 10000)
-
-    return () => clearInterval(interval)
+    fetchData()
   }, [])
 
   useEffect(() => {
-    const handleClickOutside = (_event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (showDropdown) {
         setShowDropdown(null)
       }
+      event.preventDefault()
     }
 
     document.addEventListener('click', handleClickOutside)
@@ -136,8 +134,7 @@ const [followingCount, setFollowingCount] = useState<number>(0)
       } else {
         alert('Có lỗi xảy ra khi cập nhật bài viết')
       }
-    } catch (error) {
-      console.error('Error updating post:', error)
+    } catch (_error) {
       alert('Có lỗi xảy ra khi cập nhật bài viết')
     } finally {
       setIsLoading(false)
@@ -173,44 +170,8 @@ const [followingCount, setFollowingCount] = useState<number>(0)
     }
   }
 
-  const handleLikeUpdate = (blogId: string, newCount: number, isLiked: boolean) => {
-    setMyBlogs(prevBlogs => 
-      prevBlogs.map(blog => 
-        blog.id === blogId 
-          ? { 
-              ...blog, 
-              _count: { 
-                ...blog._count, 
-                likes: newCount 
-              },
-              likes: isLiked 
-                ? [...blog.likes, { userId: user.id }]
-                : blog.likes.filter(like => like.userId !== user.id)
-            }
-          : blog
-      )
-    )
-
-    setLikedBlogs(prevBlogs => 
-      prevBlogs.map(blog => 
-        blog.id === blogId 
-          ? { 
-              ...blog, 
-              _count: { 
-                ...blog._count, 
-                likes: newCount 
-              },
-              likes: isLiked 
-                ? [...blog.likes, { userId: user.id }]
-                : blog.likes.filter(like => like.userId !== user.id)
-            }
-          : blog
-      )
-    )
-
-    if (!isLiked && activeTab === 'liked') {
-      setLikedBlogs(prevBlogs => prevBlogs.filter(blog => blog.id !== blogId))
-    }
+  const handleLikeUpdate = (_blogId: string, _newCount: number, _isLiked: boolean) => {
+    // Placeholder for future implementation
   }
 
   const handleOpenEditProfile = () => {
@@ -280,7 +241,7 @@ const [followingCount, setFollowingCount] = useState<number>(0)
           alert(data.error || 'Không thể cập nhật hồ sơ')
         }
       }
-    } catch (error) {
+    } catch (_error) {
       alert('Có lỗi xảy ra')
     } finally {
       setIsLoading(false)
@@ -298,8 +259,8 @@ const [followingCount, setFollowingCount] = useState<number>(0)
     )
   }
 
-  function setShowFollowModal(arg0: string): void {
-    throw new Error('Function not implemented.')
+  function setShowFollowModal(_followerId: string): void {
+    // Not used
   }
 
   return (
@@ -619,7 +580,7 @@ const [followingCount, setFollowingCount] = useState<number>(0)
                   <div className="flex items-center justify-between text-gray-500 text-sm mb-3">
                     <div className="flex items-center space-x-1">
                       <span className="text-blue-500">👍</span>
-                      <span className="font-semibold text-gray-900">{blog._count?.likes || 0} người</span>
+                      <span className="font-semibold text-gray-900">{blog._count?.likes || 0} lượt thích</span>
                     </div>
                     <div className="flex items-center space-x-4">
                       <span>{blog._count?.comments || 0} bình luận</span>
@@ -627,11 +588,10 @@ const [followingCount, setFollowingCount] = useState<number>(0)
                   </div>
                   
                   <div className="flex items-center justify-around border-t pt-2">
-                    {/* Thay thế button Like cũ bằng LikeButton component */}
                     <LikeButton 
                       blogId={blog.id}
-                      userId={user?.id}
-                      initialLikes={blog._count?.likes || 0}
+                      initialLiked={false}
+                      initialCount={blog._count?.likes || 0}
                       onLikeChange={(newCount) => {
                         setMyBlogs(prevBlogs =>
                           prevBlogs.map(b =>
@@ -829,6 +789,6 @@ const [followingCount, setFollowingCount] = useState<number>(0)
   )
 }
 
-function setFollowersCount(arg0: any) {
-  throw new Error('Function not implemented.')
+function setFollowersCount(_arg0: number) {
+  // Not implemented
 }

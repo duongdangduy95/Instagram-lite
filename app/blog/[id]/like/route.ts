@@ -3,8 +3,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const blogId = params.id;
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: blogId } = await params;
   const userId = req.nextUrl.searchParams.get('userId');
 
   if (!userId) {
@@ -18,8 +18,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ liked: !!existing });
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const blogId = params.id;
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: blogId } = await params;
   const { userId } = await req.json();
 
   if (!userId) {

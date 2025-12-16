@@ -126,15 +126,15 @@ export default async function HomePage() {
                     <div className="flex items-center">
                       <LikeButton
                         blogId={blog.id}
-                        userId={currentUser?.id || null}
-                        initialLikes={blog._count.likes}
+                        initialLiked={false}
+                        initialCount={blog._count.likes}
                       />
 
                       <CommentToggle
                         blogId={blog.id}
                         currentUser={
                           currentUser
-                            ? { id: currentUser.id, fullname: currentUser.fullname }
+                            ? { id: currentUser.id, fullname: currentUser.fullname, username: currentUser.username }
                             : null
                         }
                       />
