@@ -1,14 +1,13 @@
-// app/page.tsx
-import Link from 'next/link'
-import Image from 'next/image'
-import { prisma } from '@/lib/prisma'
-import { formatTimeAgo } from '@/lib/formatTimeAgo'
-import { cookies } from 'next/headers'
-import LikeButton from '@/app/components/LikeButton'
-import CommentToggle from '@/app/components/CommentToggle'
-import FollowButton from '@/app/components/FollowButton'
-import ShareButton from '@/app/components/ShareButton'
+import Link from 'next/link';
+import Image from 'next/image';
+import { prisma } from '@/lib/prisma';
+import { formatTimeAgo } from '@/lib/formatTimeAgo';
+import { cookies } from 'next/headers';
+import LikeButton from '@/app/components/LikeButton';
+import CommentToggle from '../components/CommentToggle';
+import Navigation from '../components/Navigation';
 
+// Lấy người dùng hiện tại từ session cookie
 async function getCurrentUser() {
   const session = (await cookies()).get('session')?.value
   if (!session) return null
@@ -59,11 +58,21 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between">
-          <Link href="/" className="text-2xl font-bold text-blue-600">
-            InstaClone
-          </Link>
+      {/* HEADER */}
+      <header className="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="text-2xl font-bold text-blue-600">
+              InstaClone
+            </Link>
+            <div className="hidden md:block">
+              <input
+                type="search"
+                placeholder="Tìm kiếm..."
+                className="px-4 py-2 bg-gray-100 rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
         </div>
       </header>
 

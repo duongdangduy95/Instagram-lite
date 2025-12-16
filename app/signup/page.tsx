@@ -2,7 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+
 export default function SignupPage() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     username: '',
     fullname: '',
@@ -12,7 +15,7 @@ export default function SignupPage() {
   })
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState('')
-  const [messageType, setMessageType] = useState('') // 'success' or 'error'
+  const [messageType, setMessageType] = useState('') 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -22,14 +25,13 @@ export default function SignupPage() {
     const { name, value } = e.target
     setFormData({ ...formData, [name]: value })
     
-    // Clear validation error for this field when user starts typing
     if (validationErrors[name]) {
       setValidationErrors({ ...validationErrors, [name]: '' })
     }
   }
 
   const validateForm = () => {
-    const errors: any = {}
+    const errors: Record<string, string> = {}
     
     if (formData.username.length < 3) {
       errors.username = 'Username phải có ít nhất 3 ký tự'
@@ -80,7 +82,7 @@ export default function SignupPage() {
       if (res.ok) {
         setMessage('Đăng ký thành công!')
         setMessageType('success')
-        // Reset form
+
         setFormData({
           username: '',
           fullname: '',
@@ -89,11 +91,16 @@ export default function SignupPage() {
           password: ''
         })
         setConfirmPassword('')
+        
+        // Redirect to login after 1.5 seconds
+        setTimeout(() => {
+          router.push('/login')
+        }, 1500)
       } else {
         setMessage(data.message || 'Đăng ký thất bại')
         setMessageType('error')
       }
-    } catch (error) {
+    } catch (_error) {
       setMessage('Có lỗi xảy ra, vui lòng thử lại')
       setMessageType('error')
     } finally {
