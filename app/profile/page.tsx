@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import LikeButton from "../components/LikeButton"
 import Navigation from "../components/Navigation"
+import router from 'next/router'
 
 interface Blog {
   _count: {
@@ -16,7 +17,7 @@ interface Blog {
   caption: string
   imageUrl: string
   createdAt: string
-  likes: Array<{ userId: string }> // Thêm thông tin likes để check user đã like chưa
+  likes: Array<{ userId: string }> 
 }
 
 interface Like {
@@ -34,6 +35,13 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
+  const [showEditProfileModal, setShowEditProfileModal] = useState<boolean>(false)
+  const [editProfileData, setEditProfileData] = useState({
+    fullname: '',
+    email: '',
+    phone: ''
+  })
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const fetchData = async () => {
@@ -687,6 +695,106 @@ export default function ProfilePage() {
               <button
                 onClick={() => setShowDeleteModal(null)}
                 className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Profile Modal */}
+      {showEditProfileModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-slideUp">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Chỉnh sửa hồ sơ</h3>
+              <button
+                onClick={() => setShowEditProfileModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-5">
+              {/* Full Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">👤 Họ và tên</label>
+                <input
+                  type="text"
+                  value={editProfileData.fullname}
+                  onChange={(e) => {
+                    setEditProfileData({...editProfileData, fullname: e.target.value})
+                    if (profileErrors.fullname) setProfileErrors({...profileErrors, fullname: ''})
+                  }}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    profileErrors.fullname ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                  placeholder="Nhập họ và tên"
+                />
+                {profileErrors.fullname && (
+                  <p className="text-red-500 text-sm mt-1">⚠️ {profileErrors.fullname}</p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">📧 Email</label>
+                <input
+                  type="email"
+                  value={editProfileData.email}
+                  onChange={(e) => {
+                    setEditProfileData({...editProfileData, email: e.target.value})
+                    if (profileErrors.email) setProfileErrors({...profileErrors, email: ''})
+                  }}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    profileErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                  placeholder="Nhập email"
+                />
+                {profileErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">⚠️ {profileErrors.email}</p>
+                )}
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">📱 Số điện thoại</label>
+                <input
+                  type="tel"
+                  value={editProfileData.phone}
+                  onChange={(e) => {
+                    setEditProfileData({...editProfileData, phone: e.target.value})
+                    if (profileErrors.phone) setProfileErrors({...profileErrors, phone: ''})
+                  }}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    profileErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                  placeholder="Nhập số điện thoại"
+                />
+                {profileErrors.phone && (
+                  <p className="text-red-500 text-sm mt-1">⚠️ {profileErrors.phone}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex items-center space-x-3 mt-8">
+              <button
+                onClick={handleSaveProfile}
+                disabled={isLoading || Object.keys(profileErrors).length > 0}
+                className={`flex-1 px-4 py-3 rounded-lg transition-all font-semibold transform active:scale-95 ${
+                  Object.keys(profileErrors).length > 0
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 hover:scale-105'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {isLoading ? '⏳ Đang lưu...' : '✓ Lưu thay đổi'}
+              </button>
+              <button
+                onClick={() => setShowEditProfileModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all font-semibold transform hover:scale-105 active:scale-95"
               >
                 Hủy
               </button>
