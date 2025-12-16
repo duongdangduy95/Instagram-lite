@@ -26,7 +26,7 @@ export default function LikeButton({
   const [loading, setLoading] = useState(false)
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
 
-  // ✅ Kiểm tra session bằng cách gọi API /api/me
+  // gọi API /api/me
   useEffect(() => {
     const checkSession = async () => {
       try {

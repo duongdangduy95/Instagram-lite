@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/authConfig'
 const prisma = new PrismaClient()
 
 // PATCH - Update blog
+// Thay đổi status 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session || !session.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

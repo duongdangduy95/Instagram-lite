@@ -2,7 +2,7 @@
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
-
+//update login
 const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       username: user.username,
     },
   })
-
+// session tồn tại trong 1 ngày
   res.cookies.set('session', sessionToken, {
     httpOnly: true,
     path: '/',

@@ -2,13 +2,17 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authConfig'
 import { PrismaClient } from '@prisma/client'
-
+//Update like
 const prisma = new PrismaClient()
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions)
+  const cookieStore = await cookies() // ✅ Phải await
+  console.log('All cookies:', cookieStore.getAll())
 
-  if (!session || !session.user) {
+  const session = cookieStore.get('session') // ✅ OK rồi
+  console.log('Session cookie:', session)
+
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -30,13 +34,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   let liked: boolean
 
   if (existingLike) {
-    // Unlike
+   
     await prisma.like.delete({
       where: { id: existingLike.id },
     })
     liked = false
   } else {
-    // Like
+   
     await prisma.like.create({
       data: {
         userId,

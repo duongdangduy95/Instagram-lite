@@ -7,7 +7,7 @@ async function getCurrentUserId() {
   const session = await getServerSession(authOptions);
   return session?.user ? (session.user as any).id : null;
 }
-// Lấy tất cả comment (dạng cây nhưng client sẽ làm phẳng)
+
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const { id: blogId } = await params
   const comments = await prisma.comment.findMany({
