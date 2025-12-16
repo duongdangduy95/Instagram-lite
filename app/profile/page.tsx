@@ -42,22 +42,40 @@ export default function ProfilePage() {
   })
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({})
 
+  const fetchUserData = async () => {
+    const res = await fetch('/api/me', {
+      credentials: 'include',
+    })
+    const data = await res.json()
+
+    if (!data || data.error) return
+
+    setUser(data)
+    setMyBlogs(data.blogs)
+    setLikedBlogs(data.likes.map((like: Like) => like.blog))
+  }
+
   useEffect(() => {
-    const fetchData = async () => {
-      const res = await fetch('/api/me', {
-        credentials: 'include',
-      })
-      const data = await res.json()
-      console.log(data)
+    fetchUserData()
+  }, [])
 
-      if (!data || data.error) return
-
-      setUser(data)
-      setMyBlogs(data.blogs)
-      setLikedBlogs(data.likes.map((like: Like) => like.blog))
+  // Refetch data when page regains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchUserData()
     }
 
-    fetchData()
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
+
+  // Polling mỗi 10 giây
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchUserData()
+    }, 10000)
+
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -574,7 +592,7 @@ export default function ProfilePage() {
                   <div className="flex items-center justify-between text-gray-500 text-sm mb-3">
                     <div className="flex items-center space-x-1">
                       <span className="text-blue-500">👍</span>
-                      <span className="font-semibold text-gray-900">{blog._count?.likes || 0} lượt thích</span>
+                      <span className="font-semibold text-gray-900">{blog._count?.likes || 0} người</span>
                     </div>
                     <div className="flex items-center space-x-4">
                       <span>{blog._count?.comments || 0} bình luận</span>
@@ -582,28 +600,31 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="flex items-center justify-around border-t pt-2">
-                    {/* Thay thế button Like cũ bằng LikeButton component */}
-                    <LikeButton 
-                      blogId={blog.id}
-                      userId={user?.id}
-                      initialLikes={blog._count?.likes || 0}
-                      onLikeChange={(newCount) => {
-                        setMyBlogs(prevBlogs =>
-                          prevBlogs.map(b =>
-                            b.id === blog.id
-                              ? { ...b, _count: { ...b._count, likes: newCount } }
-                              : b
+                    {/* Like Button */}
+                    <div className="flex-1">
+                      <LikeButton 
+                        blogId={blog.id}
+                        userId={user?.id}
+                        initialCount={blog._count?.likes || 0}
+                        onLikeChange={(newCount) => {
+                          setMyBlogs(prevBlogs =>
+                            prevBlogs.map(b =>
+                              b.id === blog.id
+                                ? { ...b, _count: { ...b._count, likes: newCount } }
+                                : b
+                            )
                           )
-                        )
-                        setLikedBlogs(prevBlogs =>
-                          prevBlogs.map(b =>
-                            b.id === blog.id
-                              ? { ...b, _count: { ...b._count, likes: newCount } }
-                              : b
+                          setLikedBlogs(prevBlogs =>
+                            prevBlogs.map(b =>
+                              b.id === blog.id
+                                ? { ...b, _count: { ...b._count, likes: newCount } }
+                                : b
+                            )
                           )
-                        )
-                      }}
-                    />
+                        }}
+                        onRefetch={fetchUserData}
+                      />
+                    </div>
                     <Link
                       href={`/blog/${blog.id}`}
                       className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors flex-1 justify-center"

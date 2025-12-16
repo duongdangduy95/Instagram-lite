@@ -1,0 +1,15 @@
+{
+  "pages": {
+    "/api/auth/[...nextauth]/route": [
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_08923529._.js",
+      "static/chunks/e1940_next_dist_compiled_react-dom_8f6738d0._.js",
+      "static/chunks/e1940_next_dist_compiled_next-devtools_index_05ef6852.js",
+      "static/chunks/e1940_next_dist_compiled_78c3c8aa._.js",
+      "static/chunks/e1940_next_dist_client_1d31b572._.js",
+      "static/chunks/e1940_next_dist_c37112bc._.js",
+      "static/chunks/e1940_@swc_helpers_cjs_868758e7._.js",
+      "static/chunks/Desktop_Instagram-lite_a0ff3932._.js",
+      "static/chunks/turbopack-Desktop_Instagram-lite_63a2a60f._.js"
+    ]
+  }
+}

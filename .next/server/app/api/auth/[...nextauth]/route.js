@@ -1,0 +1,10 @@
+var R=require("../../../../chunks/[turbopack]_runtime.js")("server/app/api/auth/[...nextauth]/route.js")
+R.c("server/chunks/e1940_next_d7773a2e._.js")
+R.c("server/chunks/e1940_next-auth_da9367ad._.js")
+R.c("server/chunks/e1940_openid-client_38598835._.js")
+R.c("server/chunks/e1940_8d5d3a99._.js")
+R.c("server/chunks/e1940_f19dec2e._.js")
+R.c("server/chunks/[root-of-the-server]__5aebe8f5._.js")
+R.m("[project]/Desktop/Instagram-lite/.next-internal/server/app/api/auth/[...nextauth]/route/actions.js [app-rsc] (server actions loader, ecmascript)")
+R.m("[project]/Desktop/Instagram-lite/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/Desktop/Instagram-lite/app/api/auth/[...nextauth]/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)")
+module.exports=R.m("[project]/Desktop/Instagram-lite/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/Desktop/Instagram-lite/app/api/auth/[...nextauth]/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)").exports

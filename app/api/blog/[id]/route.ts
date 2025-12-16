@@ -1,16 +1,16 @@
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/authConfig'
 
 const prisma = new PrismaClient()
 
 // PATCH - Update blog
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const cookieStore = cookies()
-  const session = (await cookieStore).get('session')
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await getServerSession(authOptions)
+  if (!session || !session.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [userId] = session.value.split(':')
+  const userId = (session.user as any).id
   const { id: blogId } = await params
 
   const form = await req.formData()
@@ -48,11 +48,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
 // DELETE - Delete blog
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
-  const cookieStore = cookies()
-  const session = (await cookieStore).get('session')
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await getServerSession(authOptions)
+  if (!session || !session.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [userId] = session.value.split(':')
+  const userId = (session.user as any).id
   const { id: blogId } = await params
 
   try {

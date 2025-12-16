@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authConfig';
 
 async function getCurrentUserId() {
-  const session = (await cookies()).get('session')?.value;
-  if (!session) return null;
-  const userId = session.split(':')[0];
-  return userId;
+  const session = await getServerSession(authOptions);
+  return session?.user ? (session.user as any).id : null;
 }
 // Lấy tất cả comment (dạng cây nhưng client sẽ làm phẳng)
 export async function GET(_: Request, { params }: { params: { id: string } }) {
