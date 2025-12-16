@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import LikeButton from '@/app/components/LikeButton';
 import CommentToggle from '../components/CommentToggle';
 import Navigation from '../components/Navigation';
+import FollowButton from '../components/FollowButton';
 
 // Lấy người dùng hiện tại từ session cookie
 async function getCurrentUser() {
