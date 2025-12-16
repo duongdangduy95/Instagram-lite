@@ -1,9 +1,17 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Geist, Inter } from "next/font/google"
 import "./globals.css"
-import { Providers } from "./providers" 
-const geistSans = Geist({
+import { Providers } from "./providers"
+
+// Khai báo font Geist
+const geist = Geist({
+  subsets: ["latin"],
+  display: "swap",
   variable: "--font-geist-sans",
+})
+
+// Khai báo font Inter
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
@@ -21,7 +29,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body className={`${inter.variable} antialiased`}>
+      {/* Gán cả 2 font vào body */}
+      <body className={`${geist.variable} ${inter.variable} antialiased`}>
         <Providers>
           {children}
         </Providers>
