@@ -9,6 +9,7 @@ interface LikeButtonProps {
   initialCount?: number
   userId?: string | null
   onLikeChange?: (newCount: number) => void
+  onRefetch?: () => void
 }
 
 export default function LikeButton({ 
@@ -16,7 +17,8 @@ export default function LikeButton({
   initialLiked = false, 
   initialCount = 0,
   userId,
-  onLikeChange
+  onLikeChange,
+  onRefetch
 }: LikeButtonProps) {
   const router = useRouter()
   const [liked, setLiked] = useState(initialLiked)
@@ -34,16 +36,13 @@ export default function LikeButton({
         })
 
         if (!res.ok) {
-          console.log('Không có session, chuyển hướng đến /login')
           setAuthenticated(false)
           return
         }
 
         const data = await res.json()
-        console.log('User session found:', data)
         setAuthenticated(true)
       } catch (err) {
-        console.error('Lỗi kiểm tra session:', err)
         setAuthenticated(false)
       }
     }
@@ -53,12 +52,10 @@ export default function LikeButton({
 
   const handleLike = async () => {
     if (authenticated === null) {
-      console.log('Đang kiểm tra session...')
       return
     }
 
     if (!authenticated) {
-      console.log('Không có session, chuyển hướng đến /login')
       router.push('/login')
       return
     }
@@ -66,8 +63,6 @@ export default function LikeButton({
     setLoading(true)
 
     try {
-      console.log('Sending like request for blog:', blogId)
-
       const response = await fetch(`/api/blog/${blogId}/like`, {
         method: 'POST',
         headers: {
@@ -76,17 +71,12 @@ export default function LikeButton({
         credentials: 'include',
       })
 
-      console.log('Response status:', response.status)
-
       if (!response.ok) {
         const errorData = await response.text()
-        console.error('Server error:', errorData)
         throw new Error(`HTTP ${response.status}: ${errorData}`)
       }
 
       const data = await response.json()
-      console.log('Like response:', data)
-
       setLiked(data.liked)
       const newCount = data.liked ? likeCount + 1 : likeCount - 1
       setLikeCount(newCount)
@@ -95,10 +85,13 @@ export default function LikeButton({
       if (onLikeChange) {
         onLikeChange(newCount)
       }
+
+      // Refetch data để sync với server
+      if (onRefetch) {
+        setTimeout(onRefetch, 100)
+      }
     } catch (error) {
-      console.error('Like error:', error)
       if (error instanceof Error && error.message.includes('401')) {
-        console.log('Session invalid, redirecting to login')
         router.push('/login')
       }
     } finally {

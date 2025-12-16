@@ -1,27 +1,37 @@
 // app/api/me/route.ts
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { prisma } from '@/lib/prisma'  // hoặc tạo PrismaClient trực tiếp
+import { getServerSession } from 'next-auth'
+import { prisma } from '@/lib/prisma'
+import { authOptions } from '@/lib/authConfig'
 
 export async function GET() {
-  const cookieStore = cookies()
-  const session = (await cookieStore).get('session')?.value
+  const session = await getServerSession(authOptions)
 
-  if (!session) {
+  if (!session || !session.user) {
     return NextResponse.json({ error: 'Unauthorized: no session' }, { status: 401 })
   }
 
-  const [userId] = session.split(':')
+  const userId = (session.user as any).id
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
-      blogs: { orderBy: { createdAt: 'desc' } },
+      blogs: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: { likes: true, comments: true }
+          }
+        }
+      },
       likes: {
         include: {
           blog: {
             include: {
               author: true,
+              _count: {
+                select: { likes: true, comments: true }
+              }
             },
           },
         },
@@ -37,14 +47,13 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const cookieStore = await cookies()
-  const session = (await cookieStore).get('session')?.value
+  const session = await getServerSession(authOptions)
 
-  if (!session) {
+  if (!session || !session.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const [userId] = session.split(':')
+  const userId = (session.user as any).id
   const { fullname, email, phone } = await req.json()
 
   try {
