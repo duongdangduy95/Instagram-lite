@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 async function getCurrentUserId() {
-  const session = (await cookies()).get('session')?.value;
-  if (!session) return null;
-  const userId = session.split(':')[0];
-  return userId;
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return null;
+  return session.user.id;
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {

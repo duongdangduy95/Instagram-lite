@@ -22,6 +22,8 @@ interface Props {
     fullname: string;
     username: string;
   } | null;
+  onCommentAdded?: () => void;
+  onClose?: () => void;
 }
 
 function buildCommentTree(comments: Omit<Comment, 'replies'>[]): Comment[] {
@@ -44,16 +46,19 @@ function buildCommentTree(comments: Omit<Comment, 'replies'>[]): Comment[] {
   return roots;
 }
 
-export default function CommentSection({ blogId, currentUser }: Props) {
+export default function CommentSection({ blogId, currentUser, onCommentAdded, onClose }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
-  const [showSidebar, setShowSidebar] = useState(false);
 
   useEffect(() => {
-    axios.get(`/api/blog/${blogId}/comment`).then((res) => {
+    axios.get(`/api/blog/${blogId}/comment`, {
+      withCredentials: true
+    }).then((res) => {
       const tree = buildCommentTree(res.data);
       setComments(tree);
+    }).catch((err) => {
+      console.error('Error loading comments:', err);
     });
   }, [blogId]);
   
@@ -61,88 +66,92 @@ export default function CommentSection({ blogId, currentUser }: Props) {
     e.preventDefault();
     if (!newComment.trim()) return;
 
-    await axios.post(`/api/blog/${blogId}/comment`, {
-      content: newComment,
-      parentId: replyTo,
-    });
+    try {
+      await axios.post(`/api/blog/${blogId}/comment`, {
+        content: newComment,
+        parentId: replyTo,
+      }, {
+        withCredentials: true
+      });
 
-    setNewComment('');
-    setReplyTo(null);
+      setNewComment('');
+      setReplyTo(null);
 
-    const res = await axios.get(`/api/blog/${blogId}/comment`);
-    setComments(buildCommentTree(res.data));
+      const res = await axios.get(`/api/blog/${blogId}/comment`, {
+        withCredentials: true
+      });
+      setComments(buildCommentTree(res.data));
+      
+      // Gọi callback để cập nhật số lượng bình luận
+      if (onCommentAdded) {
+        onCommentAdded();
+      }
+    } catch (err) {
+      console.error('Error submitting comment:', err);
+      alert('Không thể gửi bình luận. Vui lòng thử lại.');
+    }
   }
 
   return (
-    <>
-      {/* Toggle button */}
-      <button
-        onClick={() => setShowSidebar(true)}
-        className="text-sm text-blue-600 underline mt-2"
-      >
-        Hiển thị {comments.length} bình luận
-      </button>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+        <h2 className="text-lg font-semibold">Bình luận</h2>
+        <button
+          onClick={onClose}
+          className="text-red-500 text-xl font-bold hover:text-red-600"
+        >
+          ✕
+        </button>
+      </div>
 
-      {/* Sidebar */}
-      <div
-        className={`fixed top-0 right-0 h-full w-full max-w-sm bg-white shadow-lg border-l z-50 transform transition-transform duration-300 ${
-          showSidebar ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <div className="flex justify-between items-center p-4 border-b bg-gray-50">
-          <h2 className="text-lg font-semibold">Bình luận</h2>
-          <button
-            onClick={() => setShowSidebar(false)}
-            className="text-red-500 text-sm"
-          >
-            Đóng
-          </button>
-        </div>
-
-        <div className="p-4 overflow-y-auto h-[calc(100%-64px)]">
-          {currentUser && (
-            <form onSubmit={handleSubmit} className="mb-4">
-              {replyTo && (
-                <div className="text-sm text-blue-500 mb-1">
-                  Trả lời một bình luận.{' '}
-                  <button
-                    onClick={() => setReplyTo(null)}
-                    type="button"
-                    className="text-red-500 underline ml-2"
-                  >
-                    Huỷ
-                  </button>
-                </div>
-              )}
-              <textarea
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                rows={2}
-                placeholder="Viết bình luận..."
-                className="w-full border rounded p-2 focus:outline-none focus:ring"
-              />
-              <button
-                type="submit"
-                className="mt-2 px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Gửi
-              </button>
-            </form>
-          )}
-
-          <div className="space-y-3">
-            {comments.map((comment) => (
-              <CommentItem
-                key={comment.id}
-                comment={comment}
-                currentUser={currentUser}
-                onReply={setReplyTo}
-              />
-            ))}
-          </div>
+      {/* Comments List - Scrollable */}
+      <div className="flex-1 p-4 overflow-y-auto">
+        <div className="space-y-3">
+          {comments.map((comment) => (
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              currentUser={currentUser}
+              onReply={setReplyTo}
+            />
+          ))}
         </div>
       </div>
-    </>
+
+      {/* Comment Form - Fixed at Bottom */}
+      {currentUser && (
+        <div className="border-t bg-white p-4">
+          <form onSubmit={handleSubmit}>
+            {replyTo && (
+              <div className="text-sm text-blue-500 mb-2">
+                Trả lời một bình luận.{' '}
+                <button
+                  onClick={() => setReplyTo(null)}
+                  type="button"
+                  className="text-red-500 underline ml-2"
+                >
+                  Huỷ
+                </button>
+              </div>
+            )}
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              rows={2}
+              placeholder="Viết bình luận..."
+              className="w-full border rounded p-2 focus:outline-none focus:ring focus:ring-blue-300"
+            />
+            <button
+              type="submit"
+              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Gửi
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
   );
 }
 
