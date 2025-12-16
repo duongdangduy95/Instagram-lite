@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import LikeButton from "../components/LikeButton"
 import Navigation from "../components/Navigation"
 import router from 'next/router'
+import ShareButton from '../components/ShareButton'
 
 interface Blog {
   _count: {
@@ -36,6 +37,9 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
   const [showEditProfileModal, setShowEditProfileModal] = useState<boolean>(false)
+  const [followersCount, setFollowersCount] = useState<number>(0)
+const [followingCount, setFollowingCount] = useState<number>(0)
+
   const [editProfileData, setEditProfileData] = useState({
     fullname: '',
     email: '',
@@ -278,6 +282,10 @@ export default function ProfilePage() {
         </div>
       </div>
     )
+  }
+
+  function setShowFollowModal(arg0: string): void {
+    throw new Error('Function not implemented.')
   }
 
   return (

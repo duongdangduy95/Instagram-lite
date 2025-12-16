@@ -1,21 +1,10 @@
 import type { Metadata } from "next"
-import { Geist, Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
 
-// Khai báo font Geist
-const geist = Geist({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-geist-sans",
-})
-
-// Khai báo font Inter
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-})
+// Phiên bản dùng fallback font
+const geist = { variable: "--font-geist-sans" }
+const inter = { variable: "--font-inter" }
 
 export const metadata: Metadata = {
   title: "Instagram Lite",
@@ -29,8 +18,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      {/* Gán cả 2 font vào body */}
-      <body className={`${geist.variable} ${inter.variable} antialiased`}>
+      {/* Gán cả 2 font vào body, dùng font hệ thống */}
+      <body
+        className={`${geist.variable} ${inter.variable} antialiased`}
+        style={{
+          fontFamily: "var(--font-geist-sans), var(--font-inter), system-ui, -apple-system, sans-serif",
+        }}
+      >
         <Providers>
           {children}
         </Providers>
