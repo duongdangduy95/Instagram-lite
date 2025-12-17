@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import Image from 'next/image';
 
 interface Comment {
   id: string;
@@ -13,6 +14,8 @@ interface Comment {
     username: string;
   };
   replies: Comment[];
+  likeCount?: number;
+  liked?: boolean;
 }
 
 interface Props {
@@ -24,6 +27,7 @@ interface Props {
   } | null;
   onCommentAdded?: () => void;
   onClose?: () => void;
+  inline?: boolean;
 }
 
 function buildCommentTree(comments: Omit<Comment, 'replies'>[]): Comment[] {
@@ -31,7 +35,12 @@ function buildCommentTree(comments: Omit<Comment, 'replies'>[]): Comment[] {
   const roots: Comment[] = [];
 
   comments.forEach((comment) => {
-    map.set(comment.id, { ...comment, replies: [] });
+    map.set(comment.id, { 
+      ...comment, 
+      replies: [],
+      likeCount: comment.likeCount || 0,
+      liked: comment.liked || false
+    });
   });
 
   map.forEach((comment) => {
@@ -46,7 +55,7 @@ function buildCommentTree(comments: Omit<Comment, 'replies'>[]): Comment[] {
   return roots;
 }
 
-export default function CommentSection({ blogId, currentUser, onCommentAdded, onClose }: Props) {
+export default function CommentSection({ blogId, currentUser, onCommentAdded, onClose, inline = false }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -90,6 +99,64 @@ export default function CommentSection({ blogId, currentUser, onCommentAdded, on
       console.error('Error submitting comment:', err);
       alert('Không thể gửi bình luận. Vui lòng thử lại.');
     }
+  }
+
+  if (inline) {
+    return (
+      <div className="flex flex-col">
+        {/* Comments List */}
+        <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
+          {comments.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-4">Chưa có bình luận nào</p>
+          ) : (
+            comments.map((comment) => (
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                currentUser={currentUser}
+                onReply={setReplyTo}
+                inline={true}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Comment Form */}
+        {currentUser && (
+          <div className="pt-3 border-t border-gray-800">
+            <form onSubmit={handleSubmit}>
+              {replyTo && (
+                <div className="text-sm text-purple-primary mb-2">
+                  Trả lời một bình luận.{' '}
+                  <button
+                    onClick={() => setReplyTo(null)}
+                    type="button"
+                    className="text-gray-400 underline ml-2 hover:text-gray-300"
+                  >
+                    Huỷ
+                  </button>
+                </div>
+              )}
+              <div className="flex items-center space-x-2">
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={1}
+                  placeholder="Thêm bình luận..."
+                  className="flex-1 bg-transparent border border-gray-700 rounded-lg px-3 py-2 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-purple-primary resize-none"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-primary text-white rounded-lg hover:bg-purple-primary-dark transition-colors font-medium"
+                >
+                  Gửi
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -159,9 +226,103 @@ interface CommentItemProps {
   comment: Comment;
   currentUser: Props['currentUser'];
   onReply: (id: string) => void;
+  inline?: boolean;
 }
 
-function CommentItem({ comment, currentUser, onReply }: CommentItemProps) {
+function CommentItem({ comment, currentUser, onReply, inline = false }: CommentItemProps) {
+  const [liked, setLiked] = useState(comment.liked || false)
+  const [likeCount, setLikeCount] = useState(comment.likeCount || 0)
+  const [likeAnimating, setLikeAnimating] = useState(false)
+
+  const handleLike = () => {
+    if (!currentUser) return
+    
+    // Animation
+    setLikeAnimating(true)
+    setTimeout(() => setLikeAnimating(false), 300)
+    
+    // Toggle liked state
+    const newLiked = !liked
+    setLiked(newLiked)
+    setLikeCount(newLiked ? likeCount + 1 : Math.max(0, likeCount - 1))
+    
+    // TODO: Call API to like/unlike comment
+  }
+
+  if (inline) {
+    return (
+      <div className="ml-2 mt-2">
+        <div className="flex items-start space-x-2">
+          {/* Avatar */}
+          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-xs">
+              {comment.author.fullname.charAt(0).toUpperCase()}
+            </span>
+          </div>
+          
+          {/* Comment content */}
+          <div className="flex-1">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium text-gray-200">
+                {comment.author.fullname}
+              </p>
+              <span className="text-gray-500 text-xs font-normal">
+                {new Date(comment.createdAt).toLocaleString('vi-VN', { 
+                  day: 'numeric', 
+                  month: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </div>
+            <p className="text-sm text-gray-300 mt-1">{comment.content}</p>
+            <div className="flex items-center space-x-4 mt-1">
+              {currentUser && (
+                <>
+                  <button
+                    onClick={handleLike}
+                    className={`flex items-center space-x-1 text-gray-400 hover:text-gray-300 transition-all duration-300 ${
+                      likeAnimating ? 'scale-75' : 'scale-100'
+                    }`}
+                  >
+                    <Image 
+                      src={liked ? '/icons/liked.svg' : '/icons/like.svg'} 
+                      alt="Thích" 
+                      width={16} 
+                      height={16}
+                    />
+                    <span className="text-xs">{likeCount}</span>
+                  </button>
+                  <button
+                    onClick={() => onReply(comment.id)}
+                    className="text-xs text-gray-400 hover:text-purple-primary transition-colors"
+                  >
+                    Trả lời
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Replies */}
+        {comment.replies.length > 0 && (
+          <div className="ml-4 border-l border-gray-800 pl-3 mt-2">
+            {comment.replies.map((reply) => (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                currentUser={currentUser}
+                onReply={onReply}
+                inline={true}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="ml-2 mt-2">
       <div className="p-2 bg-gray-100 rounded-lg border border-gray-200">
