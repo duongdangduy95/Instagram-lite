@@ -1,0 +1,23 @@
+{
+  "pages": {
+    "/search/page": [
+      "static/chunks/c015d_next_dist_7dcaf89b._.js",
+      "static/chunks/IT4409_Instagram-lite_app_favicon_ico_mjs_cc35ef12._.js",
+      "static/chunks/IT4409_Instagram-lite_app_globals_deee7a60.css",
+      "static/chunks/IT4409_Instagram-lite_a595544b._.js",
+      "static/chunks/IT4409_Instagram-lite_app_layout_tsx_9a2db8ec._.js",
+      "static/chunks/c015d_next_dist_client_components_builtin_global-error_c650dd26.js",
+      "static/chunks/IT4409_Instagram-lite_app_search_page_tsx_85c51800._.js",
+      "static/chunks/IT4409_Instagram-lite_app_search_page_tsx_c650dd26._.js",
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_bd4e5b68._.js",
+      "static/chunks/c015d_next_dist_compiled_react-dom_1b287625._.js",
+      "static/chunks/c015d_next_dist_compiled_next-devtools_index_c8c13884.js",
+      "static/chunks/c015d_next_dist_compiled_3e62f679._.js",
+      "static/chunks/c015d_next_dist_client_01a08ce5._.js",
+      "static/chunks/c015d_next_dist_d57e233e._.js",
+      "static/chunks/c015d_@swc_helpers_cjs_51ab00ba._.js",
+      "static/chunks/IT4409_Instagram-lite_a0ff3932._.js",
+      "static/chunks/turbopack-IT4409_Instagram-lite_56788099._.js"
+    ]
+  }
+}

@@ -3,9 +3,9 @@
   "middleware": {
     "/": {
       "files": [
-        "server/edge/chunks/Desktop_Instagram-lite_6c832647._.js",
-        "server/edge/chunks/[root-of-the-server]__cd4a75f9._.js",
-        "server/edge/chunks/turbopack-Desktop_Instagram-lite_edge-wrapper_486f82c7.js"
+        "server/edge/chunks/IT4409_Instagram-lite_941ca488._.js",
+        "server/edge/chunks/[root-of-the-server]__965dd4d9._.js",
+        "server/edge/chunks/turbopack-IT4409_Instagram-lite_edge-wrapper_32790cf1.js"
       ],
       "name": "middleware",
       "page": "/",
@@ -36,9 +36,9 @@
       "env": {
         "__NEXT_BUILD_ID": "development",
         "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "nPkPAM9iMpRnuY8A2PAvHZ8dScVqq6ODeLA/NV5Wm9U=",
-        "__NEXT_PREVIEW_MODE_ID": "6d768528ad80d5f83e6b4fa00c7ee00a",
-        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "aae95bd98fca73bed11be2e192cd81269ac583a575287d9c93f0cf6b1462ad7c",
-        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "d551613875d771714e31b2cf661ac6330cc5826e85ba298bf5cc4903cd6d4414"
+        "__NEXT_PREVIEW_MODE_ID": "7ffefc89db069acd63e0ed6f913cbb7a",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "e87bf871316f942904164beb408e6b831ffc1b18191bf3440f48ec707958e46e",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "9c4d6fa316cfeb82051a401752ac8b105070172092e2be2b634155b90d59f691"
       }
     }
   },
