@@ -41,10 +41,11 @@ export async function POST(req: Request) {
     });
 
     return Response.json({ message: "User created", user: { id: user.id, email: user.email } });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Error creating user"
     console.error('Signup error:', error);
     return Response.json(
-      { message: error.message || "Error creating user" },
+      { message: errorMessage },
       { status: 500 }
     );
   }

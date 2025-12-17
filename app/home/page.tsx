@@ -2,22 +2,19 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { prisma } from '@/lib/prisma';
 import { formatTimeAgo } from '@/lib/formatTimeAgo';
-import { cookies } from 'next/headers';
-import LikeButton from '@/app/components/LikeButton';
-import CommentToggle from '../components/CommentToggle';
-import Navigation from '../components/Navigation';
 import FollowButton from '../components/FollowButton';
-import ShareButton from '../components/ShareButton';
+import Navigation from '../components/Navigation';
+import BlogActions from '../components/BlogActions';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-// Lấy người dùng hiện tại từ session cookie
+// Lấy người dùng hiện tại từ NextAuth session
 async function getCurrentUser() {
-  const session = (await cookies()).get('session')?.value
-  if (!session) return null
-  const [userId] = session.split(':')
-  if (!userId) return null
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return null;
 
   return prisma.user.findUnique({
-    where: { id: userId },
+    where: { id: session.user.id },
   })
 }
 
@@ -43,10 +40,22 @@ export default async function HomePage() {
             select: {
               id: true,
               fullname: true,
+              username: true,
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
             },
           },
         },
       },
+
+      // Lấy danh sách likes để check user hiện tại đã like chưa
+      likes: currentUser
+        ? { where: { userId: currentUser.id } }
+        : false,
 
       _count: {
         select: {
@@ -86,6 +95,7 @@ export default async function HomePage() {
 
           const isCurrentUser = blog.author.id === currentUser?.id
           const isFollowing = blog.author.followers?.length > 0
+          const isLiked = blog.likes?.length > 0
 
           return (
             <div
@@ -121,7 +131,6 @@ export default async function HomePage() {
 
                 {!isCurrentUser && currentUser && (
                   <FollowButton
-                    currentUserId={currentUser.id}
                     targetUserId={displayBlog.author.id}
                     initialIsFollowing={isFollowing}
                   />
@@ -155,34 +164,18 @@ export default async function HomePage() {
               </div>
 
               {/* ===== LIKE / COMMENT ===== */}
-              <div className="px-4 pb-4">
-                <div className="flex justify-between text-sm text-gray-500 mb-2">
-                  <span>{blog._count.likes} lượt thích</span>
-                  <span>{blog._count.comments} bình luận</span>
-                </div>
-
-                <div className="flex space-x-4 border-t pt-2">
-                  <LikeButton
-                    blogId={blog.id}
-                    userId={currentUser?.id || null}
-                    initialLikes={blog._count.likes}
-                  />
-
-                  <CommentToggle
-                    blogId={blog.id}
-                    currentUser={
-                      currentUser
-                        ? { id: currentUser.id, fullname: currentUser.fullname }
-                        : null
-                    }
-                  />
-
-                  <ShareButton
-                    blogId={displayBlog.id}
-                    imageUrl={displayBlog.imageUrl}
-                  />
-                </div>
-              </div>
+              <BlogActions
+                blogId={blog.id}
+                displayBlogId={displayBlog.id}
+                initialLikeCount={blog._count.likes}
+                initialCommentCount={blog._count.comments}
+                initialLiked={isLiked}
+                currentUser={
+                  currentUser
+                    ? { id: currentUser.id, fullname: currentUser.fullname, username: currentUser.username }
+                    : null
+                }
+              />
             </div>
           )
         })}

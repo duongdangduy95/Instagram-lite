@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export async function POST(req: Request) {
   console.log('📥 SHARE API CALLED')
 
-  const session = (await cookies()).get('session')?.value
-  console.log('🍪 session:', session)
+  const session = await getServerSession(authOptions)
+  console.log('🔐 session:', session)
 
-  if (!session) {
+  if (!session?.user?.id) {
     console.log('❌ No session')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const [userId] = session.split(':')
+  const userId = session.user.id
   console.log('👤 userId:', userId)
 
   const body = await req.json()
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
   const sharedBlog = await prisma.blog.create({
     data: {
       caption: caption || '',
-      imageUrl: originalBlog.imageUrl,
+      imageUrl: originalBlog.imageUrl, // Lưu ảnh của bài gốc
       authorId: userId,
       sharedFromId: originalBlog.id,
     },
