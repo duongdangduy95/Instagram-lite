@@ -34,7 +34,8 @@ export default function Navigation() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch('/api/me', { credentials: 'include' })
+        // Sử dụng API nhẹ hơn chỉ lấy thông tin cơ bản
+        const res = await fetch('/api/me/basic', { credentials: 'include' })
         if (res.ok) {
           const userData = await res.json()
           setUser({ fullname: userData.fullname, username: userData.username })
@@ -63,6 +64,7 @@ export default function Navigation() {
         {user && (
           <Link
             href="/profile"
+            prefetch={true}
             className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors mb-4 border-b border-gray-800 pb-4 ${
               pathname === '/profile'
                 ? 'text-white font-semibold bg-gray-900'
@@ -84,6 +86,7 @@ export default function Navigation() {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 className={`group flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                   isActive
                     ? 'text-white font-semibold bg-gray-900'
