@@ -1,77 +1,71 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import { prisma } from '@/lib/prisma';
-import { formatTimeAgo } from '@/lib/formatTimeAgo';
-import FollowButton from '../components/FollowButton';
-import Navigation from '../components/Navigation';
-import BlogActions from '../components/BlogActions';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
+import { formatTimeAgo } from '@/lib/formatTimeAgo'
+import Navigation from '../components/Navigation'
+import BlogActions from '../components/BlogActions'
+import FollowButton from '../components/FollowButton'
+import BlogImages from '../components/BlogImages'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
-// Lấy người dùng hiện tại từ NextAuth session
+type BlogWithRelations = {
+  id: string
+  caption?: string
+  imageUrls: string[]
+  createdAt: Date
+  author: {
+    id: string
+    fullname: string
+    username: string
+    followers?: { followerId: string }[]
+  }
+  likes?: { userId: string }[]
+  _count: {
+    likes: number
+    comments: number
+  }
+  sharedFrom?: BlogWithRelations
+}
+
+// Lấy người dùng hiện tại từ session
 async function getCurrentUser() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return null;
-
-  return prisma.user.findUnique({
-    where: { id: session.user.id },
-  })
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return null
+  return prisma.user.findUnique({ where: { id: session.user.id } })
 }
 
 export default async function HomePage() {
   const currentUser = await getCurrentUser()
-
-  const users = await prisma.user.findMany({
+   
+  const blogs: BlogWithRelations[] = await prisma.blog.findMany({
     select: {
       id: true,
-      fullname: true,
-      username: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-
-  const blogs = await prisma.blog.findMany({
-    include: {
+      caption: true,
+      imageUrls: true,
+      createdAt: true,
       author: {
         select: {
           id: true,
           fullname: true,
           followers: currentUser
             ? { where: { followerId: currentUser.id } }
-            : false,
+            : undefined,
         },
       },
-
-      // 👇 LẤY BÀI GỐC NẾU LÀ SHARE
       sharedFrom: {
-        include: {
-          author: {
-            select: {
-              id: true,
-              fullname: true,
-              username: true,
-            },
-          },
-          _count: {
-            select: {
-              likes: true,
-              comments: true,
-            },
-          },
-        },
-      },
-
-      // Lấy danh sách likes để check user hiện tại đã like chưa
-      likes: currentUser
-        ? { where: { userId: currentUser.id } }
-        : false,
-
-      _count: {
         select: {
-          likes: true,
-          comments: true,
+          id: true,
+          caption: true,
+          imageUrls: true,
+          createdAt: true,
+          author: { select: { id: true, fullname: true, username: true } },
+          _count: { select: { likes: true, comments: true } },
         },
       },
+      likes: currentUser
+        ? { select: { userId: true }, where: { userId: currentUser.id } }
+        : undefined,
+      _count: { select: { likes: true, comments: true } },
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -88,11 +82,9 @@ export default async function HomePage() {
         {blogs.map((blog) => {
           const isShared = !!blog.sharedFrom
           const displayBlog = blog.sharedFrom ?? blog
-
-
           const isCurrentUser = blog.author.id === currentUser?.id
-          const isFollowing = blog.author.followers?.length > 0
-          const isLiked = blog.likes?.length > 0
+          const isFollowing = (blog.author.followers?.length ?? 0) > 0
+          const isLiked = (blog.likes?.length ?? 0) > 0
 
           return (
             <div
@@ -134,36 +126,17 @@ export default async function HomePage() {
                 )}
               </div>
 
-              {/* ===== CAPTION SHARE ===== */}
-              {isShared && blog.caption && (
-                <div className="px-4 pb-2 text-gray-200">
-                  {blog.caption}
-                </div>
-              )}
-
-              {/* ===== CAPTION BÀI GỐC (LÊN TRƯỚC ẢNH) ===== */}
+              {/* CAPTION */}
               {displayBlog.caption && (
-                <div className="px-4 pb-2 text-gray-200">
-                  {displayBlog.caption}
-                </div>
+                <div className="px-4 pb-2 text-gray-800 border-b">{displayBlog.caption}</div>
               )}
 
-              {/* ===== ẢNH BÀI GỐC ===== */}
-              <Link href={`/blog/${displayBlog.id}`}>
-                <div className="px-4 pb-4">
-                  <div className="rounded-lg overflow-hidden">
-                    <Image
-                      src={displayBlog.imageUrl}
-                      alt="blog image"
-                      width={600}
-                      height={400}
-                      className="w-full object-cover"
-                    />
-                  </div>
-                </div>
-              </Link>
+              {/* KHUNG ẢNH MULTI */}
+              <div className="mx-4 mb-4 border rounded-lg overflow-hidden bg-gray-50">
+                <BlogImages imageUrls={displayBlog.imageUrls} blogId={displayBlog.id} />
+              </div>
 
-              {/* ===== LIKE / COMMENT ===== */}
+
               <BlogActions
                 blogId={blog.id}
                 displayBlogId={displayBlog.id}

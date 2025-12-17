@@ -12,21 +12,31 @@ const handler = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
+        
+        const emailOrUsername = (credentials?.email || '').toString().trim();
+        const passwordInput = (credentials?.password || '').toString();
+      
+        if (!emailOrUsername || !passwordInput) {
+          throw new Error('Email/username and password are required');
+        }
+      
         const user = await prisma.user.findFirst({
           where: {
             OR: [
-              { email: credentials?.email },
-              { username: credentials?.email }
+              { email: emailOrUsername },
+              { username: emailOrUsername }
             ]
           }
-        })
-
-        if (!user) throw new Error('No user found')
-        const isValid = await compare(credentials!.password, user.password)
-        if (!isValid) throw new Error('Invalid password')
-
-        return user
+        });
+      
+        if (!user) throw new Error('No user found');
+      
+        const isValid = await compare(passwordInput, user.password);
+        if (!isValid) throw new Error('Invalid password');
+      
+        return user;
       },
+      
     }),
   ],
   callbacks: {

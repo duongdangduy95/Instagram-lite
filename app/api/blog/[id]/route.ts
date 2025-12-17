@@ -1,12 +1,15 @@
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import fs from 'fs'
+import path from 'path'
 
 const prisma = new PrismaClient()
 
-// PATCH - Update blog
-// Thay đổi status 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const cookieStore = cookies()
   const session = (await cookieStore).get('session')
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -16,18 +19,31 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const form = await req.formData()
   const caption = form.get('caption') as string
-  const file = form.get('image') as File | null
+  const hashtagsStr = form.get('hashtags') as string
+  const hashtags = hashtagsStr ? JSON.parse(hashtagsStr) : []
 
-  let imageUrl: string | undefined
-  if (file && file.size > 0) {
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
+  const existingImages: string[] = []
+  form.forEach((v, key) => {
+    if (key === 'existingImages') existingImages.push(v.toString())
+  })
+
+  const files: File[] = []
+  form.forEach((v, key) => {
+    if (v instanceof File && (key === 'images' || key === 'videos')) {
+      files.push(v)
+    }
+  })
+  
+
+  const newImageUrls: string[] = [...existingImages]
+
+  for (const file of files) {
+    if (file.size === 0) continue
+    const buffer = Buffer.from(await file.arrayBuffer())
     const filename = `${Date.now()}-${file.name}`
-    const fs = await import('fs')
-    const path = await import('path')
     const filepath = path.join(process.cwd(), 'public', 'uploads', filename)
     fs.writeFileSync(filepath, buffer)
-    imageUrl = `/uploads/${filename}`
+    newImageUrls.push(`/uploads/${filename}`)
   }
 
   try {
@@ -37,7 +53,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const updated = await prisma.blog.update({
       where: { id: blogId },
-      data: { caption, ...(imageUrl && { imageUrl }) },
+      data: {
+        caption,
+        hashtags,
+        imageUrls: newImageUrls,
+      },
     })
 
     return NextResponse.json({ message: 'Blog updated', blog: updated })
@@ -46,6 +66,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Failed to update blog' }, { status: 500 })
   }
 }
+
 
 // DELETE - Delete blog
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -62,6 +83,11 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Unauthorized or not found' }, { status: 403 })
 
     await prisma.blog.delete({ where: { id: blogId } })
+    for (const url of blog.imageUrls) {
+      const filepath = path.join(process.cwd(), 'public', url.replace('/uploads/', 'uploads/'))
+      if (fs.existsSync(filepath)) fs.unlinkSync(filepath)
+    }
+    
 
     return NextResponse.json({ message: 'Blog deleted' })
   } catch (error) {
