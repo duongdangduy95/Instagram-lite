@@ -17,21 +17,32 @@ export default function FollowButton({
   const [isLoading, setIsLoading] = useState(false)
 
   const handleFollow = async () => {
+    // Optimistic update - cập nhật UI ngay lập tức
+    const previousIsFollowing = isFollowing
+    const newIsFollowing = !isFollowing
+    
+    setIsFollowing(newIsFollowing)
     setIsLoading(true)
+    
     try {
       const response = await fetch(`/api/follow/${targetUserId}`, {
-        method: isFollowing ? 'DELETE' : 'POST',
+        method: previousIsFollowing ? 'DELETE' : 'POST',
         credentials: 'include',
       })
 
       if (response.ok) {
         const data = await response.json()
-        setIsFollowing(!isFollowing)
-        onFollowChange?.(!isFollowing, data.followersCount)
+        // Cập nhật followers count nếu có callback
+        onFollowChange?.(newIsFollowing, data.followersCount)
       } else {
-        alert('Có lỗi xảy ra')
+        // Rollback nếu có lỗi
+        setIsFollowing(previousIsFollowing)
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        alert(errorData.error || 'Có lỗi xảy ra')
       }
     } catch (error) {
+      // Rollback nếu có lỗi
+      setIsFollowing(previousIsFollowing)
       console.error('Error:', error)
       alert('Có lỗi xảy ra')
     } finally {

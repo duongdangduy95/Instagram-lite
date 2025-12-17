@@ -39,20 +39,12 @@ export default function BlogActions({
   const [commentAnimating, setCommentAnimating] = useState(false)
   const [shareAnimating, setShareAnimating] = useState(false)
 
+  // Sử dụng useSession từ next-auth thay vì gọi API
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const res = await fetch('/api/me', {
-          method: 'GET',
-          credentials: 'include',
-        })
-        setAuthenticated(res.ok)
-      } catch {
-        setAuthenticated(false)
-      }
-    }
-    checkSession()
-  }, [])
+    // Component này đã nhận currentUser từ props, nên không cần check auth
+    // Nếu có currentUser thì đã authenticated
+    setAuthenticated(currentUser !== null)
+  }, [currentUser])
 
   const handleLike = async () => {
     if (authenticated === null || !authenticated) {
@@ -60,6 +52,16 @@ export default function BlogActions({
       return
     }
 
+    // Optimistic update - cập nhật UI ngay lập tức
+    const previousLiked = liked
+    const previousCount = likeCount
+    const newLiked = !liked
+    const newCount = newLiked ? likeCount + 1 : likeCount - 1
+
+    // Cập nhật UI ngay
+    setLiked(newLiked)
+    setLikeCount(newCount)
+    
     // Animation
     setLikeAnimating(true)
     setTimeout(() => setLikeAnimating(false), 300)
@@ -74,11 +76,21 @@ export default function BlogActions({
 
       if (response.ok) {
         const data = await response.json()
-        setLiked(data.liked)
-        const newCount = data.liked ? likeCount + 1 : likeCount - 1
-        setLikeCount(newCount)
+        // Chỉ cập nhật nếu response khác với optimistic update
+        if (data.liked !== newLiked) {
+          setLiked(data.liked)
+          setLikeCount(data.liked ? likeCount + 1 : likeCount - 1)
+        }
+      } else {
+        // Rollback nếu có lỗi
+        setLiked(previousLiked)
+        setLikeCount(previousCount)
+        console.error('Like failed')
       }
     } catch (error) {
+      // Rollback nếu có lỗi
+      setLiked(previousLiked)
+      setLikeCount(previousCount)
       console.error('Like error:', error)
     } finally {
       setLoading(false)

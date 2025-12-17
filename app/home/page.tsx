@@ -121,7 +121,10 @@ export default async function HomePage() {
 
               {/* ===== HEADER BÀI GỐC ===== */}
               <div className="px-4 py-3 flex justify-between items-center">
-                <Link href={`/profile/${displayBlog.author.id}`}>
+                <Link 
+                  href={displayBlog.author.id === currentUser?.id ? '/profile' : `/profile/${displayBlog.author.id}`}
+                  prefetch={true}
+                >
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
                       <span className="font-bold text-white">
@@ -191,13 +194,16 @@ export default async function HomePage() {
         <aside className="hidden lg:block px-6 py-4 space-y-3 border-l border-gray-800 bg-black sticky top-0 h-screen overflow-y-auto">
           <p className="text-gray-300 font-semibold mb-2">Gợi ý theo dõi</p>
           <div className="space-y-3">
-            {users.map((user) => (
+            {users.map((user) => {
+              const isCurrentUser = user.id === currentUser?.id
+              return (
               <div
                 key={user.id}
                 className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-900 transition-colors"
               >
                 <Link
-                  href={`/profile/${user.id}`}
+                  href={isCurrentUser ? '/profile' : `/profile/${user.id}`}
+                  prefetch={true}
                   className="flex items-center space-x-3 flex-1 min-w-0"
                 >
                   <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-semibold flex-shrink-0">
@@ -208,11 +214,13 @@ export default async function HomePage() {
                     <p className="text-gray-400 text-sm truncate">@{user.username}</p>
                   </div>
                 </Link>
-                <button className="ml-2 px-4 py-1.5 text-sm font-semibold text-white bg-[#877EFF] hover:bg-[#7565E6] rounded-lg transition-colors flex-shrink-0">
-                  Theo dõi
-                </button>
+                {!isCurrentUser && (
+                  <button className="ml-2 px-4 py-1.5 text-sm font-semibold text-white bg-[#877EFF] hover:bg-[#7565E6] rounded-lg transition-colors flex-shrink-0">
+                    Theo dõi
+                  </button>
+                )}
               </div>
-            ))}
+            )})}
           </div>
         </aside>
       </div>
