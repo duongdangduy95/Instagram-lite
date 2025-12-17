@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 async function getCurrentUserId() {
-  const session = (await cookies()).get('session')?.value;
-  if (!session) return null;
-  const userId = session.split(':')[0];
-  return userId;
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return null;
+  return session.user.id;
 }
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: blogId } = await params
   const comments = await prisma.comment.findMany({
     where: { blogId },
@@ -23,12 +23,12 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 }
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id: blogId } = await params
   const userId = await getCurrentUserId();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { id: blogId } = await params;
   const body = await req.json();
   const { content, parentId } = body;
 
@@ -60,20 +60,3 @@ export async function POST(
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
-
-export async function DELETE(req: NextRequest, { params }: { params: { commentId: string } }) {
-  try {
-    const { commentId } = params;
-
-    await prisma.comment.delete({
-      where: { id: commentId },
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('DELETE COMMENT ERROR:', error);
-    return NextResponse.json({ success: false }, { status: 500 });
-  }
-}
-
-
