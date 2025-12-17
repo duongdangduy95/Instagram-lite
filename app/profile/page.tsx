@@ -7,6 +7,7 @@ import LikeButton from "../components/LikeButton"
 import Navigation from "../components/Navigation"
 import ShareButton from '../components/ShareButton'
 import { useRouter } from 'next/navigation'
+import BlogImages from '../components/BlogImages'
 
 interface Blog {
   _count: {
@@ -15,13 +16,13 @@ interface Blog {
   }
   id: string
   caption: string
-  imageUrl: string
+  imageUrls: string[]
   createdAt: string
   likes: Array<{ userId: string }>
   sharedFrom?: {
     id: string
     caption: string
-    imageUrl: string
+    imageUrls: string[]
     createdAt: string
     author: {
       id: string
@@ -608,17 +609,10 @@ export default function ProfilePage() {
                 )}
 
                 {/* Post Image */}
-                <Link href={`/blog/${isShared ? displayBlog.id : blog.id}`}>
-                  <div className="cursor-pointer">
-                    <Image
-                      src={displayBlog.imageUrl}
-                      alt={displayBlog.caption || 'Blog image'}
-                      width={600}
-                      height={400}
-                      className="w-full h-auto object-cover"
-                    />
-                  </div>
-                </Link>
+                <div className="mx-4 mb-4 border rounded-lg overflow-hidden bg-gray-50">
+                  <BlogImages imageUrls={displayBlog.imageUrls} blogId={displayBlog.id} />
+                </div>
+
 
                 {/* Post Actions */}
                 <div className="p-4">
