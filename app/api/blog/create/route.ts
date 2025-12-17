@@ -2,25 +2,19 @@
 
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import fs from 'fs'
-import path from 'path'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
-  const cookieStore = cookies()
-  const session = (await cookieStore).get('session')
+  const session = await getServerSession(authOptions)
 
-  if (!session) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const [userId] = session.value.split(':')
-
-  if (!userId) {
-    return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
-  }
+  const userId = session.user.id
 
   // Lấy dữ liệu từ FormData
   const form = await req.formData()
