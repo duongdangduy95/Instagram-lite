@@ -4,19 +4,31 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import LikeButton from "../../components/LikeButton"; // nếu dùng từ file nằm trong app/
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import FollowButton from "@/app/components/FollowButton";
 import ShareButton from "@/app/components/ShareButton";
 
 
 export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const session = await getServerSession(authOptions)
+  const currentUserId = session?.user?.id
+  
   const user = await prisma.user.findUnique({
     where: { id },
     include: { 
-      blogs: true
+      blogs: true,
+      followers: currentUserId ? {
+        where: { followerId: currentUserId }
+      } : false
     },
   })
 
   if (!user) return notFound()
+  
+  const isOwnProfile = currentUserId === id
+  const isFollowing = user.followers ? user.followers.length > 0 : false
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -37,6 +49,16 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
                 {user.fullname}
               </h1>
               <p className="text-xl text-gray-600 mb-4">@{user.username}</p>
+              
+              {/* Follow Button */}
+              {!isOwnProfile && currentUserId && (
+                <div className="mb-4">
+                  <FollowButton
+                    targetUserId={id}
+                    initialIsFollowing={isFollowing}
+                  />
+                </div>
+              )}
               
               <div className="flex flex-col sm:flex-row gap-4 text-sm text-gray-500">
                 <div className="flex items-center justify-center sm:justify-start gap-2">

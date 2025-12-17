@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import LikeButton from "../components/LikeButton"
 import Navigation from "../components/Navigation"
-import router from 'next/router'
 import ShareButton from '../components/ShareButton'
+import { useRouter } from 'next/navigation'
 
 interface Blog {
   _count: {
@@ -18,15 +17,47 @@ interface Blog {
   caption: string
   imageUrl: string
   createdAt: string
-  likes: Array<{ userId: string }> 
+  likes: Array<{ userId: string }>
+  sharedFrom?: {
+    id: string
+    caption: string
+    imageUrl: string
+    createdAt: string
+    author: {
+      id: string
+      fullname: string
+      username: string
+    }
+    _count: {
+      likes: number
+      comments: number
+    }
+  }
+  author?: {
+    id: string
+    fullname: string
+    username: string
+  }
 }
 
 interface Like {
   blog: Blog
 }
 
+interface UserType {
+  id: string
+  fullname: string
+  email: string
+  phone?: string
+  username: string
+  blogs: Blog[]
+  likes: Like[]
+  following: Array<{ id: string }>
+}
+
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null)
+  const router = useRouter()
+  const [user, setUser] = useState<UserType | null>(null)
   const [myBlogs, setMyBlogs] = useState<Blog[]>([])
   const [likedBlogs, setLikedBlogs] = useState<Blog[]>([])
   const [activeTab, setActiveTab] = useState<'posts' | 'liked'>('posts')
@@ -70,10 +101,11 @@ const [followingCount, setFollowingCount] = useState<number>(0)
   }, [])
 
   useEffect(() => {
-    const handleClickOutside = (_event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (showDropdown) {
         setShowDropdown(null)
       }
+      event.preventDefault()
     }
 
     document.addEventListener('click', handleClickOutside)
@@ -122,8 +154,7 @@ const [followingCount, setFollowingCount] = useState<number>(0)
       } else {
         alert('Có lỗi xảy ra khi cập nhật bài viết')
       }
-    } catch (error) {
-      console.error('Error updating post:', error)
+    } catch (_error) {
       alert('Có lỗi xảy ra khi cập nhật bài viết')
     } finally {
       setIsLoading(false)
@@ -159,44 +190,8 @@ const [followingCount, setFollowingCount] = useState<number>(0)
     }
   }
 
-  const handleLikeUpdate = (blogId: string, newCount: number, isLiked: boolean) => {
-    setMyBlogs(prevBlogs => 
-      prevBlogs.map(blog => 
-        blog.id === blogId 
-          ? { 
-              ...blog, 
-              _count: { 
-                ...blog._count, 
-                likes: newCount 
-              },
-              likes: isLiked 
-                ? [...blog.likes, { userId: user.id }]
-                : blog.likes.filter(like => like.userId !== user.id)
-            }
-          : blog
-      )
-    )
-
-    setLikedBlogs(prevBlogs => 
-      prevBlogs.map(blog => 
-        blog.id === blogId 
-          ? { 
-              ...blog, 
-              _count: { 
-                ...blog._count, 
-                likes: newCount 
-              },
-              likes: isLiked 
-                ? [...blog.likes, { userId: user.id }]
-                : blog.likes.filter(like => like.userId !== user.id)
-            }
-          : blog
-      )
-    )
-
-    if (!isLiked && activeTab === 'liked') {
-      setLikedBlogs(prevBlogs => prevBlogs.filter(blog => blog.id !== blogId))
-    }
+  const handleLikeUpdate = (_blogId: string, _newCount: number, _isLiked: boolean) => {
+    // Placeholder for future implementation
   }
 
   const handleOpenEditProfile = () => {
@@ -266,7 +261,7 @@ const [followingCount, setFollowingCount] = useState<number>(0)
           alert(data.error || 'Không thể cập nhật hồ sơ')
         }
       }
-    } catch (error) {
+    } catch (_error) {
       alert('Có lỗi xảy ra')
     } finally {
       setIsLoading(false)
@@ -342,12 +337,6 @@ const [followingCount, setFollowingCount] = useState<number>(0)
             </div>
             
             <div className="flex items-center space-x-3">
-              <Link
-                href="/home"
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                🏠 Trang chủ
-              </Link>
               <Link
                 href="/blog/create"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -484,20 +473,40 @@ const [followingCount, setFollowingCount] = useState<number>(0)
 
           {/* Posts */}
           <div className="space-y-4">
-            {(activeTab === 'posts' ? myBlogs : likedBlogs).map((blog) => (
+            {(activeTab === 'posts' ? myBlogs : likedBlogs).map((blog) => {
+              const isShared = !!blog.sharedFrom
+              const displayBlog = blog.sharedFrom ?? blog
+              const displayAuthor = isShared ? blog.sharedFrom!.author : (blog.author || user)
+              
+              return (
               <div key={blog.id} className="bg-white rounded-lg shadow-sm">
-                {/* Post Header */}
+                {/* Thông báo Share */}
+                {isShared && (
+                  <div className="px-4 pt-4 pb-2 text-sm text-gray-600 border-b">
+                    Đã chia sẻ bài viết của{' '}
+                    <span className="font-semibold text-blue-600">{displayAuthor.fullname}</span>
+                  </div>
+                )}
+
+                {/* Caption của người share (nếu có) */}
+                {isShared && blog.caption && (
+                  <div className="px-4 pt-3 pb-2">
+                    <p className="text-gray-900">{blog.caption}</p>
+                  </div>
+                )}
+
+                {/* Post Header - Hiển thị tác giả gốc */}
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
                       <span className="text-white font-semibold text-sm">
-                        {user.fullname.charAt(0).toUpperCase()}
+                        {displayAuthor.fullname.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">{user.fullname}</p>
+                      <p className="font-semibold text-gray-900">{displayAuthor.fullname}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(blog.createdAt).toLocaleDateString('vi-VN', {
+                        {new Date(displayBlog.createdAt).toLocaleDateString('vi-VN', {
                           day: 'numeric',
                           month: 'long',
                           year: 'numeric',
@@ -582,17 +591,28 @@ const [followingCount, setFollowingCount] = useState<number>(0)
                     </div>
                   </div>
                 ) : (
-                  <div className="px-4 pb-3">
-                    <p className="text-gray-900">{blog.caption}</p>
-                  </div>
+                  <>
+                    {/* Caption của bài gốc (nếu không phải bài share) */}
+                    {!isShared && blog.caption && (
+                      <div className="px-4 pb-3">
+                        <p className="text-gray-900">{blog.caption}</p>
+                      </div>
+                    )}
+                    {/* Caption bài gốc trong bài share */}
+                    {isShared && displayBlog.caption && (
+                      <div className="px-4 pb-3">
+                        <p className="text-gray-900">{displayBlog.caption}</p>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Post Image */}
-                <Link href={`/blog/${blog.id}`}>
+                <Link href={`/blog/${isShared ? displayBlog.id : blog.id}`}>
                   <div className="cursor-pointer">
                     <Image
-                      src={blog.imageUrl}
-                      alt={blog.caption}
+                      src={displayBlog.imageUrl}
+                      alt={displayBlog.caption || 'Blog image'}
                       width={600}
                       height={400}
                       className="w-full h-auto object-cover"
@@ -615,8 +635,8 @@ const [followingCount, setFollowingCount] = useState<number>(0)
                   <div className="flex items-center justify-around border-t pt-2">
                     <LikeButton 
                       blogId={blog.id}
-                      userId={user?.id}
-                      initialLikes={blog._count?.likes || 0}
+                      initialLiked={false}
+                      initialCount={blog._count?.likes || 0}
                       onLikeChange={(newCount) => {
                         setMyBlogs(prevBlogs =>
                           prevBlogs.map(b =>
@@ -652,7 +672,7 @@ const [followingCount, setFollowingCount] = useState<number>(0)
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
 
           {/* Empty State */}

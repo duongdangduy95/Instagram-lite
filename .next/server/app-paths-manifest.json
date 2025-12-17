@@ -1,0 +1,11 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/blog/[id]/comment/route": "app/api/blog/[id]/comment/route.js",
+  "/api/blog/route": "app/api/blog/route.js",
+  "/api/me/route": "app/api/me/route.js",
+  "/blog/create/page": "app/blog/create/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/home/page": "app/home/page.js",
+  "/profile/page": "app/profile/page.js"
+}

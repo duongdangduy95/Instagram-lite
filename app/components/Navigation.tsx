@@ -51,15 +51,13 @@ export default function Navigation() {
               <span>Trang cá nhân</span>
             </Link>
 
-            {session && (
-              <button
-                onClick={() => signOut({ redirect: true, callbackUrl: '/login' })}
-                className="flex items-center space-x-2 text-gray-700 hover:text-red-600 transition-colors"
-              >
-                <span className="text-xl">🚪</span>
-                <span>Đăng xuất</span>
-              </button>
-            )}
+            <button
+              onClick={() => signOut({ redirect: true, callbackUrl: '/login' })}
+              className="flex items-center space-x-2 text-gray-700 hover:text-red-600 transition-colors"
+            >
+              <span className="text-xl">🚪</span>
+              <span>Đăng xuất</span>
+            </button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -106,17 +104,15 @@ export default function Navigation() {
               👤 Trang cá nhân
             </Link>
 
-            {session && (
-              <button
-                onClick={() => {
-                  signOut({ redirect: true, callbackUrl: '/login' })
-                  setShowMenu(false)
-                }}
-                className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                🚪 Đăng xuất
-              </button>
-            )}
+            <button
+              onClick={() => {
+                signOut({ redirect: true, callbackUrl: '/login' })
+                setShowMenu(false)
+              }}
+              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              🚪 Đăng xuất
+            </button>
           </div>
         )}
       </div>

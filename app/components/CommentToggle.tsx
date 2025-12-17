@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CommentSection from './CommentSection';
 
 type Props = {
@@ -10,15 +10,38 @@ type Props = {
     fullname: string;
     username: string;
   } | null;
+  onCommentAdded?: () => void;
+  onClose?: () => void;
+  isOpen?: boolean;
 };
 
-export default function CommentToggle({ blogId, currentUser }: Props) {
-  const [showComments, setShowComments] = useState(false);
+export default function CommentToggle({ blogId, currentUser, onCommentAdded, onClose, isOpen }: Props) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const showComments = isOpen !== undefined ? isOpen : internalOpen;
+
+  useEffect(() => {
+    if (showComments) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showComments]);
+
+  const handleToggle = () => {
+    if (isOpen !== undefined && onClose) {
+      onClose();
+    } else {
+      setInternalOpen(!internalOpen);
+    }
+  };
 
   return (
-    <div>
+    <>
       <button
-        onClick={() => setShowComments(!showComments)}
+        onClick={handleToggle}
         className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 rounded-lg flex-1 justify-center transition-colors w-full"
       >
         <span className="text-gray-600">💬</span>
@@ -26,10 +49,27 @@ export default function CommentToggle({ blogId, currentUser }: Props) {
       </button>
 
       {showComments && (
-        <div className="mt-2">
-          <CommentSection blogId={blogId} currentUser={currentUser} />
-        </div>
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4"
+            onClick={handleToggle}
+          >
+            {/* Modal */}
+            <div 
+              className="bg-white rounded-lg shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CommentSection 
+                blogId={blogId} 
+                currentUser={currentUser}
+                onCommentAdded={onCommentAdded}
+                onClose={handleToggle}
+              />
+            </div>
+          </div>
+        </>
       )}
-    </div>
+    </>
   );
 }
