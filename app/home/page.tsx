@@ -1,21 +1,51 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import { prisma } from '@/lib/prisma';
-import { formatTimeAgo } from '@/lib/formatTimeAgo';
-import FollowButton from '../components/FollowButton';
-import Navigation from '../components/Navigation';
-import BlogActions from '../components/BlogActions';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
+import { formatTimeAgo } from '@/lib/formatTimeAgo'
+import Navigation from '../components/Navigation'
+import BlogActions from '../components/BlogActions'
+import FollowButton from '../components/FollowButton'
+import BlogImages from '../components/BlogImages'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+type BlogWithRelations = {
+  id: string
+  caption?: string
+  imageUrls: string[]
+  createdAt: Date
+  author: {
+    id: string
+    fullname: string
+    username: string
+    followers?: { followerId: string }[]
+  }
+  likes?: { userId: string }[]
+  _count: {
+    likes: number
+    comments: number
+  }
+  sharedFrom?: {
+    id: string
+    caption?: string
+    imageUrls: string[]
+    createdAt: Date
+    author: {
+      id: string
+      fullname: string
+      username: string
+    }
+    _count: {
+      likes: number
+      comments: number
+    }
+  }
+}
 
 // Lấy người dùng hiện tại từ NextAuth session
 async function getCurrentUser() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return null;
-
-  return prisma.user.findUnique({
-    where: { id: session.user.id },
-  })
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return null
+  return prisma.user.findUnique({ where: { id: session.user.id } })
 }
 
 export default async function HomePage() {
@@ -30,48 +60,36 @@ export default async function HomePage() {
     orderBy: { createdAt: 'desc' },
   })
 
-  const blogs = await prisma.blog.findMany({
-    include: {
+  const blogs: BlogWithRelations[] = await prisma.blog.findMany({
+    select: {
+      id: true,
+      caption: true,
+      imageUrls: true,
+      createdAt: true,
       author: {
         select: {
           id: true,
           fullname: true,
+          username: true,
           followers: currentUser
             ? { where: { followerId: currentUser.id } }
-            : false,
+            : undefined,
         },
       },
-
-      // 👇 LẤY BÀI GỐC NẾU LÀ SHARE
       sharedFrom: {
-        include: {
-          author: {
-            select: {
-              id: true,
-              fullname: true,
-              username: true,
-            },
-          },
-          _count: {
-            select: {
-              likes: true,
-              comments: true,
-            },
-          },
-        },
-      },
-
-      // Lấy danh sách likes để check user hiện tại đã like chưa
-      likes: currentUser
-        ? { where: { userId: currentUser.id } }
-        : false,
-
-      _count: {
         select: {
-          likes: true,
-          comments: true,
+          id: true,
+          caption: true,
+          imageUrls: true,
+          createdAt: true,
+          author: { select: { id: true, fullname: true, username: true } },
+          _count: { select: { likes: true, comments: true } },
         },
       },
+      likes: currentUser
+        ? { select: { userId: true }, where: { userId: currentUser.id } }
+        : undefined,
+      _count: { select: { likes: true, comments: true } },
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -82,23 +100,18 @@ export default async function HomePage() {
       <Navigation />
 
       <div className="ml-64 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-0">
-        {/* Main Content - Căn giữa */}
+        {/* Main Content - Cột giữa */}
         <main className="flex justify-center px-4 py-4">
           <div className="w-full max-w-2xl space-y-4">
         {blogs.map((blog) => {
           const isShared = !!blog.sharedFrom
           const displayBlog = blog.sharedFrom ?? blog
-
-
           const isCurrentUser = blog.author.id === currentUser?.id
-          const isFollowing = blog.author.followers?.length > 0
-          const isLiked = blog.likes?.length > 0
+          const isFollowing = (blog.author.followers?.length ?? 0) > 0
+          const isLiked = (blog.likes?.length ?? 0) > 0
 
           return (
-            <div
-              key={blog.id}
-              className="bg-black text-gray-100"
-            >
+            <div key={blog.id} className="bg-black text-gray-100">
               {/* ===== NGƯỜI SHARE ===== */}
               {isShared && (
                 <div className="px-4 pt-4 text-sm text-gray-300">
@@ -148,20 +161,12 @@ export default async function HomePage() {
                 </div>
               )}
 
-              {/* ===== ẢNH BÀI GỐC ===== */}
-              <Link href={`/blog/${displayBlog.id}`}>
-                <div className="px-4 pb-4">
-                  <div className="rounded-lg overflow-hidden">
-                    <Image
-                      src={displayBlog.imageUrl}
-                      alt="blog image"
-                      width={600}
-                      height={400}
-                      className="w-full object-cover"
-                    />
-                  </div>
+              {/* ===== ẢNH BÀI GỐC (MULTI IMAGE) ===== */}
+              <div className="px-4 pb-4">
+                <div className="rounded-lg overflow-hidden bg-gray-900">
+                  <BlogImages imageUrls={displayBlog.imageUrls} blogId={displayBlog.id} />
                 </div>
-              </Link>
+              </div>
 
               {/* ===== LIKE / COMMENT ===== */}
               <BlogActions
