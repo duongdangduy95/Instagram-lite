@@ -95,7 +95,7 @@ const [followingCount, setFollowingCount] = useState<number>(0)
       
       // Cập nhật follow counts
       setFollowersCount(data._count?.followers || 0)
-      setFollowersCount(data._count?.following || 0)
+      setFollowingCount(data._count?.following || 0)
     }
 
     fetchData()

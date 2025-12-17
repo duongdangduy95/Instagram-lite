@@ -37,18 +37,18 @@ export async function POST(
       return NextResponse.json({ error: 'Đã follow người này rồi' }, { status: 400 })
     }
 
-    // Tạo follow mới
-    await prisma.follow.create({
-      data: {
-        followerId: userId,
-        followingId: targetUserId,
-      },
-    })
-
-    // Đếm số followers
-    const followersCount = await prisma.follow.count({
-      where: { followingId: targetUserId },
-    })
+    // Tạo follow mới và đếm followers trong một transaction
+    const [follow, followersCount] = await prisma.$transaction([
+      prisma.follow.create({
+        data: {
+          followerId: userId,
+          followingId: targetUserId,
+        },
+      }),
+      prisma.follow.count({
+        where: { followingId: targetUserId },
+      }),
+    ])
 
     return NextResponse.json({ 
       message: 'Follow thành công',
@@ -75,20 +75,20 @@ export async function DELETE(
 
     const userId = session.user.id
 
-    // Xóa follow
-    await prisma.follow.delete({
-      where: {
-        followerId_followingId: {
-          followerId: userId,
-          followingId: targetUserId,
+    // Xóa follow và đếm followers trong một transaction
+    const [, followersCount] = await prisma.$transaction([
+      prisma.follow.delete({
+        where: {
+          followerId_followingId: {
+            followerId: userId,
+            followingId: targetUserId,
+          },
         },
-      },
-    })
-
-    // Đếm số followers
-    const followersCount = await prisma.follow.count({
-      where: { followingId: targetUserId },
-    })
+      }),
+      prisma.follow.count({
+        where: { followingId: targetUserId },
+      }),
+    ])
 
     return NextResponse.json({ 
       message: 'Unfollow thành công',
