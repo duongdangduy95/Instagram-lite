@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import LikeButton from "../components/LikeButton"
 import Navigation from "../components/Navigation"
-import ShareButton from '../components/ShareButton'
 import { useRouter } from 'next/navigation'
 import BlogImages from '../components/BlogImages'
+import FollowModal from '../components/FollowModal'
 
 interface Blog {
   _count: {
@@ -53,7 +52,10 @@ interface UserType {
   username: string
   blogs: Blog[]
   likes: Like[]
-  following: Array<{ id: string }>
+  _count: {
+    followers: number
+    following: number
+  }
 }
 
 export default function ProfilePage() {
@@ -61,7 +63,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<UserType | null>(null)
   const [myBlogs, setMyBlogs] = useState<Blog[]>([])
   const [likedBlogs, setLikedBlogs] = useState<Blog[]>([])
-  const [activeTab, setActiveTab] = useState<'posts' | 'liked'>('posts')
+  const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'tagged'>('posts')
   const [editingPost, setEditingPost] = useState<string | null>(null)
   const [editCaption, setEditCaption] = useState<string>('')
   const [editImage, setEditImage] = useState<File | null>(null)
@@ -69,8 +71,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
   const [showEditProfileModal, setShowEditProfileModal] = useState<boolean>(false)
-  const [followersCount, setFollowersCount] = useState<number>(0)
-const [followingCount, setFollowingCount] = useState<number>(0)
+  const [showFollowModal, setShowFollowModal] = useState<'followers' | 'following' | null>(null)
 
   const [editProfileData, setEditProfileData] = useState({
     fullname: '',
@@ -85,17 +86,12 @@ const [followingCount, setFollowingCount] = useState<number>(0)
         credentials: 'include',
       })
       const data = await res.json()
-      console.log(data)
 
       if (!data || data.error) return
 
       setUser(data)
-      setMyBlogs(data.blogs)
-      setLikedBlogs(data.likes.map((like: Like) => like.blog))
-      
-      // Cập nhật follow counts
-      setFollowersCount(data._count?.followers || 0)
-      setFollowingCount(data._count?.following || 0)
+      setMyBlogs(data.blogs || [])
+      setLikedBlogs(data.likes?.map((like: Like) => like.blog) || [])
     }
 
     fetchData()
@@ -142,8 +138,8 @@ const [followingCount, setFollowingCount] = useState<number>(0)
               ? { 
                   ...blog, 
                   caption: result.blog.caption, 
-                  imageUrl: result.blog.imageUrl || blog.imageUrl,
-                  _count: blog._count // ✅ Giữ lại _count (likes, comments)
+                  imageUrls: result.blog.imageUrls || blog.imageUrls,
+                  _count: blog._count
                 }
               : blog
           )
@@ -191,11 +187,8 @@ const [followingCount, setFollowingCount] = useState<number>(0)
     }
   }
 
-  const handleLikeUpdate = (_blogId: string, _newCount: number, _isLiked: boolean) => {
-    // Placeholder for future implementation
-  }
-
   const handleOpenEditProfile = () => {
+    if (!user) return
     setEditProfileData({
       fullname: user.fullname,
       email: user.email,
@@ -234,7 +227,6 @@ const [followingCount, setFollowingCount] = useState<number>(0)
   }
 
   const handleSaveProfile = async () => {
-    // Validate trước khi submit
     if (!validateProfileData()) {
       return
     }
@@ -271,439 +263,345 @@ const [followingCount, setFollowingCount] = useState<number>(0)
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-3 text-gray-600 text-center text-sm">Đang tải...</p>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
       </div>
     )
   }
 
-  function setShowFollowModal(arg0: string): void {
-    throw new Error('Function not implemented.')
-  }
+  const followersCount = user._count?.followers || 0
+  const followingCount = user._count?.following || 0
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* NAVIGATION */}
+    <div className="min-h-screen bg-black">
+      {/* NAVIGATION - Cố định bên trái */}
       <Navigation />
 
-      {/* Cover Photo & Profile Section */}
-      <div className="bg-white">
-        {/* Cover Photo */}
-        <div className="relative">
-          <div className="h-80 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 relative overflow-hidden">
-            <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-          </div>
-          
-          {/* Profile Info Overlay */}
-          <div className="absolute -bottom-6 left-6">
-            <div className="flex items-end space-x-4">
-              {/* Profile Picture */}
-              <div className="relative">
-                <div className="w-40 h-40 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full border-4 border-white shadow-lg flex items-center justify-center">
-                  <span className="text-4xl font-bold text-white">
-                    {user.fullname?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="absolute bottom-2 right-2 w-8 h-8 bg-green-500 rounded-full border-3 border-white"></div>
-              </div>
-              
-              {/* Name and Username */}
-              <div className="pb-4">
-                <h1 className="text-3xl font-bold text-white drop-shadow-lg">{user.fullname}</h1>
-                <p className="text-lg text-gray-200 drop-shadow">@{user.username}</p>
+      {/* PROFILE CONTENT - Chiếm phần còn lại */}
+      <div className="ml-64 min-h-screen">
+        {/* Profile Header */}
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="flex flex-col sm:flex-row items-start gap-8 sm:gap-12">
+            {/* Avatar */}
+            <div className="flex-shrink-0">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-2 border-gray-700">
+                {user.fullname?.charAt(0).toUpperCase()}
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Profile Actions & Info */}
-        <div className="pt-8 pb-4 px-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="mt-2 text-gray-600">
-                <div className="flex items-center space-x-6 text-sm">
-                  <div className="flex items-center space-x-1">
-                    <span>📧</span>
-                    <span>{user.email}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span>📱</span>
-                    <span>{user.phone}</span>
-                  </div>
+            {/* Profile Info */}
+            <div className="flex-1 min-w-0">
+              {/* Username và Settings */}
+              <div className="flex items-center gap-4 mb-4">
+                <h1 className="text-xl sm:text-2xl font-light text-white">{user.username}</h1>
+                <button
+                  onClick={handleOpenEditProfile}
+                  className="px-4 py-1.5 text-sm font-medium bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Chỉnh sửa trang cá nhân
+                </button>
+                <Link
+                  href="/blog/create"
+                  className="px-4 py-1.5 text-sm font-medium bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Xem kho lưu trữ
+                </Link>
+                <button className="p-1.5">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Stats */}
+              <div className="flex items-center gap-6 sm:gap-8 mb-4">
+                <div className="flex items-center gap-1">
+                  <span className="text-white font-semibold">{myBlogs.length}</span>
+                  <span className="text-gray-400">bài viết</span>
                 </div>
+                <button
+                  onClick={() => setShowFollowModal('followers')}
+                  className="flex items-center gap-1 hover:opacity-70 transition-opacity cursor-pointer"
+                >
+                  <span className="text-white font-semibold">{followersCount}</span>
+                  <span className="text-gray-400">người theo dõi</span>
+                </button>
+                <button
+                  onClick={() => setShowFollowModal('following')}
+                  className="flex items-center gap-1 hover:opacity-70 transition-opacity cursor-pointer"
+                >
+                  <span className="text-white font-semibold">{followingCount}</span>
+                  <span className="text-gray-400">đang theo dõi</span>
+                </button>
+              </div>
+
+              {/* Full Name */}
+              <div className="mb-2">
+                <h2 className="text-white font-semibold">{user.fullname}</h2>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-3">
-              <Link
-                href="/blog/create"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                + Thêm bài viết
-              </Link>
-              <button 
-                onClick={handleOpenEditProfile}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                ✏️ Chỉnh sửa trang cá nhân
-              </button>
-            </div>
           </div>
-        </div>
 
-        {/* Navigation Tabs */}
-        <div className="px-6 border-t">
-          <div className="flex space-x-8">
+          {/* Tabs */}
+          <div className="flex items-center justify-center gap-0 border-t border-gray-800 mt-8">
             <button
               onClick={() => setActiveTab('posts')}
-              className={`py-4 font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
                 activeTab === 'posts'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-gray-400 hover:text-white'
               }`}
             >
-              Bài viết ({myBlogs.length})
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              <span className="text-xs uppercase tracking-wider font-medium">Bài viết</span>
             </button>
             <button
-              onClick={() => setActiveTab('liked')}
-              className={`py-4 font-medium border-b-2 transition-colors ${
-                activeTab === 'liked'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              onClick={() => setActiveTab('saved')}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
+                activeTab === 'saved'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-gray-400 hover:text-white'
               }`}
             >
-              Đã thích ({likedBlogs.length})
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+              <span className="text-xs uppercase tracking-wider font-medium">Đã lưu</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('tagged')}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
+                activeTab === 'tagged'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span className="text-xs uppercase tracking-wider font-medium">Được gắn thẻ</span>
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-6 grid grid-cols-12 gap-6">
-        {/* Left Sidebar */}
-        <div className="col-span-12 lg:col-span-4 space-y-4">
-          {/* Intro Card */}
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Giới thiệu</h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center space-x-2 text-gray-600">
-                <span>👤</span>
-                <span>Tên: {user.fullname}</span>
-              </div>
-              <div className="flex items-center space-x-2 text-gray-600">
-                <span>📧</span>
-                <span>{user.email}</span>
-              </div>
-              <div className="flex items-center space-x-2 text-gray-600">
-                <span>📱</span>
-                <span>{user.phone}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats Card - CẬP NHẬT PHẦN NÀY */}
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Thống kê</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="text-xl font-bold text-blue-600">{myBlogs.length}</div>
-                <div className="text-xs text-gray-600">Bài viết</div>
-              </div>
-              <div className="text-center p-3 bg-pink-50 rounded-lg">
-                <div className="text-xl font-bold text-pink-600">{myBlogs.reduce((sum, blog) => sum + (blog._count?.likes || 0), 0)}</div>
-                <div className="text-xs text-gray-600">Tổng like</div>
-              </div>
-              <div className="text-center p-3 bg-purple-50 rounded-lg">
-                <div className="text-xl font-bold text-purple-600">{likedBlogs.length}</div>
-                <div className="text-xs text-gray-600">Đã thích</div>
-              </div>
-              
-              {/* NÚT XEM FOLLOWERS */}
-              <button
-                onClick={() => setShowFollowModal('followers')}
-                className="text-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer"
-              >
-                <div className="text-xl font-bold text-purple-600">{followersCount}</div>
-                <div className="text-xs text-gray-600">Người theo dõi</div>
-              </button>
-              
-              {/* NÚT XEM FOLLOWING */}
-              <button
-                onClick={() => setShowFollowModal('following')}
-                className="text-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors cursor-pointer"
-              >
-                <div className="text-xl font-bold text-green-600">{followingCount}</div>
-                <div className="text-xs text-gray-600">Đang theo dõi</div>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Content */}
-        <div className="col-span-12 lg:col-span-8">
-          {/* Create Post Card */}
+        {/* Posts Grid */}
+        <div className="max-w-4xl mx-auto px-4 pb-8">
           {activeTab === 'posts' && (
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">
-                    {user.fullname.charAt(0).toUpperCase()}
-                  </span>
+            <>
+              {myBlogs.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1">
+                  {myBlogs.map((blog) => {
+                    const displayBlog = blog.sharedFrom ?? blog
+                    return (
+                      <Link
+                        key={blog.id}
+                        href={`/blog/${displayBlog.id}`}
+                        className="aspect-square bg-gray-900 relative group overflow-hidden"
+                      >
+                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (
+                          <Image
+                            src={displayBlog.imageUrls[0]}
+                            alt={displayBlog.caption || 'Post'}
+                            fill
+                            className="object-cover group-hover:opacity-70 transition-opacity"
+                            sizes="(max-width: 768px) 33vw, 300px"
+                          />
+                        )}
+                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 1 && (
+                          <div className="absolute top-2 right-2">
+                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                              <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-6 text-white">
+                            <div className="flex items-center gap-2">
+                              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                              </svg>
+                              <span className="font-semibold">{blog._count?.likes || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                              <span className="font-semibold">{blog._count?.comments || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
                 </div>
-                <Link
-                  href="/blog/create"
-                  className="flex-1 px-4 py-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer"
-                >
-                  {user.fullname} ơi, bạn đang nghĩ gì thế?
-                </Link>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="w-24 h-24 mb-6 flex items-center justify-center">
+                    <svg className="w-full h-full text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Chia sẻ ảnh</h3>
+                  <p className="text-gray-400 mb-4 text-center max-w-sm">
+                    Khi bạn chia sẻ ảnh, ảnh sẽ xuất hiện trên trang cá nhân của bạn.
+                  </p>
+                  <Link
+                    href="/blog/create"
+                    className="text-blue-500 hover:text-blue-400 font-medium"
+                  >
+                    Chia sẻ ảnh đầu tiên của bạn
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'saved' && (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="w-24 h-24 mb-6 flex items-center justify-center">
+                <svg className="w-full h-full text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
               </div>
-              <div className="flex items-center justify-around mt-3 pt-3 border-t">
-                <Link
-                  href="/blog/create"
-                  className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors flex-1 justify-center"
-                >
-                  <span className="text-green-500">📸</span>
-                  <span className="text-gray-600 font-medium">Ảnh/Video</span>
-                </Link>
-              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">Chỉ bạn mới có thể thấy những gì bạn đã lưu</h3>
+              <p className="text-gray-400 text-center max-w-sm">
+                Lưu ảnh và video mà bạn muốn xem lại. Không ai được thông báo và chỉ bạn mới có thể thấy những gì bạn đã lưu.
+              </p>
             </div>
           )}
 
-          {/* Posts */}
-          <div className="space-y-4">
-            {(activeTab === 'posts' ? myBlogs : likedBlogs).map((blog) => {
-              const isShared = !!blog.sharedFrom
-              const displayBlog = blog.sharedFrom ?? blog
-              const displayAuthor = isShared ? blog.sharedFrom!.author : (blog.author || user)
-              
-              return (
-              <div key={blog.id} className="bg-white rounded-lg shadow-sm">
-                {/* Thông báo Share */}
-                {isShared && (
-                  <div className="px-4 pt-4 pb-2 text-sm text-gray-600 border-b">
-                    Đã chia sẻ bài viết của{' '}
-                    <span className="font-semibold text-blue-600">{displayAuthor.fullname}</span>
-                  </div>
-                )}
-
-                {/* Caption của người share (nếu có) */}
-                {isShared && blog.caption && (
-                  <div className="px-4 pt-3 pb-2">
-                    <p className="text-gray-900">{blog.caption}</p>
-                  </div>
-                )}
-
-                {/* Post Header - Hiển thị tác giả gốc */}
-                <div className="p-4 flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-semibold text-sm">
-                        {displayAuthor.fullname.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{displayAuthor.fullname}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(displayBlog.createdAt).toLocaleDateString('vi-VN', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Options Menu - Only show for own posts */}
-                  {activeTab === 'posts' && (
-                    <div className="relative">
-                      <button 
-                        className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
-                        onClick={() => setShowDropdown(showDropdown === blog.id ? null : blog.id)}
-                      >
-                        <span className="text-xl">•••</span>
-                      </button>
-                      
-                      {/* Dropdown Menu */}
-                      {showDropdown === blog.id && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
-                          <button
-                            onClick={() => {
-                              handleEditPost(blog)
-                              setShowDropdown(null)
-                            }}
-                            className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                          >
-                            <span>✏️</span>
-                            <span>Chỉnh sửa bài viết</span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowDeleteModal(blog.id)
-                              setShowDropdown(null)
-                            }}
-                            className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center space-x-2"
-                          >
-                            <span>🗑️</span>
-                            <span>Xóa bài viết</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Edit Form or Post Content */}
-                {editingPost === blog.id ? (
-                  <div className="px-4 pb-3">
-                    <textarea
-                      value={editCaption}
-                      onChange={(e) => setEditCaption(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={3}
-                      placeholder="Nhập nội dung bài viết..."
-                    />
-                    <div className="mt-3">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setEditImage(e.target.files?.[0] || null)}
-                        className="mb-3"
-                      />
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleSaveEdit(blog.id)}
-                          disabled={isLoading}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                        >
-                          {isLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                        >
-                          Hủy
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {/* Caption của bài gốc (nếu không phải bài share) */}
-                    {!isShared && blog.caption && (
-                      <div className="px-4 pb-3">
-                        <p className="text-gray-900">{blog.caption}</p>
-                      </div>
-                    )}
-                    {/* Caption bài gốc trong bài share */}
-                    {isShared && displayBlog.caption && (
-                      <div className="px-4 pb-3">
-                        <p className="text-gray-900">{displayBlog.caption}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Post Image */}
-                <div className="mx-4 mb-4 border rounded-lg overflow-hidden bg-gray-50">
-                  <BlogImages imageUrls={displayBlog.imageUrls} blogId={displayBlog.id} />
-                </div>
-
-
-                {/* Post Actions */}
-                <div className="p-4">
-                  <div className="flex items-center justify-between text-gray-500 text-sm mb-3">
-                    <div className="flex items-center space-x-1">
-                      <span className="text-blue-500">👍</span>
-                      <span className="font-semibold text-gray-900">{blog._count?.likes || 0} lượt thích</span>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <span>{blog._count?.comments || 0} bình luận</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-around border-t pt-2">
-                    <LikeButton 
-                      blogId={blog.id}
-                      initialLiked={false}
-                      initialCount={blog._count?.likes || 0}
-                      onLikeChange={(newCount) => {
-                        setMyBlogs(prevBlogs =>
-                          prevBlogs.map(b =>
-                            b.id === blog.id
-                              ? { ...b, _count: { ...b._count, likes: newCount } }
-                              : b
-                          )
-                        )
-                        setLikedBlogs(prevBlogs =>
-                          prevBlogs.map(b =>
-                            b.id === blog.id
-                              ? { ...b, _count: { ...b._count, likes: newCount } }
-                              : b
-                          )
-                        )
-                      }}
-                    />
-                    <Link
-                      href={`/blog/${blog.id}`}
-                      className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors flex-1 justify-center"
-                    >
-                      <span className="text-gray-600">💬</span>
-                      <span className="text-gray-600 font-medium">Bình luận</span>
-                    </Link>
-                    <ShareButton
-  blogId={blog.id}
-  onShared={() => {
-    router.refresh()
-  }}
-/>
-
-
-                  </div>
-                </div>
+          {activeTab === 'tagged' && (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="w-24 h-24 mb-6 flex items-center justify-center">
+                <svg className="w-full h-full text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
               </div>
-            )})}
-          </div>
-
-          {/* Empty State */}
-          {(activeTab === 'posts' ? myBlogs : likedBlogs).length === 0 && (
-            <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl text-gray-400">
-                  {activeTab === 'posts' ? '📝' : '❤️'}
-                </span>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {activeTab === 'posts' ? 'Chưa có bài viết nào' : 'Chưa có bài viết được thích'}
-              </h3>
-              <p className="text-gray-500 mb-4">
-                {activeTab === 'posts'
-                  ? 'Chia sẻ khoảnh khắc đầu tiên của bạn!'
-                  : 'Hãy bắt đầu khám phá và thích những bài viết bạn yêu thích!'}
+              <h3 className="text-xl font-semibold text-white mb-2">Ảnh của bạn được gắn thẻ</h3>
+              <p className="text-gray-400 text-center max-w-sm">
+                Mọi người gắn thẻ bạn trong ảnh sẽ xuất hiện ở đây.
               </p>
-              {activeTab === 'posts' && (
-                <Link
-                  href="/blog/create"
-                  className="inline-flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Tạo bài viết đầu tiên
-                </Link>
-              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Follow Modal */}
+      {showFollowModal && user && (
+        <FollowModal
+          isOpen={true}
+          onClose={() => setShowFollowModal(null)}
+          userId={user.id}
+          type={showFollowModal}
+        />
+      )}
+
+      {/* Edit Profile Modal */}
+      {showEditProfileModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-gray-800">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-white">Chỉnh sửa hồ sơ</h3>
+              <button
+                onClick={() => setShowEditProfileModal(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Họ và tên</label>
+                <input
+                  type="text"
+                  value={editProfileData.fullname}
+                  onChange={(e) => {
+                    setEditProfileData({...editProfileData, fullname: e.target.value})
+                    if (profileErrors.fullname) setProfileErrors({...profileErrors, fullname: ''})
+                  }}
+                  className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
+                    profileErrors.fullname ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
+                  }`}
+                  placeholder="Nhập họ và tên"
+                />
+                {profileErrors.fullname && (
+                  <p className="text-red-500 text-sm mt-1">{profileErrors.fullname}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={editProfileData.email}
+                  onChange={(e) => {
+                    setEditProfileData({...editProfileData, email: e.target.value})
+                    if (profileErrors.email) setProfileErrors({...profileErrors, email: ''})
+                  }}
+                  className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
+                    profileErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
+                  }`}
+                  placeholder="Nhập email"
+                />
+                {profileErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">{profileErrors.email}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Số điện thoại</label>
+                <input
+                  type="tel"
+                  value={editProfileData.phone}
+                  onChange={(e) => {
+                    setEditProfileData({...editProfileData, phone: e.target.value})
+                    if (profileErrors.phone) setProfileErrors({...profileErrors, phone: ''})
+                  }}
+                  className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
+                    profileErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
+                  }`}
+                  placeholder="Nhập số điện thoại"
+                />
+                {profileErrors.phone && (
+                  <p className="text-red-500 text-sm mt-1">{profileErrors.phone}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3 mt-8">
+              <button
+                onClick={handleSaveProfile}
+                disabled={isLoading || Object.keys(profileErrors).length > 0}
+                className={`flex-1 px-4 py-3 rounded-lg transition-all font-semibold ${
+                  Object.keys(profileErrors).length > 0
+                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {isLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+              <button
+                onClick={() => setShowEditProfileModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-all font-semibold"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Xác nhận xóa bài viết</h3>
-            <p className="text-gray-600 mb-6">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-800">
+            <h3 className="text-lg font-semibold text-white mb-3">Xác nhận xóa bài viết</h3>
+            <p className="text-gray-400 mb-6">
               Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.
             </p>
             <div className="flex items-center space-x-3">
@@ -716,107 +614,7 @@ const [followingCount, setFollowingCount] = useState<number>(0)
               </button>
               <button
                 onClick={() => setShowDeleteModal(null)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-              >
-                Hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Profile Modal */}
-      {showEditProfileModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-slideUp">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">Chỉnh sửa hồ sơ</h3>
-              <button
-                onClick={() => setShowEditProfileModal(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="space-y-5">
-              {/* Full Name */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">👤 Họ và tên</label>
-                <input
-                  type="text"
-                  value={editProfileData.fullname}
-                  onChange={(e) => {
-                    setEditProfileData({...editProfileData, fullname: e.target.value})
-                    if (profileErrors.fullname) setProfileErrors({...profileErrors, fullname: ''})
-                  }}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
-                    profileErrors.fullname ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                  placeholder="Nhập họ và tên"
-                />
-                {profileErrors.fullname && (
-                  <p className="text-red-500 text-sm mt-1">⚠️ {profileErrors.fullname}</p>
-                )}
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">📧 Email</label>
-                <input
-                  type="email"
-                  value={editProfileData.email}
-                  onChange={(e) => {
-                    setEditProfileData({...editProfileData, email: e.target.value})
-                    if (profileErrors.email) setProfileErrors({...profileErrors, email: ''})
-                  }}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
-                    profileErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                  placeholder="Nhập email"
-                />
-                {profileErrors.email && (
-                  <p className="text-red-500 text-sm mt-1">⚠️ {profileErrors.email}</p>
-                )}
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">📱 Số điện thoại</label>
-                <input
-                  type="tel"
-                  value={editProfileData.phone}
-                  onChange={(e) => {
-                    setEditProfileData({...editProfileData, phone: e.target.value})
-                    if (profileErrors.phone) setProfileErrors({...profileErrors, phone: ''})
-                  }}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
-                    profileErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                  placeholder="Nhập số điện thoại"
-                />
-                {profileErrors.phone && (
-                  <p className="text-red-500 text-sm mt-1">⚠️ {profileErrors.phone}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex items-center space-x-3 mt-8">
-              <button
-                onClick={handleSaveProfile}
-                disabled={isLoading || Object.keys(profileErrors).length > 0}
-                className={`flex-1 px-4 py-3 rounded-lg transition-all font-semibold transform active:scale-95 ${
-                  Object.keys(profileErrors).length > 0
-                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 hover:scale-105'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {isLoading ? '⏳ Đang lưu...' : '✓ Lưu thay đổi'}
-              </button>
-              <button
-                onClick={() => setShowEditProfileModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all font-semibold transform hover:scale-105 active:scale-95"
+                className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
               >
                 Hủy
               </button>
@@ -826,8 +624,4 @@ const [followingCount, setFollowingCount] = useState<number>(0)
       )}
     </div>
   )
-}
-
-function setFollowersCount(arg0: any) {
-  throw new Error('Function not implemented.')
 }
