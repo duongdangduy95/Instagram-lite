@@ -1,9 +1,8 @@
 // app/api/login/route.ts
-import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
+import { prisma } from '@/lib/prisma'
 //update login
-const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
   const { usernameOrEmail, password } = await req.json()
