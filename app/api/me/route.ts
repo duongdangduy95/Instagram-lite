@@ -103,6 +103,7 @@ export async function GET() {
       },
       _count: {
         select: {
+          followers: true,
           following: true,
         },
       },
