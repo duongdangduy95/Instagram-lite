@@ -43,22 +43,33 @@ export async function POST(req: Request) {
     const uploadedUrls: string[] = []
 
     // Upload từng ảnh lên Supabase
+    // Supabase không cho lưu tên ảnh có dấu <duyen>
     for (const file of files) {
       const buffer = Buffer.from(await file.arrayBuffer())
-      const fileName = `posts/${encodeURIComponent(userId)}/${Date.now()}-${file.name}`
+
+      const ext = file.type.split('/')[1] || 'jpg'
+
+      const fileName = `posts/${userId}/${Date.now()}.${ext}`
 
       const { error } = await supabase.storage
         .from('instagram')
-        .upload(fileName, buffer, { contentType: file.type })
+        .upload(fileName, buffer, {
+          contentType: file.type,
+          upsert: false,
+        })
 
       if (error) {
         console.error('Supabase upload error:', error)
         return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
       }
 
-      const { data } = supabase.storage.from('instagram').getPublicUrl(fileName)
+      const { data } = supabase.storage
+        .from('instagram')
+        .getPublicUrl(fileName)
+
       uploadedUrls.push(data.publicUrl)
     }
+
 
     // Tạo blog trong DB
     const blog = await prisma.blog.create({

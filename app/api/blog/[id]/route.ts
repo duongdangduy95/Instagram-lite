@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
 
-// GET - Get blog detail
+/* =========================
+   GET – LẤY CHI TIẾT BLOG
+========================= */
 export async function GET(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: blogId } = await params
-  
+
   const session = await getServerSession(authOptions)
   const currentUserId = session?.user?.id
 
@@ -46,8 +47,8 @@ export async function GET(
         },
         likes: currentUserId
           ? {
-              select: { userId: true },
               where: { userId: currentUserId },
+              select: { userId: true },
             }
           : undefined,
         _count: {
@@ -65,97 +66,140 @@ export async function GET(
 
     return NextResponse.json(blog)
   } catch (error) {
-    console.error('Error fetching blog:', error)
-    return NextResponse.json({ error: 'Failed to fetch blog' }, { status: 500 })
+    console.error('GET blog error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch blog' },
+      { status: 500 }
+    )
   }
 }
 
+/* =========================
+   PATCH – CHỈNH SỬA BLOG
+========================= */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = cookies()
-  const session = (await cookieStore).get('session')
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const [userId] = session.value.split(':')
   const { id: blogId } = await params
 
-  const form = await req.formData()
-  const caption = form.get('caption') as string
-  const hashtagsStr = form.get('hashtags') as string
-  const hashtags = hashtagsStr ? JSON.parse(hashtagsStr) : []
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id
 
-  const existingImages: string[] = []
-  form.forEach((v, key) => {
-    if (key === 'existingImages') existingImages.push(v.toString())
-  })
-
-  const files: File[] = []
-  form.forEach((v, key) => {
-    if (v instanceof File && (key === 'images' || key === 'videos')) {
-      files.push(v)
-    }
-  })
-  
-
-  const newImageUrls: string[] = [...existingImages]
-
-  for (const file of files) {
-    if (file.size === 0) continue
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const filename = `${Date.now()}-${file.name}`
-    const filepath = path.join(process.cwd(), 'public', 'uploads', filename)
-    fs.writeFileSync(filepath, buffer)
-    newImageUrls.push(`/uploads/${filename}`)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
     const blog = await prisma.blog.findUnique({ where: { id: blogId } })
-    if (!blog || blog.authorId !== userId)
-      return NextResponse.json({ error: 'Unauthorized or not found' }, { status: 403 })
+    if (!blog || blog.authorId !== userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized or not found' },
+        { status: 403 }
+      )
+    }
 
-    const updated = await prisma.blog.update({
+    const form = await req.formData()
+    const caption = (form.get('caption') as string) || ''
+
+    /* ẢNH CŨ GIỮ LẠI */
+    const existingImages: string[] = []
+    form.forEach((value, key) => {
+      if (key === 'existingImages') {
+        existingImages.push(value.toString())
+      }
+    })
+
+    /* FILE MỚI */
+    const newFiles: File[] = []
+    form.forEach((value, key) => {
+      if (value instanceof File && key === 'newFiles') {
+        newFiles.push(value)
+      }
+    })
+
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads')
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true })
+    }
+
+    const newImageUrls: string[] = [...existingImages]
+
+    for (const file of newFiles) {
+      if (file.size === 0) continue
+
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const safeName = file.name.replace(/\s+/g, '_')
+      const filename = `${Date.now()}-${safeName}`
+      const filepath = path.join(uploadDir, filename)
+
+      fs.writeFileSync(filepath, buffer)
+      newImageUrls.push(`/uploads/${filename}`)
+    }
+
+    const updatedBlog = await prisma.blog.update({
       where: { id: blogId },
       data: {
         caption,
-        hashtags,
         imageUrls: newImageUrls,
       },
     })
 
-    return NextResponse.json({ message: 'Blog updated', blog: updated })
+    return NextResponse.json({
+      message: 'Blog updated',
+      blog: updatedBlog,
+    })
   } catch (error) {
-    console.error('Update error:', error)
-    return NextResponse.json({ error: 'Failed to update blog' }, { status: 500 })
+    console.error('PATCH blog error:', error)
+    return NextResponse.json(
+      { error: 'Failed to update blog' },
+      { status: 500 }
+    )
   }
 }
 
-
-// DELETE - Delete blog
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const cookieStore = cookies()
-  const session = (await cookieStore).get('session')
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const [userId] = session.value.split(':')
+/* =========================
+   DELETE – XÓA BLOG
+========================= */
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const { id: blogId } = await params
+
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   try {
     const blog = await prisma.blog.findUnique({ where: { id: blogId } })
-    if (!blog || blog.authorId !== userId)
-      return NextResponse.json({ error: 'Unauthorized or not found' }, { status: 403 })
+    if (!blog || blog.authorId !== userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized or not found' },
+        { status: 403 }
+      )
+    }
 
     await prisma.blog.delete({ where: { id: blogId } })
+
+    /* XÓA FILE LOCAL */
     for (const url of blog.imageUrls) {
-      const filepath = path.join(process.cwd(), 'public', url.replace('/uploads/', 'uploads/'))
-      if (fs.existsSync(filepath)) fs.unlinkSync(filepath)
+      if (!url.startsWith('/uploads/')) continue
+      const filepath = path.join(process.cwd(), 'public', url)
+      if (fs.existsSync(filepath)) {
+        fs.unlinkSync(filepath)
+      }
     }
-    
 
     return NextResponse.json({ message: 'Blog deleted' })
   } catch (error) {
-    console.error('Delete error:', error)
-    return NextResponse.json({ error: 'Failed to delete blog' }, { status: 500 })
+    console.error('DELETE blog error:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete blog' },
+      { status: 500 }
+    )
   }
 }
