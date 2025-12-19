@@ -22,6 +22,8 @@ export default function EditBlogPage() {
   const [newFiles, setNewFiles] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [newFileTypes, setNewFileTypes] = useState<('image' | 'video')[]>([])
+
 
 
   // Load blog data
@@ -52,6 +54,13 @@ export default function EditBlogPage() {
     const files = Array.from(e.target.files)
 
     setNewFiles(prev => [...prev, ...files])
+    setNewFileTypes(prev => [
+      ...prev,
+      ...files.map(file =>
+        file.type.startsWith('video') ? 'video' : 'image'
+      ),
+    ])
+
     setNewPreviews(prev => [
       ...prev,
       ...files.map(file => URL.createObjectURL(file))
@@ -101,32 +110,56 @@ export default function EditBlogPage() {
         {/* Images grid */}
         <div className="grid grid-cols-3 gap-3 mt-4">
           {/* Existing images */}
-          {existingImages.map((url, index) => (
-            <div key={url} className="relative group">
-              <img
-                src={url}
-                className="aspect-square object-cover rounded-lg"
-              />
-              <button
-                onClick={() => removeExistingImage(index)}
-                className="absolute top-1 right-1 bg-black/70 text-white rounded-full px-2 opacity-0 group-hover:opacity-100 transition"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
+          {existingImages.map((url, index) => {
+            const isVideo = url.match(/\.(mp4|webm|mov)$/)
+
+            return (
+              <div key={url} className="relative group">
+                {isVideo ? (
+                  <video
+                    src={url}
+                    controls
+                    className="aspect-square object-cover rounded-lg"
+                  />
+                ) : (
+                  <img
+                    src={url}
+                    className="aspect-square object-cover rounded-lg"
+                  />
+                )}
+
+                <button
+                  onClick={() => removeExistingImage(index)}
+                  className="absolute top-1 right-1 bg-black/70 text-white rounded-full px-2 opacity-0 group-hover:opacity-100 transition"
+                >
+                  ✕
+                </button>
+              </div>
+            )
+          })}
+
 
           {/* New images */}
           {newPreviews.map((url, index) => (
             <div key={url} className="relative group">
-              <img
-                src={url}
-                className="aspect-square object-cover rounded-lg"
-              />
+              {newFileTypes[index] === 'video' ? (
+                <video
+                  src={url}
+                  controls
+                  className="aspect-square object-cover rounded-lg"
+                />
+              ) : (
+                <img
+                  src={url}
+                  className="aspect-square object-cover rounded-lg"
+                />
+              )}
+
               <button
                 onClick={() => {
                   setNewPreviews(prev => prev.filter((_, i) => i !== index))
                   setNewFiles(prev => prev.filter((_, i) => i !== index))
+                  setNewFileTypes(prev => prev.filter((_, i) => i !== index))
                 }}
                 className="absolute top-1 right-1 bg-black/70 text-white rounded-full px-2 opacity-0 group-hover:opacity-100 transition"
               >
@@ -134,6 +167,7 @@ export default function EditBlogPage() {
               </button>
             </div>
           ))}
+
 
           {/* Add button */}
           <label
@@ -149,7 +183,7 @@ export default function EditBlogPage() {
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*"
+          accept="image/*,video/*"
           onChange={handleAddFiles}
           className="hidden"
         />
