@@ -49,6 +49,7 @@ export async function GET() {
       following: true,
       _count: {
         select: {
+          followers: true,
           following: true,
           followers: true,
         },

@@ -5,6 +5,7 @@ import Navigation from '../components/Navigation'
 import BlogActions from '../components/BlogActions'
 import FollowButton from '../components/FollowButton'
 import BlogImages from '../components/BlogImages'
+import UserSuggestionItem from '../components/UserSuggestionItem'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
@@ -52,12 +53,22 @@ export default async function HomePage() {
   const currentUser = await getCurrentUser()
 
   const users = await prisma.user.findMany({
+    where: currentUser ? { id: { not: currentUser.id } } : undefined,
     select: {
       id: true,
       fullname: true,
       username: true,
+      followers: currentUser
+        ? { select: { followerId: true }, where: { followerId: currentUser.id } }
+        : undefined,
+      _count: {
+        select: {
+          followers: true,
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
+    take: 10, // Giới hạn số lượng user hiển thị
   })
 
   const blogs: BlogWithRelations[] = await prisma.blog.findMany({
@@ -72,7 +83,7 @@ export default async function HomePage() {
           fullname: true,
           username: true,
           followers: currentUser
-            ? { where: { followerId: currentUser.id } }
+            ? { select: { followerId: true }, where: { followerId: currentUser.id } }
             : undefined,
         },
       },
@@ -99,10 +110,10 @@ export default async function HomePage() {
       {/* NAVIGATION */}
       <Navigation />
 
-      <div className="ml-64 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-0">
+      <div className="ml-64 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-0">
         {/* Main Content - Cột giữa */}
         <main className="flex justify-center px-4 py-4">
-          <div className="w-full max-w-2xl space-y-4">
+          <div className="w-full max-w-xl space-y-4">
         {blogs.map((blog) => {
           const isShared = !!blog.sharedFrom
           const displayBlog = blog.sharedFrom ?? blog
@@ -121,7 +132,10 @@ export default async function HomePage() {
 
               {/* ===== HEADER BÀI GỐC ===== */}
               <div className="px-4 py-3 flex justify-between items-center">
-                <Link href={`/profile/${displayBlog.author.id}`}>
+                <Link 
+                  href={displayBlog.author.id === currentUser?.id ? '/profile' : `/profile/${displayBlog.author.id}`}
+                  prefetch={true}
+                >
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
                       <span className="font-bold text-white">
@@ -189,29 +203,14 @@ export default async function HomePage() {
 
         {/* USER LIST SIDE BAR */}
         <aside className="hidden lg:block px-6 py-4 space-y-3 border-l border-gray-800 bg-black sticky top-0 h-screen overflow-y-auto">
-          <p className="text-gray-300 font-semibold mb-2">Gợi ý theo dõi</p>
-          <div className="space-y-3">
+          <p className="text-gray-300 font-semibold mb-4 text-lg">Gợi ý theo dõi</p>
+          <div className="space-y-4">
             {users.map((user) => (
-              <div
+              <UserSuggestionItem
                 key={user.id}
-                className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-900 transition-colors"
-              >
-                <Link
-                  href={`/profile/${user.id}`}
-                  className="flex items-center space-x-3 flex-1 min-w-0"
-                >
-                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                    {user.fullname.charAt(0)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-gray-100 font-semibold truncate">{user.fullname}</p>
-                    <p className="text-gray-400 text-sm truncate">@{user.username}</p>
-                  </div>
-                </Link>
-                <button className="ml-2 px-4 py-1.5 text-sm font-semibold text-white bg-[#877EFF] hover:bg-[#7565E6] rounded-lg transition-colors flex-shrink-0">
-                  Theo dõi
-                </button>
-              </div>
+                user={user}
+                currentUserId={currentUser?.id || null}
+              />
             ))}
           </div>
         </aside>

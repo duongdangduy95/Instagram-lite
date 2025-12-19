@@ -6,32 +6,45 @@ interface FollowButtonProps {
   targetUserId: string
   initialIsFollowing: boolean
   onFollowChange?: (isFollowing: boolean, followersCount: number) => void
+  size?: 'sm' | 'md' // sm cho sidebar, md cho post
 }
 
 export default function FollowButton({ 
   targetUserId, 
   initialIsFollowing,
-  onFollowChange 
+  onFollowChange,
+  size = 'md'
 }: FollowButtonProps) {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleFollow = async () => {
+    // Optimistic update - cập nhật UI ngay lập tức
+    const previousIsFollowing = isFollowing
+    const newIsFollowing = !isFollowing
+    
+    setIsFollowing(newIsFollowing)
     setIsLoading(true)
+    
     try {
       const response = await fetch(`/api/follow/${targetUserId}`, {
-        method: isFollowing ? 'DELETE' : 'POST',
+        method: previousIsFollowing ? 'DELETE' : 'POST',
         credentials: 'include',
       })
 
       if (response.ok) {
         const data = await response.json()
-        setIsFollowing(!isFollowing)
-        onFollowChange?.(!isFollowing, data.followersCount)
+        // Cập nhật followers count nếu có callback
+        onFollowChange?.(newIsFollowing, data.followersCount)
       } else {
-        alert('Có lỗi xảy ra')
+        // Rollback nếu có lỗi
+        setIsFollowing(previousIsFollowing)
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        alert(errorData.error || 'Có lỗi xảy ra')
       }
     } catch (error) {
+      // Rollback nếu có lỗi
+      setIsFollowing(previousIsFollowing)
       console.error('Error:', error)
       alert('Có lỗi xảy ra')
     } finally {
@@ -43,13 +56,9 @@ export default function FollowButton({
     <button
       onClick={handleFollow}
       disabled={isLoading}
-      className={`px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 ${
-        isFollowing
-          ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          : 'bg-blue-600 text-white hover:bg-blue-700'
-      }`}
+      className="text-sm font-semibold transition-colors disabled:opacity-50 text-[#877EFF] hover:text-[#7565E6]"
     >
-      {isLoading ? '...' : isFollowing ? '✓ Đang theo dõi' : '+ Theo dõi'}
+      {isLoading ? '...' : isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
     </button>
   )
 }
