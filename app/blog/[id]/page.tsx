@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef } from 'react'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -48,6 +49,21 @@ export default function BlogDetailPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const blogId = params.id as string
+
+  const [showOptions, setShowOptions] = useState(false)
+  const optionsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (optionsRef.current && !optionsRef.current.contains(e.target as Node)) {
+        setShowOptions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
 
   const [blog, setBlog] = useState<Blog | null>(null)
   const [loading, setLoading] = useState(true)
@@ -167,12 +183,63 @@ export default function BlogDetailPage() {
                 </div>
               </Link>
 
-              {!isCurrentUser && currentUser && (
-                <FollowButton
-                  targetUserId={displayBlog.author.id}
-                  initialIsFollowing={false}
-                />
-              )}
+              {/* Right: Actions */}
+              <div className="flex items-center gap-2">
+                {!isCurrentUser && currentUser && (
+                  <FollowButton
+                    targetUserId={displayBlog.author.id}
+                    initialIsFollowing={false}
+                  />
+                )}
+
+                {isCurrentUser && (
+                  <div className="relative" ref={optionsRef}>
+                    <button
+                      onClick={() => setShowOptions(!showOptions)}
+                      className="p-2 rounded-full hover:bg-gray-800 transition-colors"
+                    >
+                      {/* 3 dots horizontal */}
+                      <svg
+                        className="w-5 h-5 text-gray-300"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <circle cx="4" cy="10" r="1.5" />
+                        <circle cx="10" cy="10" r="1.5" />
+                        <circle cx="16" cy="10" r="1.5" />
+                      </svg>
+                    </button>
+
+                    {showOptions && (
+                      <div className="absolute right-0 mt-2 w-40 bg-black border border-gray-800 rounded-lg shadow-lg z-50">
+                        <button
+                          onClick={() => {
+                            setShowOptions(false)
+                            router.push(`/blog/${blog.id}/edit`)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800"
+                        >
+                          Chỉnh sửa
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            setShowOptions(false)
+                            const confirmDelete = confirm('Bạn có chắc muốn xóa bài viết này không?')
+                            if (!confirmDelete) return
+
+                            await fetch(`/api/blog/${blog.id}`, { method: 'DELETE' })
+                            router.push('/home')
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10"
+                        >
+                          Xóa bài viết
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Share notification */}

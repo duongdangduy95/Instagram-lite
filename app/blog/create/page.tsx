@@ -112,8 +112,8 @@ export default function CreateBlogPage() {
             onDragOver={(e) => handleDragEvents(e, 'over')}
             onDrop={(e) => handleDragEvents(e, 'drop')}
           >
-            {filePreviews.length > 0 ? (
-              <div className="flex flex-wrap gap-4 justify-center">
+            {filePreviews.length > 0 && (
+              <div className="flex flex-wrap gap-4 justify-center mb-4">
                 {filePreviews.map((preview, idx) => {
                   const isVideo = files[idx].type.startsWith('video')
                   return (
@@ -145,21 +145,20 @@ export default function CreateBlogPage() {
                   )
                 })}
               </div>
-            ) : (
-              <div>
-                <p className="mb-2">Drag & drop images/videos, or</p>
-                <label className="cursor-pointer inline-block bg-purple-600 text-white px-4 py-2 rounded">
-                  Choose Files
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => handleFileChange(e.target.files)}
-                  />
-                </label>
-              </div>
             )}
+            {/* Nút chọn file luôn hiển thị */}
+            <label className="cursor-pointer inline-block bg-purple-600 text-white px-4 py-2 rounded">
+              Choose Files
+              <input
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                className="hidden"
+                onChange={(e) => handleFileChange(e.target.files)}
+              />
+            </label>
+
+            {filePreviews.length === 0 && <p className="mt-2">Drag & drop images/videos here</p>}
           </div>
 
           {/* Caption */}
