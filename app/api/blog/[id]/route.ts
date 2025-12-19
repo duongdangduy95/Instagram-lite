@@ -4,10 +4,17 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
+import { createClient } from '@supabase/supabase-js'
 
 /* =========================
    GET – LẤY CHI TIẾT BLOG
 ========================= */
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -16,6 +23,8 @@ export async function GET(
 
   const session = await getServerSession(authOptions)
   const currentUserId = session?.user?.id
+
+
 
   try {
     const blog = await prisma.blog.findUnique({
@@ -118,24 +127,29 @@ export async function PATCH(
       }
     })
 
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
-    }
-
     const newImageUrls: string[] = [...existingImages]
 
     for (const file of newFiles) {
-      if (file.size === 0) continue
-
       const buffer = Buffer.from(await file.arrayBuffer())
-      const safeName = file.name.replace(/\s+/g, '_')
-      const filename = `${Date.now()}-${safeName}`
-      const filepath = path.join(uploadDir, filename)
+      const ext = file.type.split('/')[1] || 'jpg'
+      const fileName = `posts/${userId}/${Date.now()}-${file.name}`
 
-      fs.writeFileSync(filepath, buffer)
-      newImageUrls.push(`/uploads/${filename}`)
+      const { error } = await supabase.storage
+        .from('instagram')
+        .upload(fileName, buffer, {
+          contentType: file.type,
+          upsert: false,
+        })
+
+      if (error) {
+        console.error('Supabase upload error:', error)
+        return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+      }
+
+      const { data } = supabase.storage.from('instagram').getPublicUrl(fileName)
+      newImageUrls.push(data.publicUrl)
     }
+
 
     const updatedBlog = await prisma.blog.update({
       where: { id: blogId },
