@@ -1,19 +1,21 @@
-// /api/logout/route.ts
+// app/api/logout/route.ts
 import { NextResponse } from 'next/server'
-import { serialize } from 'cookie'
-//update logout
-//chuc nang logout xoa cookie token
+import { cookies } from 'next/headers'
+
 export async function POST() {
-  const res = NextResponse.json({ success: true })
+  const cookieStore = cookies()
+  
+  // Xóa cookie session
+  ;(await
+    // Xóa cookie session
+    cookieStore).set({
+    name: 'session',
+    value: '',
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 0, // xóa ngay
+  })
 
-  res.headers.set(
-    'Set-Cookie',
-    serialize('token', '', {
-      httpOnly: true,
-      path: '/',
-      expires: new Date(0), 
-    })
-  )
-
-  return res
+  return NextResponse.json({ message: 'Logged out' })
 }

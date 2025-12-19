@@ -120,10 +120,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
                   </p>
                   
                   {/* Post Image */}
-                  {blog.imageUrl && (
+                  {blog.imageUrls && (
                     <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
                       <Image
-                        src={blog.imageUrl}
+                        src={blog.imageUrls}
                         alt="Post image"
                         width={600}
                         height={400}
@@ -159,7 +159,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
                       <span className="text-gray-600">💬</span>
                       <span className="text-gray-600 font-medium">Bình luận</span>
                     </Link>
-                    <ShareButton blogId={blog.id} imageUrl={blog.imageUrl} />
+                    <ShareButton blogId={blog.id} />
 
                   </div>
                 </div>
