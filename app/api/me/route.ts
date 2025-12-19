@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -17,96 +17,42 @@ export async function GET() {
     include: {
       blogs: {
         include: {
-          _count: {
-            select: {
-              likes: true,
-              comments: true,
-            },
-          },
-          likes: {
-            select: {
-              userId: true,
-            },
-          },
-          author: {
-            select: {
-              id: true,
-              fullname: true,
-              username: true,
-            }
-          },
-          // ĐÂY LÀ PHẦN QUAN TRỌNG - lấy thông tin bài gốc nếu là bài share
+          _count: { select: { likes: true, comments: true } },
+          likes: { select: { userId: true } },
+          author: { select: { id: true, fullname: true, username: true } },
           sharedFrom: {
             include: {
-              author: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  username: true,
-                }
-              },
-              _count: {
-                select: {
-                  likes: true,
-                  comments: true,
-                }
-              }
-            }
-          }
+              author: { select: { id: true, fullname: true, username: true } },
+              _count: { select: { likes: true, comments: true } },
+            },
+          },
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: { createdAt: 'desc' },
       },
       likes: {
         include: {
           blog: {
             include: {
-              _count: {
-                select: {
-                  likes: true,
-                  comments: true,
-                },
-              },
-              likes: {
-                select: {
-                  userId: true,
-                },
-              },
-              author: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  username: true,
-                }
-              },
+              _count: { select: { likes: true, comments: true } },
+              likes: { select: { userId: true } },
+              author: { select: { id: true, fullname: true, username: true } },
               sharedFrom: {
                 include: {
-                  author: {
-                    select: {
-                      id: true,
-                      fullname: true,
-                      username: true,
-                    }
-                  },
-                  _count: {
-                    select: {
-                      likes: true,
-                      comments: true,
-                    }
-                  }
-                }
-              }
+                  author: { select: { id: true, fullname: true, username: true } },
+                  _count: { select: { likes: true, comments: true } },
+                },
+              },
             },
           },
         },
       },
+      following: true,
       _count: {
         select: {
           following: true,
+          followers: true,
         },
       },
-      following: true,
     },
   })
 
@@ -114,7 +60,16 @@ export async function GET() {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
-  return NextResponse.json(user)
+  // Map blogs để client dùng imageUrls
+  const userWithMappedBlogs = {
+    ...user,
+    blogs: user.blogs.map(blog => ({
+      ...blog,
+       imageUrls: blog.imageUrls || [], // imageUrl -> imageUrls
+    })),
+  }
+
+  return NextResponse.json(userWithMappedBlogs)
 }
 
 export async function PATCH(req: Request) {
@@ -128,17 +83,11 @@ export async function PATCH(req: Request) {
   const { fullname, email, phone } = await req.json()
 
   try {
-    // Kiểm tra email đã tồn tại không (nếu thay đổi)
+    // Kiểm tra email đã tồn tại không
     if (email) {
-      const existingUser = await prisma.user.findUnique({
-        where: { email }
-      })
-      
+      const existingUser = await prisma.user.findUnique({ where: { email } })
       if (existingUser && existingUser.id !== userId) {
-        return NextResponse.json(
-          { error: 'Email đã được sử dụng' },
-          { status: 409 }
-        )
+        return NextResponse.json({ error: 'Email đã được sử dụng' }, { status: 409 })
       }
     }
 
@@ -160,10 +109,21 @@ export async function PATCH(req: Request) {
             },
           },
         },
+        following: true,
+        _count: { select: { following: true, followers: true } },
       },
     })
 
-    return NextResponse.json(updatedUser)
+    // Map blogs để client dùng imageUrls
+    const updatedUserWithMappedBlogs = {
+      ...updatedUser,
+      blogs: updatedUser.blogs.map(blog => ({
+        ...blog,
+        imageUrls: blog.imageUrls ? [blog.imageUrls] : [],
+      })),
+    }
+
+    return NextResponse.json(updatedUserWithMappedBlogs)
   } catch (error) {
     console.error('Error updating user:', error)
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })

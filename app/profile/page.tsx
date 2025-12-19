@@ -142,7 +142,7 @@ const [followingCount, setFollowingCount] = useState<number>(0)
               ? { 
                   ...blog, 
                   caption: result.blog.caption, 
-                  imageUrl: result.blog.imageUrl || blog.imageUrl,
+                  imageUrl: result.blog.imageUrl || blog.imageUrls,
                   _count: blog._count // ✅ Giữ lại _count (likes, comments)
                 }
               : blog
@@ -196,6 +196,7 @@ const [followingCount, setFollowingCount] = useState<number>(0)
   }
 
   const handleOpenEditProfile = () => {
+    if (!user) return
     setEditProfileData({
       fullname: user.fullname,
       email: user.email,
