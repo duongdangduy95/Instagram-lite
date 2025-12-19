@@ -28,26 +28,43 @@ export default function BlogImages({ imageUrls }: BlogImagesProps) {
     url.endsWith('.mp4') || url.endsWith('.mov') || url.endsWith('.webm')
 
   const renderMedia = (url: string, idx: number) => {
+    const video = isVideo(url)
+
     return (
       <div
         key={idx}
-        className="relative w-full h-full cursor-pointer"
+        className="relative w-full h-full cursor-pointer bg-black"
         onClick={() => openLightbox(idx)}
       >
-        {isVideo(url) ? (
-          <div className="w-full h-full relative">
-            <Image
+        {video ? (
+          <>
+            <video
               src={url}
-              alt={`video ${idx}`}
-              fill
-              className="object-cover"
+              muted
+              playsInline
+              className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 flex items-center justify-center text-white text-4xl">
-              ▶
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="backdrop-blur-sm bg-black/40 rounded-full p-4 shadow-lg">
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="white"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
             </div>
-          </div>
+
+          </>
         ) : (
-          <Image src={url} alt={`image ${idx}`} fill className="object-cover" />
+          <Image
+            src={url}
+            alt={`image ${idx}`}
+            fill
+            className="object-cover"
+          />
         )}
       </div>
     )
@@ -123,6 +140,7 @@ export default function BlogImages({ imageUrls }: BlogImagesProps) {
               />
             )}
           </div>
+
 
           <button
             className="absolute right-4 text-white text-3xl"
