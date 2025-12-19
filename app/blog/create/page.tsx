@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 
 export default function CreateBlogPage() {
@@ -11,26 +12,14 @@ export default function CreateBlogPage() {
   const [filePreviews, setFilePreviews] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const { data: session, status } = useSession()
 
-  // Check login
+  // Check login sử dụng session từ next-auth
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/me', { credentials: 'include' })
-        if (res.ok) {
-          setIsAuthenticated(true)
-        } else {
-          setIsAuthenticated(false)
-          router.push('/login')
-        }
-      } catch {
-        setIsAuthenticated(false)
-        router.push('/login')
-      }
+    if (status === 'unauthenticated') {
+      router.push('/login')
     }
-    checkAuth()
-  }, [router])
+  }, [status, router])
 
   // Handle file selection
   const handleFileChange = (filesList: FileList | null) => {
@@ -82,7 +71,7 @@ export default function CreateBlogPage() {
       })
 
       if (res.ok) {
-        router.push('/profile')
+        router.push('/home')
       } else if (res.status === 401) {
         alert('Please login to continue.')
         router.push('/login')
@@ -97,7 +86,7 @@ export default function CreateBlogPage() {
     }
   }
 
-  if (isAuthenticated === null) {
+  if (status === 'loading') {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-100">
         <p>Checking authentication...</p>
@@ -105,7 +94,7 @@ export default function CreateBlogPage() {
     )
   }
 
-  if (!isAuthenticated) return null
+  if (!session) return null
 
   return (
     <div className="min-h-screen bg-gray-50">
