@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 interface LikeButtonProps {
   blogId: string
@@ -17,46 +18,20 @@ export default function LikeButton({
   onLikeChange
 }: LikeButtonProps) {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [liked, setLiked] = useState(initialLiked)
   const [likeCount, setLikeCount] = useState(initialCount)
   const [loading, setLoading] = useState(false)
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null)
-
-  // gọi API /api/me
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const res = await fetch('/api/me', {
-          method: 'GET',
-          credentials: 'include',
-        })
-
-        if (!res.ok) {
-          console.log('Không có session, chuyển hướng đến /login')
-          setAuthenticated(false)
-          return
-        }
-
-        const data = await res.json()
-        console.log('User session found:', data)
-        setAuthenticated(true)
-      } catch (err) {
-        console.error('Lỗi kiểm tra session:', err)
-        setAuthenticated(false)
-      }
-    }
-
-    checkSession()
-  }, [])
+  
+  // Sử dụng session từ next-auth thay vì gọi API
+  const authenticated = status === 'authenticated'
 
   const handleLike = async () => {
-    if (authenticated === null) {
-      console.log('Đang kiểm tra session...')
-      return
+    if (status === 'loading') {
+      return // Đang kiểm tra session
     }
 
     if (!authenticated) {
-      console.log('Không có session, chuyển hướng đến /login')
       router.push('/login')
       return
     }
@@ -107,9 +82,9 @@ export default function LikeButton({
   return (
     <button
       onClick={handleLike}
-      disabled={loading || authenticated === null}
+      disabled={loading || status === 'loading'}
       className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors flex-1 justify-center ${
-        loading || authenticated === null
+        loading || status === 'loading'
           ? 'opacity-50 cursor-not-allowed'
           : 'hover:bg-gray-100'
       }`}

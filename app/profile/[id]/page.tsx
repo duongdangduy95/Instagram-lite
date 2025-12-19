@@ -15,20 +15,52 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
   const session = await getServerSession(authOptions)
   const currentUserId = session?.user?.id
   
+  // Nếu là chính mình, redirect về /profile
+  if (currentUserId === id) {
+    const { redirect } = await import('next/navigation')
+    redirect('/profile')
+  }
+  
   const user = await prisma.user.findUnique({
     where: { id },
-    include: { 
-      blogs: true,
-      followers: currentUserId ? {
-        where: { followerId: currentUserId }
-      } : false
+    select: {
+      id: true,
+      fullname: true,
+      username: true,
+      createdAt: true,
+      blogs: {
+        select: {
+          id: true,
+          caption: true,
+          imageUrls: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      },
+      _count: {
+        select: {
+          followers: true,
+          following: true,
+        },
+      },
     },
   })
 
   if (!user) return notFound()
   
-  const isOwnProfile = currentUserId === id
-  const isFollowing = user.followers ? user.followers.length > 0 : false
+  // Check follow status nếu có currentUserId
+  let isFollowing = false
+  if (currentUserId) {
+    const follow = await prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: currentUserId,
+          followingId: id,
+        },
+      },
+    })
+    isFollowing = !!follow
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -51,7 +83,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
               <p className="text-xl text-gray-600 mb-4">@{user.username}</p>
               
               {/* Follow Button */}
-              {!isOwnProfile && currentUserId && (
+              {currentUserId && (
                 <div className="mb-4">
                   <FollowButton
                     targetUserId={id}
@@ -73,6 +105,16 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
                   </svg>
                   <span>{user.blogs.length} bài viết</span>
                 </div>
+                {user._count && (
+                  <>
+                    <div className="flex items-center justify-center sm:justify-start gap-2">
+                      <span>{user._count.followers || 0} người theo dõi</span>
+                    </div>
+                    <div className="flex items-center justify-center sm:justify-start gap-2">
+                      <span>Đang theo dõi {user._count.following || 0}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -119,17 +161,33 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
                     {blog.caption}
                   </p>
                   
-                  {/* Post Image */}
-                  {blog.imageUrls && (
+                  {/* Post Images */}
+                  {blog.imageUrls && blog.imageUrls.length > 0 && (
                     <div className="relative w-full rounded-lg overflow-hidden bg-gray-100">
-                      <Image
-                        src={blog.imageUrls}
-                        alt="Post image"
-                        width={600}
-                        height={400}
-                        className="w-full h-auto object-cover"
-                        priority={false}
-                      />
+                      {blog.imageUrls.length === 1 ? (
+                        <Image
+                          src={blog.imageUrls[0]}
+                          alt="Post image"
+                          width={600}
+                          height={400}
+                          className="w-full h-auto object-cover"
+                          priority={false}
+                        />
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          {blog.imageUrls.slice(0, 4).map((imageUrl, idx) => (
+                            <Image
+                              key={idx}
+                              src={imageUrl}
+                              alt={`Post image ${idx + 1}`}
+                              width={300}
+                              height={300}
+                              className="w-full h-48 object-cover rounded"
+                              priority={false}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -159,7 +217,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
                       <span className="text-gray-600">💬</span>
                       <span className="text-gray-600 font-medium">Bình luận</span>
                     </Link>
-                    <ShareButton blogId={blog.id} />
+                    <ShareButton blogId={blog.id} imageUrl={blog.imageUrls?.[0]} />
 
                   </div>
                 </div>

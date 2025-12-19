@@ -1,10 +1,74 @@
-import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
 
-const prisma = new PrismaClient()
+// GET - Get blog detail
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: blogId } = await params
+  
+  const session = await getServerSession(authOptions)
+  const currentUserId = session?.user?.id
+
+  try {
+    const blog = await prisma.blog.findUnique({
+      where: { id: blogId },
+      include: {
+        author: {
+          select: {
+            id: true,
+            fullname: true,
+            username: true,
+          },
+        },
+        sharedFrom: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                fullname: true,
+                username: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: true,
+                comments: true,
+              },
+            },
+          },
+        },
+        likes: currentUserId
+          ? {
+              select: { userId: true },
+              where: { userId: currentUserId },
+            }
+          : undefined,
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
+    })
+
+    if (!blog) {
+      return NextResponse.json({ error: 'Blog not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(blog)
+  } catch (error) {
+    console.error('Error fetching blog:', error)
+    return NextResponse.json({ error: 'Failed to fetch blog' }, { status: 500 })
+  }
+}
 
 export async function PATCH(
   req: Request,
