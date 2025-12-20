@@ -189,7 +189,10 @@ export async function DELETE(
   }
 
   try {
-    const blog = await prisma.blog.findUnique({ where: { id: blogId } })
+    const blog = await prisma.blog.findUnique({
+      where: { id: blogId },
+    })
+
     if (!blog || blog.authorId !== userId) {
       return NextResponse.json(
         { error: 'Unauthorized or not found' },
@@ -197,18 +200,46 @@ export async function DELETE(
       )
     }
 
-    await prisma.blog.delete({ where: { id: blogId } })
 
-    /* XÓA FILE LOCAL */
-    for (const url of blog.imageUrls) {
-      if (!url.startsWith('/uploads/')) continue
-      const filepath = path.join(process.cwd(), 'public', url)
-      if (fs.existsSync(filepath)) {
-        fs.unlinkSync(filepath)
+    const bucketName = 'instagram'
+
+    const filesToDelete: string[] = []
+
+    for (const url of blog.imageUrls ?? []) {
+      try {
+        const pathname = new URL(url).pathname
+        const filePath = pathname.split(`/object/public/${bucketName}/`)[1]
+
+        if (filePath) {
+          filesToDelete.push(filePath)
+        }
+      } catch {
       }
     }
 
-    return NextResponse.json({ message: 'Blog deleted' })
+    if (filesToDelete.length > 0) {
+      const { error } = await supabase.storage
+        .from(bucketName)
+        .remove(filesToDelete)
+
+      if (error) {
+        console.error('Supabase delete error:', error)
+      }
+    }
+
+    await prisma.$transaction([
+      prisma.like.deleteMany({
+        where: { blogId },
+      }),
+      prisma.comment.deleteMany({
+        where: { blogId },
+      }),
+      prisma.blog.delete({
+        where: { id: blogId },
+      }),
+    ])
+
+    return NextResponse.json({ message: 'Blog deleted successfully' })
   } catch (error) {
     console.error('DELETE blog error:', error)
     return NextResponse.json(
@@ -217,3 +248,4 @@ export async function DELETE(
     )
   }
 }
+
