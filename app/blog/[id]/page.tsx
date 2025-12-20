@@ -229,7 +229,7 @@ export default function BlogDetailPage() {
                             if (!confirmDelete) return
 
                             await fetch(`/api/blog/${blog.id}`, { method: 'DELETE' })
-                            router.push('/home')
+                            router.push('/profile')
                           }}
                           className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10"
                         >

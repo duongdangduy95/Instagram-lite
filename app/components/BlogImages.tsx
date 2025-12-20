@@ -98,7 +98,7 @@ export default function BlogImages({ imageUrls }: BlogImagesProps) {
             <div key={idx} className="relative w-full h-full">
               {renderMedia(url, idx)}
               {idx === 3 && imageUrls.length > 4 && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-2xl font-bold">
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-2xl font-bold pointer-events-none">
                   +{imageUrls.length - 4}
                 </div>
               )}
@@ -114,7 +114,7 @@ export default function BlogImages({ imageUrls }: BlogImagesProps) {
           onClick={() => setIsOpen(false)}
         >
           <button
-            className="absolute left-4 text-white text-3xl"
+            className="absolute left-4 text-white text-3xl cursor-pointer select-none"
             onClick={(e) => {
               e.stopPropagation()
               setCurrentIndex(prevIndex())
@@ -143,7 +143,7 @@ export default function BlogImages({ imageUrls }: BlogImagesProps) {
 
 
           <button
-            className="absolute right-4 text-white text-3xl"
+            className="absolute right-4 text-white text-3xl cursor-pointer select-none"
             onClick={(e) => {
               e.stopPropagation()
               setCurrentIndex(nextIndex())
