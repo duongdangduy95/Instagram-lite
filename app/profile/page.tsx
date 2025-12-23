@@ -198,26 +198,26 @@ export default function ProfilePage() {
     setShowEditProfileModal(true)
   }
 
-  const validateProfileData = () => {
+  const validateProfileData = (data = editProfileData) => {
     const errors: Record<string, string> = {}
 
-    if (!editProfileData.fullname.trim()) {
+    if (!data.fullname.trim()) {
       errors.fullname = 'Họ và tên không được để trống'
-    } else if (editProfileData.fullname.trim().length < 2) {
+    } else if (data.fullname.trim().length < 2) {
       errors.fullname = 'Họ và tên phải có ít nhất 2 ký tự'
-    } else if (editProfileData.fullname.trim().length > 50) {
+    } else if (data.fullname.trim().length > 50) {
       errors.fullname = 'Họ và tên không được quá 50 ký tự'
     }
 
-    if (!editProfileData.email.trim()) {
+    if (!data.email.trim()) {
       errors.email = 'Email không được để trống'
-    } else if (!/\S+@\S+\.\S+/.test(editProfileData.email)) {
+    } else if (!/\S+@\S+\.\S+/.test(data.email)) {
       errors.email = 'Email không hợp lệ'
     }
 
-    if (editProfileData.phone.trim()) {
+    if (data.phone.trim()) {
       const phoneRegex = /^[0-9]{10,11}$/
-      if (!phoneRegex.test(editProfileData.phone.replace(/\s/g, ''))) {
+      if (!phoneRegex.test(data.phone.replace(/\s/g, ''))) {
         errors.phone = 'Số điện thoại phải có 10-11 chữ số'
       }
     }
@@ -521,8 +521,9 @@ export default function ProfilePage() {
                   type="text"
                   value={editProfileData.fullname}
                   onChange={(e) => {
-                    setEditProfileData({...editProfileData, fullname: e.target.value})
-                    if (profileErrors.fullname) setProfileErrors({...profileErrors, fullname: ''})
+                    const newData = {...editProfileData, fullname: e.target.value}
+                    setEditProfileData(newData)
+                    validateProfileData(newData)
                   }}
                   className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
                     profileErrors.fullname ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
@@ -540,8 +541,9 @@ export default function ProfilePage() {
                   type="email"
                   value={editProfileData.email}
                   onChange={(e) => {
-                    setEditProfileData({...editProfileData, email: e.target.value})
-                    if (profileErrors.email) setProfileErrors({...profileErrors, email: ''})
+                    const newData = {...editProfileData, email: e.target.value}
+                    setEditProfileData(newData)
+                    validateProfileData(newData)
                   }}
                   className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
                     profileErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
@@ -559,8 +561,9 @@ export default function ProfilePage() {
                   type="tel"
                   value={editProfileData.phone}
                   onChange={(e) => {
-                    setEditProfileData({...editProfileData, phone: e.target.value})
-                    if (profileErrors.phone) setProfileErrors({...profileErrors, phone: ''})
+                    const newData = {...editProfileData, phone: e.target.value}
+                    setEditProfileData(newData)
+                    validateProfileData(newData)
                   }}
                   className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
                     profileErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
