@@ -14,12 +14,25 @@ interface UserSuggestionItemProps {
     }
   }
   currentUserId: string | null
+  isFollowingOverride?: boolean
+  followersCountOverride?: number
+  onFollowChange?: (isFollowing: boolean, followersCount?: number) => void
 }
 
-export default function UserSuggestionItem({ user, currentUserId }: UserSuggestionItemProps) {
-  const isFollowing = (user.followers?.length ?? 0) > 0
+export default function UserSuggestionItem({
+  user,
+  currentUserId,
+  isFollowingOverride,
+  followersCountOverride,
+  onFollowChange,
+}: UserSuggestionItemProps) {
+  const isFollowing = typeof isFollowingOverride === 'boolean'
+    ? isFollowingOverride
+    : (user.followers?.length ?? 0) > 0
 
-  const followersCount = user._count?.followers ?? 0
+  const followersCount = typeof followersCountOverride === 'number'
+    ? followersCountOverride
+    : (user._count?.followers ?? 0)
 
   return (
     <div className="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-gray-900 transition-colors">
@@ -44,6 +57,7 @@ export default function UserSuggestionItem({ user, currentUserId }: UserSuggesti
             targetUserId={user.id}
             initialIsFollowing={isFollowing}
             size="sm"
+            onFollowChange={onFollowChange}
           />
         </div>
       )}
