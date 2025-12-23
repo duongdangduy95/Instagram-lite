@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface FollowButtonProps {
   targetUserId: string
   initialIsFollowing: boolean
-  onFollowChange?: (isFollowing: boolean, followersCount: number) => void
+  onFollowChange?: (isFollowing: boolean, followersCount?: number) => void
   size?: 'sm' | 'md' // sm cho sidebar, md cho post
 }
 
@@ -18,12 +18,19 @@ export default function FollowButton({
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Đồng bộ khi parent cập nhật trạng thái follow (để các nút ở nơi khác đổi theo ngay)
+  useEffect(() => {
+    setIsFollowing(initialIsFollowing)
+  }, [initialIsFollowing])
+
   const handleFollow = async () => {
     // Optimistic update - cập nhật UI ngay lập tức
     const previousIsFollowing = isFollowing
     const newIsFollowing = !isFollowing
     
     setIsFollowing(newIsFollowing)
+    // Báo cho parent update ngay (đồng bộ sidebar/feed) — chưa có followersCount thì để undefined
+    onFollowChange?.(newIsFollowing)
     setIsLoading(true)
     
     try {
@@ -39,12 +46,14 @@ export default function FollowButton({
       } else {
         // Rollback nếu có lỗi
         setIsFollowing(previousIsFollowing)
+        onFollowChange?.(previousIsFollowing)
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         alert(errorData.error || 'Có lỗi xảy ra')
       }
     } catch (error) {
       // Rollback nếu có lỗi
       setIsFollowing(previousIsFollowing)
+      onFollowChange?.(previousIsFollowing)
       console.error('Error:', error)
       alert('Có lỗi xảy ra')
     } finally {
@@ -56,7 +65,9 @@ export default function FollowButton({
     <button
       onClick={handleFollow}
       disabled={isLoading}
-      className="text-sm font-semibold transition-colors disabled:opacity-50 text-[#877EFF] hover:text-[#7565E6]"
+      className={`font-semibold transition-colors disabled:opacity-50 text-white rounded-lg bg-[#877EFF] hover:bg-[#7565E6] ${
+        size === 'sm' ? 'text-xs px-3 py-1' : 'text-sm px-4 py-2'
+      }`}
     >
       {isLoading ? '...' : isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
     </button>
