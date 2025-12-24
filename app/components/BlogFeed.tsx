@@ -6,6 +6,7 @@ import { formatTimeAgo } from '@/lib/formatTimeAgo'
 import BlogActions from './BlogActions'
 import BlogImages from './BlogImages'
 import FollowButton from './FollowButton'
+import type { BlogDTO, CurrentUserSafe } from '@/types/dto'
 
 export default function BlogFeed({
   blogs,
@@ -13,8 +14,8 @@ export default function BlogFeed({
   followMap,
   onFollowChange,
 }: {
-  blogs: any[]
-  currentUser: any
+  blogs: BlogDTO[]
+  currentUser: CurrentUserSafe
   followMap?: Record<string, boolean>
   onFollowChange?: (targetUserId: string, isFollowing: boolean, followersCount?: number) => void
 }) {
@@ -41,7 +42,7 @@ export default function BlogFeed({
         const initialIsFollowing =
           typeof followMap?.[followTargetUserId] === 'boolean'
             ? followMap![followTargetUserId]
-            : (blog.author.followers?.length ?? 0) > 0
+            : ((isShared ? blog.author.followers : displayBlog.author.followers)?.length ?? 0) > 0
 
         return (
           <div key={blog.id} className="bg-black text-gray-100">
@@ -87,7 +88,7 @@ export default function BlogFeed({
                     {/* MEDIA TRƯỚC */}
                     <Link href={`/blog/${displayBlog.id}`} className="block">
                       <div className="bg-gray-900">
-                        <BlogImages imageUrls={displayBlog.imageUrls} blogId={displayBlog.id} />
+                        <BlogImages imageUrls={displayBlog.imageUrls} />
                       </div>
                     </Link>
 
@@ -152,7 +153,7 @@ export default function BlogFeed({
 
                 <div className="px-4 pb-4">
                   <div className="rounded-lg overflow-hidden bg-gray-900">
-                    <BlogImages imageUrls={displayBlog.imageUrls} blogId={displayBlog.id} />
+                    <BlogImages imageUrls={displayBlog.imageUrls} />
                   </div>
                 </div>
               </>

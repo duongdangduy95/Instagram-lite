@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     })
 
     return NextResponse.json(comment)
-  } catch (_error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to add comment' }, { status: 500 })
   }
 }

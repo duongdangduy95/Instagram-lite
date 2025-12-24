@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Navigation from "../components/Navigation"
-import { useRouter } from 'next/navigation'
-import BlogImages from '../components/BlogImages'
 import FollowModal from '../components/FollowModal'
 
 interface Blog {
@@ -59,14 +57,10 @@ interface UserType {
 }
 
 export default function ProfilePage() {
-  const router = useRouter()
   const [user, setUser] = useState<UserType | null>(null)
   const [myBlogs, setMyBlogs] = useState<Blog[]>([])
   const [likedBlogs, setLikedBlogs] = useState<Blog[]>([])
   const [activeTab, setActiveTab] = useState<'posts' | 'shared' | 'saved' | 'liked'>('posts')
-  const [editingPost, setEditingPost] = useState<string | null>(null)
-  const [editCaption, setEditCaption] = useState<string>('')
-  const [editImage, setEditImage] = useState<File | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
@@ -108,61 +102,6 @@ export default function ProfilePage() {
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [showDropdown])
-
-  const handleEditPost = (blog: Blog) => {
-    setEditingPost(blog.id)
-    setEditCaption(blog.caption)
-    setEditImage(null)
-  }
-
-  const handleSaveEdit = async (blogId: string) => {
-    setIsLoading(true)
-    try {
-      const formData = new FormData()
-      formData.append('caption', editCaption)
-      if (editImage) {
-        formData.append('image', editImage)
-      }
-
-      const response = await fetch(`/api/blog/${blogId}`, {
-        method: 'PATCH',
-        body: formData,
-        credentials: 'include',
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setMyBlogs(prevBlogs => 
-          prevBlogs.map(blog => 
-            blog.id === blogId 
-              ? { 
-                  ...blog, 
-                  caption: result.blog.caption, 
-                  imageUrls: result.blog.imageUrls || blog.imageUrls,
-                  _count: blog._count
-                }
-              : blog
-          )
-        )
-        setEditingPost(null)
-        setEditCaption('')
-        setEditImage(null)
-        alert('Cập nhật bài viết thành công!')
-      } else {
-        alert('Có lỗi xảy ra khi cập nhật bài viết')
-      }
-    } catch (_error) {
-      alert('Có lỗi xảy ra khi cập nhật bài viết')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleCancelEdit = () => {
-    setEditingPost(null)
-    setEditCaption('')
-    setEditImage(null)
-  }
 
   const handleDeletePost = async (blogId: string) => {
     setIsLoading(true)
@@ -254,7 +193,7 @@ export default function ProfilePage() {
           alert(data.error || 'Không thể cập nhật hồ sơ')
         }
       }
-    } catch (_error) {
+    } catch {
       alert('Có lỗi xảy ra')
     } finally {
       setIsLoading(false)

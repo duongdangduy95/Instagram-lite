@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 
@@ -18,7 +18,7 @@ export default function LikeButton({
   onLikeChange
 }: LikeButtonProps) {
   const router = useRouter()
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const [liked, setLiked] = useState(initialLiked)
   const [likeCount, setLikeCount] = useState(initialCount)
   const [loading, setLoading] = useState(false)

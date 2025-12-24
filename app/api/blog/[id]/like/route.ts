@@ -42,9 +42,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     return NextResponse.json({ liked })
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Xử lý lỗi unique constraint nếu có race condition
-    if (error?.code === 'P2002') {
+    const err = error as { code?: string } | null
+    if (err?.code === 'P2002') {
       // Nếu đã tồn tại do race condition, thử xóa lại
       try {
         const existingLike = await prisma.like.findFirst({

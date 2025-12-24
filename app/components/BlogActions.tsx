@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import CommentSection from './CommentSection'
 import Image from 'next/image'
+import type { CurrentUserSafe } from '@/types/dto'
 
 interface BlogActionsProps {
   blogId: string
@@ -11,11 +12,7 @@ interface BlogActionsProps {
   initialLikeCount: number
   initialCommentCount: number
   initialLiked: boolean
-  currentUser: {
-    id: string
-    fullname: string
-    username: string
-  } | null
+  currentUser: CurrentUserSafe
 }
 
 export default function BlogActions({
