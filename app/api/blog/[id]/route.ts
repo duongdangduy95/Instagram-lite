@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import fs from 'fs'
-import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 
 /* =========================
@@ -131,7 +129,6 @@ export async function PATCH(
 
     for (const file of newFiles) {
       const buffer = Buffer.from(await file.arrayBuffer())
-      const ext = file.type.split('/')[1] || 'jpg'
       const fileName = `posts/${userId}/${Date.now()}-${file.name}`
 
       const { error } = await supabase.storage

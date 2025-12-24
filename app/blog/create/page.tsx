@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Navigation from '@/app/components/Navigation'
+import { MAX_MEDIA_FILES, validateAndFilterMediaFiles } from '@/lib/mediaValidation'
 
 export default function CreateBlogPage() {
   const router = useRouter()
@@ -34,21 +35,41 @@ export default function CreateBlogPage() {
   // Add files
   const handleAddFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return
-    const newFiles = Array.from(e.target.files)
+    const selected = Array.from(e.target.files)
 
-    setFiles(prev => [...prev, ...newFiles])
+    // Reset input để có thể chọn lại cùng file
+    e.target.value = ''
+
+    const remainingSlots = Math.max(0, MAX_MEDIA_FILES - files.length)
+    const { accepted, rejectedReasons, truncatedByLimit } = validateAndFilterMediaFiles({
+      selectedFiles: selected,
+      remainingSlots,
+    })
+
+    if (rejectedReasons.length > 0) {
+      alert(rejectedReasons.slice(0, 3).join('\n') + (rejectedReasons.length > 3 ? '\n...' : ''))
+    }
+    if (truncatedByLimit) {
+      alert(`Chỉ được tối đa ${MAX_MEDIA_FILES} file. Một số file đã bị bỏ qua.`)
+    }
+    if (accepted.length === 0) return
+
+    setFiles(prev => [...prev, ...accepted])
     setFileTypes(prev => [
       ...prev,
-      ...newFiles.map(f => (f.type.startsWith('video') ? 'video' : 'image')),
+      ...accepted.map(f => (f.type.startsWith('video') ? 'video' : 'image')),
     ])
     setPreviews(prev => [
       ...prev,
-      ...newFiles.map(f => URL.createObjectURL(f)),
+      ...accepted.map(f => URL.createObjectURL(f)),
     ])
   }
 
   // Remove file
   const removeFile = (index: number) => {
+    // Revoke ngay để tránh leak khi thao tác nhiều
+    const url = previews[index]
+    if (url) URL.revokeObjectURL(url)
     setFiles(prev => prev.filter((_, i) => i !== index))
     setPreviews(prev => prev.filter((_, i) => i !== index))
     setFileTypes(prev => prev.filter((_, i) => i !== index))

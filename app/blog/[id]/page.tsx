@@ -9,7 +9,7 @@ import BlogImages from '@/app/components/BlogImages'
 import BlogActions from '@/app/components/BlogActions'
 import FollowButton from '@/app/components/FollowButton'
 import { formatTimeAgo } from '@/lib/formatTimeAgo'
-import { useSession } from 'next-auth/react'
+import { useCurrentUser } from '@/app/contexts/CurrentUserContext'
 
 interface Blog {
   id: string
@@ -47,7 +47,6 @@ interface Blog {
 export default function BlogDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { data: session } = useSession()
   const blogId = params.id as string
 
   const [showOptions, setShowOptions] = useState(false)
@@ -67,11 +66,7 @@ export default function BlogDetailPage() {
 
   const [blog, setBlog] = useState<Blog | null>(null)
   const [loading, setLoading] = useState(true)
-  const [currentUser, setCurrentUser] = useState<{
-    id: string
-    fullname: string
-    username: string
-  } | null>(null)
+  const { user: currentUser } = useCurrentUser()
 
   useEffect(() => {
     const fetchBlog = async () => {
@@ -93,29 +88,10 @@ export default function BlogDetailPage() {
       }
     }
 
-    const fetchCurrentUser = async () => {
-      if (session?.user?.id) {
-        try {
-          const res = await fetch('/api/me/basic', { credentials: 'include' })
-          if (res.ok) {
-            const userData = await res.json()
-            setCurrentUser({
-              id: session.user.id as string,
-              fullname: userData.fullname,
-              username: userData.username,
-            })
-          }
-        } catch (error) {
-          console.error('Error fetching user:', error)
-        }
-      }
-    }
-
     if (blogId) {
       fetchBlog()
-      fetchCurrentUser()
     }
-  }, [blogId, session, router])
+  }, [blogId, router])
 
   if (loading) {
     return (
@@ -277,7 +253,7 @@ export default function BlogDetailPage() {
             {/* Images */}
             <div className="px-4 pb-4">
               <div className="rounded-lg overflow-hidden bg-gray-900">
-                <BlogImages imageUrls={displayBlog.imageUrls} blogId={displayBlog.id} />
+                <BlogImages imageUrls={displayBlog.imageUrls} />
               </div>
             </div>
 

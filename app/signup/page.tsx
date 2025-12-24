@@ -100,7 +100,7 @@ export default function SignupPage() {
         setMessage(data.message || 'Đăng ký thất bại')
         setMessageType('error')
       }
-    } catch (_error) {
+    } catch {
       setMessage('Có lỗi xảy ra, vui lòng thử lại')
       setMessageType('error')
     } finally {

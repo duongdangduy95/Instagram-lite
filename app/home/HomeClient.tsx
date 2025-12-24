@@ -3,45 +3,11 @@
 import { useMemo, useState } from 'react'
 import BlogFeed from '@/app/components/BlogFeed'
 import UserSuggestionItem from '@/app/components/UserSuggestionItem'
-
-type CurrentUserSafe = { id: string; fullname: string; username: string } | null
-
-type SuggestUser = {
-  id: string
-  fullname: string
-  username: string
-  followers?: { followerId: string }[]
-  _count?: { followers: number }
-}
-
-type BlogAuthor = {
-  id: string
-  fullname: string
-  username: string
-  followers?: { followerId: string }[]
-}
-
-type BlogDTO = {
-  id: string
-  caption?: string | null
-  imageUrls: string[]
-  createdAt: string
-  author: BlogAuthor
-  likes?: { userId: string }[]
-  _count: { likes: number; comments: number }
-  sharedFrom?: {
-    id: string
-    caption?: string | null
-    imageUrls: string[]
-    createdAt: string
-    author: { id: string; fullname: string; username: string }
-    _count: { likes: number; comments: number }
-  } | null
-}
+import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
 
 export default function HomeClient(props: {
   blogs: BlogDTO[]
-  users: SuggestUser[]
+  users: SuggestUserDTO[]
   currentUser: CurrentUserSafe
 }) {
   const { blogs, users, currentUser } = props
@@ -56,12 +22,10 @@ export default function HomeClient(props: {
 
     // từ feed (đảm bảo cả sharer & author bài gốc)
     for (const b of blogs) {
-      const isShared = !!b.sharedFrom
-      const followTarget = isShared ? b.author : b.sharedFrom ? b.author : b.author
-      // NOTE: BlogFeed follow target hiện là:
+      // NOTE: BlogFeed follow target:
       // - share: b.author (người share)
-      // - normal: b.author (author bài)
-      map[followTarget.id] = (followTarget.followers?.length ?? 0) > 0
+      // - normal: b.author (tác giả bài)
+      map[b.author.id] = (b.author.followers?.length ?? 0) > 0
     }
 
     return map

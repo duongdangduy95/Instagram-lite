@@ -3,6 +3,7 @@ import Navigation from '../components/Navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import HomeClient from './HomeClient'
+import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
 
 
 
@@ -108,7 +109,7 @@ export default async function HomePage() {
   })
 
   // Serialize Date -> string để truyền vào Client Component
-  const blogsDto = blogs.map((b) => ({
+  const blogsDto: BlogDTO[] = blogs.map((b) => ({
     ...b,
     createdAt: b.createdAt.toISOString(),
     sharedFrom: b.sharedFrom
@@ -124,7 +125,11 @@ export default async function HomePage() {
       {/* NAVIGATION */}
       <Navigation />
 
-      <HomeClient blogs={blogsDto as any} users={users as any} currentUser={currentUser} />
+      <HomeClient
+        blogs={blogsDto}
+        users={users as SuggestUserDTO[]}
+        currentUser={currentUser as CurrentUserSafe}
+      />
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Navigation from '@/app/components/Navigation'
+import { MAX_MEDIA_FILES, validateAndFilterMediaFiles } from '@/lib/mediaValidation'
 
 export default function EditBlogPage() {
   const { id } = useParams()
@@ -51,19 +52,36 @@ export default function EditBlogPage() {
   const handleAddFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return
 
-    const files = Array.from(e.target.files)
+    const selected = Array.from(e.target.files)
 
-    setNewFiles(prev => [...prev, ...files])
+    // Reset input để có thể chọn lại cùng file
+    e.target.value = ''
+
+    const remainingSlots = Math.max(0, MAX_MEDIA_FILES - existingImages.length - newFiles.length)
+    const { accepted, rejectedReasons, truncatedByLimit } = validateAndFilterMediaFiles({
+      selectedFiles: selected,
+      remainingSlots,
+    })
+
+    if (rejectedReasons.length > 0) {
+      alert(rejectedReasons.slice(0, 3).join('\n') + (rejectedReasons.length > 3 ? '\n...' : ''))
+    }
+    if (truncatedByLimit) {
+      alert(`Chỉ được tối đa ${MAX_MEDIA_FILES} file (tính cả file hiện có). Một số file đã bị bỏ qua.`)
+    }
+    if (accepted.length === 0) return
+
+    setNewFiles(prev => [...prev, ...accepted])
     setNewFileTypes(prev => [
       ...prev,
-      ...files.map(file =>
+      ...accepted.map(file =>
         file.type.startsWith('video') ? 'video' : 'image'
       ),
     ])
 
     setNewPreviews(prev => [
       ...prev,
-      ...files.map(file => URL.createObjectURL(file))
+      ...accepted.map(file => URL.createObjectURL(file))
     ])
   }
 
@@ -157,6 +175,8 @@ export default function EditBlogPage() {
 
               <button
                 onClick={() => {
+                  // Revoke ngay để tránh leak khi thao tác nhiều
+                  URL.revokeObjectURL(url)
                   setNewPreviews(prev => prev.filter((_, i) => i !== index))
                   setNewFiles(prev => prev.filter((_, i) => i !== index))
                   setNewFileTypes(prev => prev.filter((_, i) => i !== index))
