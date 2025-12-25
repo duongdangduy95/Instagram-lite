@@ -43,8 +43,9 @@ export default function HomePageClient() {
         const blogsData = await blogsRes.json()
         setBlogs(blogsData)
       }
-    } catch (_error) {
-      // Error fetching data finally {
+    } catch {
+      // Error fetching data
+    } finally {
       setLoading(false)
     }
   }

@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Navigation from "../components/Navigation"
-import { useRouter } from 'next/navigation'
-import BlogImages from '../components/BlogImages'
 import FollowModal from '../components/FollowModal'
 
 interface Blog {
@@ -59,14 +57,10 @@ interface UserType {
 }
 
 export default function ProfilePage() {
-  const router = useRouter()
   const [user, setUser] = useState<UserType | null>(null)
   const [myBlogs, setMyBlogs] = useState<Blog[]>([])
   const [likedBlogs, setLikedBlogs] = useState<Blog[]>([])
-  const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'tagged'>('posts')
-  const [editingPost, setEditingPost] = useState<string | null>(null)
-  const [editCaption, setEditCaption] = useState<string>('')
-  const [editImage, setEditImage] = useState<File | null>(null)
+  const [activeTab, setActiveTab] = useState<'posts' | 'shared' | 'saved' | 'liked'>('posts')
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
@@ -108,61 +102,6 @@ export default function ProfilePage() {
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [showDropdown])
-
-  const handleEditPost = (blog: Blog) => {
-    setEditingPost(blog.id)
-    setEditCaption(blog.caption)
-    setEditImage(null)
-  }
-
-  const handleSaveEdit = async (blogId: string) => {
-    setIsLoading(true)
-    try {
-      const formData = new FormData()
-      formData.append('caption', editCaption)
-      if (editImage) {
-        formData.append('image', editImage)
-      }
-
-      const response = await fetch(`/api/blog/${blogId}`, {
-        method: 'PATCH',
-        body: formData,
-        credentials: 'include',
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setMyBlogs(prevBlogs => 
-          prevBlogs.map(blog => 
-            blog.id === blogId 
-              ? { 
-                  ...blog, 
-                  caption: result.blog.caption, 
-                  imageUrls: result.blog.imageUrls || blog.imageUrls,
-                  _count: blog._count
-                }
-              : blog
-          )
-        )
-        setEditingPost(null)
-        setEditCaption('')
-        setEditImage(null)
-        alert('Cập nhật bài viết thành công!')
-      } else {
-        alert('Có lỗi xảy ra khi cập nhật bài viết')
-      }
-    } catch (_error) {
-      alert('Có lỗi xảy ra khi cập nhật bài viết')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleCancelEdit = () => {
-    setEditingPost(null)
-    setEditCaption('')
-    setEditImage(null)
-  }
 
   const handleDeletePost = async (blogId: string) => {
     setIsLoading(true)
@@ -254,7 +193,7 @@ export default function ProfilePage() {
           alert(data.error || 'Không thể cập nhật hồ sơ')
         }
       }
-    } catch (_error) {
+    } catch {
       alert('Có lỗi xảy ra')
     } finally {
       setIsLoading(false)
@@ -271,6 +210,9 @@ export default function ProfilePage() {
 
   const followersCount = user._count?.followers || 0
   const followingCount = user._count?.following || 0
+
+  const originalBlogs = myBlogs.filter((b) => !b.sharedFrom)
+  const sharedBlogs = myBlogs.filter((b) => !!b.sharedFrom)
 
   return (
     <div className="min-h-screen bg-black">
@@ -316,7 +258,7 @@ export default function ProfilePage() {
               {/* Stats */}
               <div className="flex items-center gap-6 sm:gap-8 mb-4">
                 <div className="flex items-center gap-1">
-                  <span className="text-white font-semibold">{myBlogs.length}</span>
+                  <span className="text-white font-semibold">{originalBlogs.length}</span>
                   <span className="text-gray-400">bài viết</span>
                 </div>
                 <button
@@ -371,17 +313,39 @@ export default function ProfilePage() {
               <span className="text-xs uppercase tracking-wider font-medium">Đã lưu</span>
             </button>
             <button
-              onClick={() => setActiveTab('tagged')}
+              onClick={() => setActiveTab('shared')}
               className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
-                activeTab === 'tagged'
+                activeTab === 'shared'
                   ? 'border-white text-white'
                   : 'border-transparent text-gray-400 hover:text-white'
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"
+                />
               </svg>
-              <span className="text-xs uppercase tracking-wider font-medium">Được gắn thẻ</span>
+              <span className="text-xs uppercase tracking-wider font-medium">Chia sẻ</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('liked')}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
+                activeTab === 'liked'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="text-xs uppercase tracking-wider font-medium">Đã thích</span>
             </button>
           </div>
         </div>
@@ -390,9 +354,9 @@ export default function ProfilePage() {
         <div className="max-w-4xl mx-auto px-4 pb-8">
           {activeTab === 'posts' && (
             <>
-              {myBlogs.length > 0 ? (
+              {originalBlogs.length > 0 ? (
                 <div className="grid grid-cols-3 gap-1">
-                  {myBlogs.map((blog) => {
+                  {originalBlogs.map((blog) => {
                     const displayBlog = blog.sharedFrom ?? blog
                     return (
                       <Link
@@ -417,7 +381,7 @@ export default function ProfilePage() {
                             </svg>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
                           <div className="opacity-0 group-hover:opacity-100 flex items-center gap-6 text-white">
                             <div className="flex items-center gap-2">
                               <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -460,6 +424,89 @@ export default function ProfilePage() {
             </>
           )}
 
+          {activeTab === 'shared' && (
+            <>
+              {sharedBlogs.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1">
+                  {sharedBlogs.map((blog) => {
+                    const displayBlog = blog.sharedFrom ?? blog
+                    return (
+                      <Link
+                        key={blog.id}
+                        href={`/blog/${displayBlog.id}`}
+                        className="aspect-square bg-gray-900 relative group overflow-hidden"
+                      >
+                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (
+                          <Image
+                            src={displayBlog.imageUrls[0]}
+                            alt={displayBlog.caption || 'Post'}
+                            fill
+                            className="object-cover group-hover:opacity-70 transition-opacity"
+                            sizes="(max-width: 768px) 33vw, 300px"
+                          />
+                        )}
+                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 1 && (
+                          <div className="absolute top-2 right-2">
+                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                              <path
+                                fillRule="evenodd"
+                                d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-6 text-white">
+                            <div className="flex items-center gap-2">
+                              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              <span className="font-semibold">{blog._count?.likes || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                />
+                              </svg>
+                              <span className="font-semibold">{blog._count?.comments || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="w-24 h-24 mb-6 flex items-center justify-center">
+                    <svg className="w-full h-full text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Bài viết bạn đã chia sẻ</h3>
+                  <p className="text-gray-400 text-center max-w-sm">
+                    Những bài viết bạn chia sẻ sẽ xuất hiện ở đây.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
           {activeTab === 'saved' && (
             <div className="flex flex-col items-center justify-center py-16">
               <div className="w-24 h-24 mb-6 flex items-center justify-center">
@@ -474,18 +521,86 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {activeTab === 'tagged' && (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-24 h-24 mb-6 flex items-center justify-center">
-                <svg className="w-full h-full text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Ảnh của bạn được gắn thẻ</h3>
-              <p className="text-gray-400 text-center max-w-sm">
-                Mọi người gắn thẻ bạn trong ảnh sẽ xuất hiện ở đây.
-              </p>
-            </div>
+          {activeTab === 'liked' && (
+            <>
+              {likedBlogs.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1">
+                  {likedBlogs.map((blog) => {
+                    const displayBlog = blog.sharedFrom ?? blog
+                    return (
+                      <Link
+                        key={blog.id}
+                        href={`/blog/${displayBlog.id}`}
+                        className="aspect-square bg-gray-900 relative group overflow-hidden"
+                      >
+                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (
+                          <Image
+                            src={displayBlog.imageUrls[0]}
+                            alt={displayBlog.caption || 'Post'}
+                            fill
+                            className="object-cover group-hover:opacity-70 transition-opacity"
+                            sizes="(max-width: 768px) 33vw, 300px"
+                          />
+                        )}
+                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 1 && (
+                          <div className="absolute top-2 right-2">
+                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                              <path
+                                fillRule="evenodd"
+                                d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-6 text-white">
+                            <div className="flex items-center gap-2">
+                              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              <span className="font-semibold">{blog._count?.likes || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                />
+                              </svg>
+                              <span className="font-semibold">{blog._count?.comments || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="w-24 h-24 mb-6 flex items-center justify-center">
+                    <svg className="w-full h-full text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Bài viết bạn đã thích</h3>
+                  <p className="text-gray-400 text-center max-w-sm">
+                    Những bài viết bạn bấm thích sẽ xuất hiện ở đây.
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

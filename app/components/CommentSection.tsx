@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import Image from 'next/image';
+import type { CurrentUserSafe } from '@/types/dto';
 
 interface Comment {
   id: string;
@@ -20,11 +20,7 @@ interface Comment {
 
 interface Props {
   blogId: string;
-  currentUser: {
-    id: string;
-    fullname: string;
-    username: string;
-  } | null;
+  currentUser: CurrentUserSafe;
   onCommentAdded?: () => void;
   onClose?: () => void;
   inline?: boolean;
@@ -61,14 +57,23 @@ export default function CommentSection({ blogId, currentUser, onCommentAdded, on
   const [replyTo, setReplyTo] = useState<string | null>(null);
 
   useEffect(() => {
-    axios.get(`/api/blog/${blogId}/comment`, {
-      withCredentials: true
-    }).then((res) => {
-      const tree = buildCommentTree(res.data);
-      setComments(tree);
-    }).catch((err) => {
-      console.error('Error loading comments:', err);
-    });
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/blog/${blogId}/comment`, {
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          throw new Error(`Failed to load comments: HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        const tree = buildCommentTree(data);
+        setComments(tree);
+      } catch (err) {
+        console.error('Error loading comments:', err);
+      }
+    };
+
+    load();
   }, [blogId]);
   
   async function handleSubmit(e: React.FormEvent) {
@@ -76,20 +81,29 @@ export default function CommentSection({ blogId, currentUser, onCommentAdded, on
     if (!newComment.trim()) return;
 
     try {
-      await axios.post(`/api/blog/${blogId}/comment`, {
-        content: newComment,
-        parentId: replyTo,
-      }, {
-        withCredentials: true
+      const createRes = await fetch(`/api/blog/${blogId}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          content: newComment,
+          parentId: replyTo,
+        }),
       });
+
+      if (!createRes.ok) {
+        const errText = await createRes.text().catch(() => '');
+        throw new Error(`Failed to submit comment: HTTP ${createRes.status} ${errText}`);
+      }
 
       setNewComment('');
       setReplyTo(null);
 
-      const res = await axios.get(`/api/blog/${blogId}/comment`, {
-        withCredentials: true
-      });
-      setComments(buildCommentTree(res.data));
+      const res = await fetch(`/api/blog/${blogId}/comment`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setComments(buildCommentTree(data));
+      }
       
       // Gọi callback để cập nhật số lượng bình luận
       if (onCommentAdded) {
@@ -162,18 +176,18 @@ export default function CommentSection({ blogId, currentUser, onCommentAdded, on
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b bg-gray-50">
-        <h2 className="text-lg font-semibold">Bình luận</h2>
+      <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-black">
+        <h2 className="text-lg font-semibold text-white">Bình luận</h2>
         <button
           onClick={onClose}
-          className="text-red-500 text-xl font-bold hover:text-red-600"
+          className="text-gray-400 text-xl font-bold hover:text-white"
         >
           ✕
         </button>
       </div>
 
       {/* Comments List - Scrollable */}
-      <div className="flex-1 p-4 overflow-y-auto">
+      <div className="flex-1 p-4 overflow-y-auto bg-black">
         <div className="space-y-3">
           {comments.map((comment) => (
             <CommentItem
@@ -188,15 +202,15 @@ export default function CommentSection({ blogId, currentUser, onCommentAdded, on
 
       {/* Comment Form - Fixed at Bottom */}
       {currentUser && (
-        <div className="border-t bg-white p-4">
+        <div className="border-t border-gray-800 bg-black p-4">
           <form onSubmit={handleSubmit}>
             {replyTo && (
-              <div className="text-sm text-blue-500 mb-2">
+              <div className="text-sm text-purple-primary mb-2">
                 Trả lời một bình luận.{' '}
                 <button
                   onClick={() => setReplyTo(null)}
                   type="button"
-                  className="text-red-500 underline ml-2"
+                  className="text-gray-400 underline ml-2 hover:text-gray-300"
                 >
                   Huỷ
                 </button>
@@ -207,11 +221,11 @@ export default function CommentSection({ blogId, currentUser, onCommentAdded, on
               onChange={(e) => setNewComment(e.target.value)}
               rows={2}
               placeholder="Viết bình luận..."
-              className="w-full border rounded p-2 focus:outline-none focus:ring focus:ring-blue-300"
+              className="w-full bg-transparent border border-gray-700 rounded-lg p-2 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-purple-primary resize-none"
             />
             <button
               type="submit"
-              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="mt-2 px-4 py-2 bg-purple-primary text-white rounded-lg hover:bg-purple-primary-dark transition-colors"
             >
               Gửi
             </button>
@@ -325,18 +339,18 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
 
   return (
     <div className="ml-2 mt-2">
-      <div className="p-2 bg-gray-100 rounded-lg border border-gray-200">
-        <p className="text-sm font-medium text-gray-800">
+      <div className="p-3 bg-gray-900/60 rounded-lg border border-gray-800">
+        <p className="text-sm font-medium text-gray-100">
           {comment.author.fullname}{' '}
-          <span className="text-gray-500 text-xs">
+          <span className="text-gray-500 text-xs font-normal">
             {new Date(comment.createdAt).toLocaleString()}
           </span>
         </p>
-        <p className="text-sm text-gray-700">{comment.content}</p>
+        <p className="text-sm text-gray-300 mt-1">{comment.content}</p>
         {currentUser && (
           <button
             onClick={() => onReply(comment.id)}
-            className="text-xs text-blue-500 hover:underline mt-1"
+            className="text-xs text-gray-400 hover:text-purple-primary transition-colors mt-2"
           >
             Trả lời
           </button>
@@ -345,7 +359,7 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
 
       {/* Replies */}
       {comment.replies.length > 0 && (
-        <div className="ml-4 border-l pl-2 mt-2">
+        <div className="ml-4 border-l border-gray-800 pl-3 mt-2">
           {comment.replies.map((reply) => (
             <CommentItem
               key={reply.id}

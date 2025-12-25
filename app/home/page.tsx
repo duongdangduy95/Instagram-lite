@@ -1,14 +1,9 @@
-import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
-import { formatTimeAgo } from '@/lib/formatTimeAgo'
 import Navigation from '../components/Navigation'
-import BlogActions from '../components/BlogActions'
-import FollowButton from '../components/FollowButton'
-import BlogImages from '../components/BlogImages'
-import UserSuggestionItem from '../components/UserSuggestionItem'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import BlogFeed from '../components/BlogFeed'
+import HomeClient from './HomeClient'
+import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
 
 
 
@@ -50,7 +45,11 @@ type BlogWithRelations = {
 async function getCurrentUser() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return null
-  return prisma.user.findUnique({ where: { id: session.user.id } })
+  // Chỉ lấy field cần thiết để tránh lộ thông tin nhạy cảm (vd: password)
+  return prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, fullname: true, username: true },
+  })
 }
 
 export default async function HomePage() {
@@ -109,33 +108,28 @@ export default async function HomePage() {
     orderBy: { createdAt: 'desc' },
   })
 
+  // Serialize Date -> string để truyền vào Client Component
+  const blogsDto: BlogDTO[] = blogs.map((b) => ({
+    ...b,
+    createdAt: b.createdAt.toISOString(),
+    sharedFrom: b.sharedFrom
+      ? {
+          ...b.sharedFrom,
+          createdAt: b.sharedFrom.createdAt.toISOString(),
+        }
+      : null,
+  }))
+
   return (
     <div className="min-h-screen bg-black">
       {/* NAVIGATION */}
       <Navigation />
 
-      <div className="ml-64 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-0">
-        {/* Main Content - Cột giữa */}
-        <main className="flex justify-center px-4 py-4">
-          <div className="w-full max-w-xl space-y-4">
-        <BlogFeed blogs={blogs} currentUser={currentUser} />
-          </div>
-        </main>
-
-        {/* USER LIST SIDE BAR */}
-        <aside className="hidden lg:block px-6 py-4 space-y-3 border-l border-gray-800 bg-black sticky top-0 h-screen overflow-y-auto">
-          <p className="text-gray-300 font-semibold mb-4 text-lg">Gợi ý theo dõi</p>
-          <div className="space-y-4">
-            {users.map((user) => (
-              <UserSuggestionItem
-                key={user.id}
-                user={user}
-                currentUserId={currentUser?.id || null}
-              />
-            ))}
-          </div>
-        </aside>
-      </div>
+      <HomeClient
+        blogs={blogsDto}
+        users={users as SuggestUserDTO[]}
+        currentUser={currentUser as CurrentUserSafe}
+      />
     </div>
   )
 }

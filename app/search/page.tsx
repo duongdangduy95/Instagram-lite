@@ -4,25 +4,20 @@ import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Navigation from '../components/Navigation'
 import BlogFeed from '../components/BlogFeed'
+import type { BlogDTO, CurrentUserSafe } from '@/types/dto'
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<BlogDTO[]>([])
 
   const { data: session } = useSession()
 
-  const currentUser = session?.user
-    ? {
-        id: session.user.id,
-        fullname: session.user.fullname,
-        username: session.user.username,
-      }
-    : null
+  const currentUser: CurrentUserSafe = session?.user?.id ? { id: session.user.id } : null
 
   const handleSearch = async () => {
     const res = await fetch(`/api/search?q=${query}`)
     const data = await res.json()
-    setResults(data)
+    setResults(data as BlogDTO[])
   }
 
   return (

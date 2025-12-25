@@ -38,7 +38,7 @@ export async function POST(
     }
 
     // Tạo follow mới và đếm followers trong một transaction
-    const [follow, followersCount] = await prisma.$transaction([
+    const [, followersCount] = await prisma.$transaction([
       prisma.follow.create({
         data: {
           followerId: userId,
