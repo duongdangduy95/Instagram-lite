@@ -15,23 +15,32 @@ export async function GET(req: Request) {
   const userId = session?.user?.id
 
   const matched = await prisma.$queryRaw<
-    { id: string; createdAt: Date }[]
+    { id: string; rank: number }[]
   >`
-    SELECT DISTINCT b.id, b."createdAt"
+    SELECT
+      b.id,
+      (
+        ts_rank(
+          b.search_vector,
+          plainto_tsquery('simple', unaccent(${q}))
+        )
+        +
+        similarity(b.caption_unaccent, unaccent(${q})) * 0.3
+      ) AS rank
     FROM "Blog" b
     JOIN "User" u ON u.id = b."authorId"
     WHERE
-      unaccent(lower(b.caption)) LIKE '%' || unaccent(lower(${q})) || '%'
-      OR unaccent(lower(u.username)) LIKE '%' || unaccent(lower(${q})) || '%'
-      OR unaccent(lower(u.fullname)) LIKE '%' || unaccent(lower(${q})) || '%'
-    ORDER BY b."createdAt" DESC
+      b.search_vector @@ plainto_tsquery('simple', unaccent(${q}))
+      OR similarity(b.caption_unaccent, unaccent(${q})) > 0.2
+    ORDER BY rank DESC
+    LIMIT 50;
   `
 
-  const matchedIds = matched.map(b => b.id)
-
-  if (matchedIds.length === 0) {
+  if (matched.length === 0) {
     return NextResponse.json([])
   }
+
+  const matchedIds = matched.map(b => b.id)
 
   const blogs = await prisma.blog.findMany({
     where: {
