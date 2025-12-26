@@ -76,7 +76,20 @@ export const authOptions: AuthOptions = {
       }
       return true
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, trigger }) {
+      // Nếu là Google OAuth và chưa có id trong token, fetch user từ DB
+      if (account?.provider === 'google') {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: token.email! },
+        })
+        if (dbUser) {
+          token.id = dbUser.id
+          token.fullname = dbUser.fullname
+          token.username = dbUser.username
+          return token
+        }
+      }
+      
       if (user) {
         // NOTE: user lấy từ DB (authorize), có thể chứa fullname/username
         const u = user as { id: string; fullname?: string | null; username?: string | null }
@@ -88,7 +101,7 @@ export const authOptions: AuthOptions = {
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string
+        session.user.id = (token.id as string) || (token.sub as string)
         const t = token as { fullname?: string | null; username?: string | null }
         session.user.fullname = t.fullname ?? null
         session.user.username = t.username ?? null
