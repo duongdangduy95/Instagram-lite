@@ -1,10 +1,25 @@
 import type { AuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import GoogleProvider from 'next-auth/providers/google'
 import { prisma } from '@/lib/prisma'
 import { compare } from 'bcrypt'
 
 export const authOptions: AuthOptions = {
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      profile(profile) {
+        return {
+          id: profile.sub,
+          email: profile.email,
+          username: profile.email?.split('@')[0] || '',
+          fullname: profile.name || '',
+          image: profile.picture,
+          password: null,
+        }
+      },
+    }),
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
@@ -27,6 +42,11 @@ export const authOptions: AuthOptions = {
 
         if (!user) throw new Error('No user found')
 
+        // Kiểm tra user có password không (OAuth users không có password)
+        if (!user.password) {
+          throw new Error('Please sign in with OAuth provider')
+        }
+
         const isValid = await compare(passwordInput, user.password)
         if (!isValid) throw new Error('Invalid password')
 
@@ -35,6 +55,27 @@ export const authOptions: AuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === 'google') {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+        })
+
+        if (!existingUser) {
+          // Tạo user mới từ Google OAuth
+          await prisma.user.create({
+            data: {
+              email: user.email!,
+              username: user.email?.split('@')[0] || '',
+              fullname: user.name || '',
+              image: user.image,
+              password: null, // OAuth users không cần password
+            },
+          })
+        }
+      }
+      return true
+    },
     async jwt({ token, user }) {
       if (user) {
         // NOTE: user lấy từ DB (authorize), có thể chứa fullname/username
