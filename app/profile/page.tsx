@@ -226,9 +226,23 @@ export default function ProfilePage() {
           <div className="flex flex-col sm:flex-row items-start gap-8 sm:gap-12">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-2 border-gray-700">
-                {user.fullname?.charAt(0).toUpperCase()}
-              </div>
+              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-gray-700 bg-gray-800 flex items-center justify-center">
+  {user.image ? (
+    <Image
+      src={user.image}
+      alt={user.fullname}
+      width={128}
+      height={128}
+      className="object-cover w-full h-full"
+      priority
+    />
+  ) : (
+    <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold">
+      {user.fullname?.charAt(0).toUpperCase()}
+    </div>
+  )}
+</div>
+
             </div>
 
             {/* Profile Info */}
