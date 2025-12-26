@@ -64,7 +64,7 @@ export default function HomeClient(props: {
       </main>
 
       {/* USER LIST SIDE BAR */}
-      <aside className="hidden lg:block px-6 py-4 space-y-3 border-l border-gray-800 bg-black sticky top-0 h-screen overflow-y-auto">
+      <aside className="hidden lg:block px-6 py-4 space-y-3 border-l border-gray-800 bg-black sticky top-0 h-screen overflow-y-auto no-scrollbar">
         <p className="text-gray-300 font-semibold mb-4 text-lg">Gợi ý theo dõi</p>
         <div className="space-y-4">
           {users.map((u) => (
