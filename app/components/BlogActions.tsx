@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import CommentSection from './CommentSection'
 import Image from 'next/image'
 import type { CurrentUserSafe } from '@/types/dto'
@@ -24,6 +24,7 @@ export default function BlogActions({
   currentUser
 }: BlogActionsProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [likeCount, setLikeCount] = useState(initialLikeCount)
   const [commentCount, setCommentCount] = useState(initialCommentCount)
   const [liked, setLiked] = useState(initialLiked)
@@ -45,6 +46,23 @@ export default function BlogActions({
     // Nếu có currentUser thì đã authenticated
     setAuthenticated(currentUser !== null)
   }, [currentUser])
+
+  // Đồng bộ like từ modal về feed (home/profile) mà không cần refresh
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ blogId: string; liked: boolean; likeCount: number }>
+      const detail = ce.detail
+      if (!detail?.blogId) return
+
+      // match cả bài thường (blogId) và bài share (displayBlogId = bài gốc)
+      if (detail.blogId === blogId || detail.blogId === displayBlogId) {
+        setLiked(detail.liked)
+        setLikeCount(detail.likeCount)
+      }
+    }
+    window.addEventListener('blog:like-change', handler as EventListener)
+    return () => window.removeEventListener('blog:like-change', handler as EventListener)
+  }, [blogId, displayBlogId])
 
   const handleLike = async () => {
     if (authenticated === null || !authenticated) {
@@ -110,8 +128,16 @@ export default function BlogActions({
     // Animation
     setCommentAnimating(true)
     setTimeout(() => setCommentAnimating(false), 300)
-    
-    // Open comment modal
+
+    // Đồng bộ hành vi:
+    // - Ở feed (home/search/...) => mở post modal bằng route /blog/[id]
+    // - Ở trang blog detail => giữ inline comments như cũ
+    const isOnBlogDetail = !!pathname && pathname.startsWith('/blog/')
+    if (!isOnBlogDetail) {
+      router.push(`/blog/${displayBlogId}`)
+      return
+    }
+
     setShowComments(true)
   }
 

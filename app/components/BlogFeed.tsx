@@ -6,6 +6,7 @@ import { formatTimeAgo } from '@/lib/formatTimeAgo'
 import BlogActions from './BlogActions'
 import BlogImages from './BlogImages'
 import FollowButton from './FollowButton'
+import ExpandableCaption from './ExpandableCaption'
 import type { BlogDTO, CurrentUserSafe } from '@/types/dto'
 
 export default function BlogFeed({
@@ -80,7 +81,11 @@ export default function BlogFeed({
                 </div>
 
                 {/* CAPTION NGƯỜI CHIA SẺ */}
-                {blog.caption && <div className="px-4 pb-3 text-gray-200">{blog.caption}</div>}
+                {blog.caption && (
+                  <div className="px-4 pb-3 text-gray-200">
+                    <ExpandableCaption text={blog.caption} initialLines={1} />
+                  </div>
+                )}
 
                 {/* CARD BÀI GỐC */}
                 <div className="px-4 pb-4">
@@ -109,7 +114,9 @@ export default function BlogFeed({
                       )}
 
                       {displayBlog.caption && (
-                        <div className="pt-2 text-gray-200">{displayBlog.caption}</div>
+                        <div className="pt-2 text-gray-200">
+                          <ExpandableCaption text={displayBlog.caption} initialLines={1} />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -149,7 +156,11 @@ export default function BlogFeed({
                   )}
                 </div>
 
-                {displayBlog.caption && <div className="px-4 pb-2 text-gray-200">{displayBlog.caption}</div>}
+                {displayBlog.caption && (
+                  <div className="px-4 pb-2 text-gray-200">
+                    <ExpandableCaption text={displayBlog.caption} initialLines={1} />
+                  </div>
+                )}
 
                 <div className="px-4 pb-4">
                   <div className="rounded-lg overflow-hidden bg-gray-900">

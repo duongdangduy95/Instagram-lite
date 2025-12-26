@@ -20,6 +20,16 @@ const navItems = [
     icon: '/icons/icons8-search-50-2.svg',
   },
   {
+    label: 'Khám phá',
+    href: '/explore',
+    icon: '/icons/explore-tool-svgrepo-com.svg',
+  },
+  {
+    label: 'Tin nhắn',
+    href: '/messages',
+    icon: '/icons/send-svgrepo-com.svg',
+  },
+  {
     label: 'Tạo bài viết mới',
     href: '/blog/create',
     icon: '/icons/edit.svg',
@@ -90,6 +100,21 @@ export default function Navigation() {
 
         {/* Settings & Logout Buttons - Bottom */}
         <div className="mt-auto mb-4 space-y-2">
+          <button
+            className="group flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors w-full"
+          >
+            <div className="w-[22px] h-[22px] flex items-center justify-center flex-shrink-0">
+              <Image 
+                src="/icons/notification-13-svgrepo-com.svg" 
+                alt="Thông báo" 
+                width={iconSize} 
+                height={iconSize}
+                className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-12"
+              />
+            </div>
+            <span>Thông báo</span>
+          </button>
+
           <button
             className="group flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors w-full"
           >

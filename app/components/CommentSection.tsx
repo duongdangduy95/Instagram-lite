@@ -24,6 +24,9 @@ interface Props {
   onCommentAdded?: () => void;
   onClose?: () => void;
   inline?: boolean;
+  showComposer?: boolean;
+  inlineScrollable?: boolean;
+  reloadKey?: number;
 }
 
 function buildCommentTree(comments: Omit<Comment, 'replies'>[]): Comment[] {
@@ -51,7 +54,16 @@ function buildCommentTree(comments: Omit<Comment, 'replies'>[]): Comment[] {
   return roots;
 }
 
-export default function CommentSection({ blogId, currentUser, onCommentAdded, onClose, inline = false }: Props) {
+export default function CommentSection({
+  blogId,
+  currentUser,
+  onCommentAdded,
+  onClose,
+  inline = false,
+  showComposer = true,
+  inlineScrollable = true,
+  reloadKey,
+}: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -74,7 +86,7 @@ export default function CommentSection({ blogId, currentUser, onCommentAdded, on
     };
 
     load();
-  }, [blogId]);
+  }, [blogId, reloadKey]);
   
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -119,7 +131,7 @@ export default function CommentSection({ blogId, currentUser, onCommentAdded, on
     return (
       <div className="flex flex-col">
         {/* Comments List */}
-        <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
+        <div className={`space-y-3 mb-4 ${inlineScrollable ? 'max-h-96 overflow-y-auto' : ''}`}>
           {comments.length === 0 ? (
             <p className="text-gray-400 text-sm text-center py-4">Chưa có bình luận nào</p>
           ) : (
@@ -136,7 +148,7 @@ export default function CommentSection({ blogId, currentUser, onCommentAdded, on
         </div>
 
         {/* Comment Form */}
-        {currentUser && (
+        {showComposer && currentUser && (
           <div className="pt-3 border-t border-gray-800">
             <form onSubmit={handleSubmit}>
               {replyTo && (
