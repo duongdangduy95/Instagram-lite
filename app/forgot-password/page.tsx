@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading || !email}
+                disabled={isLoading}
                 className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (
@@ -111,21 +111,27 @@ export default function ForgotPasswordPage() {
                     Đang gửi...
                   </>
                 ) : (
-                  'Gửi liên kết đặt lại mật khẩu'
+                  'Send Reset Link'
                 )}
               </button>
 
               {/* Back to Login */}
-              <div className="text-center">
-                <Link href="/login" className="text-sm text-gray-300 hover:text-white font-medium transition-colors inline-flex items-center gap-1 justify-center">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
-                  </svg>
-                  Quay lại đăng nhập
-                </Link>
-              </div>
+              <Link 
+                href="/login" 
+                className="flex items-center justify-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Back to Login
+              </Link>
             </form>
           </div>
+
+          {/* Footer */}
+          <p className="text-center text-gray-500 text-sm mt-8">
+            Copyright © Instagram Lite
+          </p>
         </div>
       </div>
     </div>
