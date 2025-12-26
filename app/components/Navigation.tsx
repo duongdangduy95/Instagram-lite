@@ -24,6 +24,7 @@ const navItems = [
     href: '/blog/create',
     icon: '/icons/edit.svg',
   },
+  
 ]
 
 export default function Navigation() {
@@ -118,6 +119,7 @@ export default function Navigation() {
             />
             <span>Đăng xuất</span>
           </button>
+          
         </div>
       </div>
     </nav>

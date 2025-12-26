@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Navigation from "../components/Navigation"
 import FollowModal from '../components/FollowModal'
+import ChatButton from '../components/ChatButton'
 
 interface Blog {
   _count: {
@@ -755,5 +756,6 @@ export default function ProfilePage() {
         </div>
       )}
     </div>
+    
   )
 }
