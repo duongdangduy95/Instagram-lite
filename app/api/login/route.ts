@@ -1,6 +1,7 @@
 // app/api/login/route.ts
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
+import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     }
 
     // Kiểm tra password
-    const isValid = await bcrypt.compare(password, user.password)
+    const isValid = bcrypt.compare(password, user.password)
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }

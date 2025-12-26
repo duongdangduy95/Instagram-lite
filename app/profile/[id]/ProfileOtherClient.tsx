@@ -6,6 +6,8 @@ import Image from 'next/image'
 import Navigation from '@/app/components/Navigation'
 import FollowButton from '@/app/components/FollowButton'
 import FollowModal from '@/app/components/FollowModal'
+import ChatButton from '@/app/components/ChatButton'
+import ChatWindow from '@/app/components/ChatWindow'
 
 type BlogCounts = { likes: number; comments: number }
 
@@ -55,6 +57,8 @@ export default function ProfileOtherClient(props: {
   const myBlogs = useMemo(() => user.blogs ?? [], [user.blogs])
   const originalBlogs = useMemo(() => myBlogs.filter((b) => !b.sharedFrom), [myBlogs])
   const sharedBlogs = useMemo(() => myBlogs.filter((b) => !!b.sharedFrom), [myBlogs])
+  const [isChatOpen, setIsChatOpen] = useState(false)
+const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
 
   return (
     <div className="min-h-screen bg-black">
@@ -78,17 +82,28 @@ export default function ProfileOtherClient(props: {
                 <h1 className="text-xl sm:text-2xl font-light text-white">{user.username}</h1>
 
                 {currentUserId && (
-                  <FollowButton
-                    targetUserId={user.id}
-                    initialIsFollowing={initialIsFollowing}
-                      onFollowChange={(_isFollowing, newFollowersCount) => {
-                        if (typeof newFollowersCount === 'number') {
-                          setFollowersCount(newFollowersCount)
-                        }
-                      }}
-                    size="md"
-                  />
-                )}
+    <>
+      <FollowButton
+        targetUserId={user.id}
+        initialIsFollowing={initialIsFollowing}
+        onFollowChange={(_isFollowing, newFollowersCount) => {
+          if (typeof newFollowersCount === 'number') setFollowersCount(newFollowersCount)
+        }}
+        size="md"
+      />
+      
+      {/* Nút Message */}
+      <button
+        onClick={() => {
+          setChatTargetUserId(user.id)
+          setIsChatOpen(true)
+        }}
+        className="px-3 py-1 bg-blue-600 text-white rounded"
+      >
+        Message
+      </button>
+    </>
+  )}
 
                 <button className="p-1.5">
                   <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -382,6 +397,13 @@ export default function ProfileOtherClient(props: {
           type={showFollowModal}
         />
       )}
+      {isChatOpen && chatTargetUserId && (
+  <ChatWindow
+    targetUserId={chatTargetUserId}
+    onClose={() => setIsChatOpen(false)}
+  />
+)}
+
     </div>
   )
 }

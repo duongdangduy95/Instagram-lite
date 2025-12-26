@@ -38,6 +38,10 @@ model User {
   followers     Follow[]  @relation("UserFollowing")
   likes         Like[]
   Session       Session[]
+
+  // 🔹 Relation mới cho messaging
+  sentMessages   Message[]     @relation("MessageSender")
+  participations Participant[]
 }
 
 model Blog {
@@ -129,4 +133,39 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Conversation {
+  id           String        @id @default(cuid())
+  name         String? // tên nhóm, nếu là nhóm chat
+  isGroup      Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  participants Participant[]
+  messages     Message[]
+  updatedAt    DateTime      @updatedAt
+}
+
+model Participant {
+  id             String   @id @default(cuid())
+  userId         String
+  conversationId String
+  joinedAt       DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  readMessages Message[]    @relation("MessageReadBy") // Tin nhắn đã đọc
+
+  @@unique([userId, conversationId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation  @relation(fields: [conversationId], references: [id])
+  sender       User          @relation("MessageSender", fields: [senderId], references: [id])
+  readBy       Participant[] @relation("MessageReadBy") // Ai đã đọc
 }
