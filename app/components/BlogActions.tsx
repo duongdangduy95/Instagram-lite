@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import CommentSection from './CommentSection'
 import Image from 'next/image'
+import type { CurrentUserSafe } from '@/types/dto'
 
 interface BlogActionsProps {
   blogId: string
@@ -11,11 +12,7 @@ interface BlogActionsProps {
   initialLikeCount: number
   initialCommentCount: number
   initialLiked: boolean
-  currentUser: {
-    id: string
-    fullname: string
-    username: string
-  } | null
+  currentUser: CurrentUserSafe
 }
 
 export default function BlogActions({
@@ -38,21 +35,16 @@ export default function BlogActions({
   const [saveAnimating, setSaveAnimating] = useState(false)
   const [commentAnimating, setCommentAnimating] = useState(false)
   const [shareAnimating, setShareAnimating] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [shareCaption, setShareCaption] = useState('')
+  const [shareLoading, setShareLoading] = useState(false)
 
+  // Sử dụng useSession từ next-auth thay vì gọi API
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const res = await fetch('/api/me', {
-          method: 'GET',
-          credentials: 'include',
-        })
-        setAuthenticated(res.ok)
-      } catch {
-        setAuthenticated(false)
-      }
-    }
-    checkSession()
-  }, [])
+    // Component này đã nhận currentUser từ props, nên không cần check auth
+    // Nếu có currentUser thì đã authenticated
+    setAuthenticated(currentUser !== null)
+  }, [currentUser])
 
   const handleLike = async () => {
     if (authenticated === null || !authenticated) {
@@ -60,6 +52,16 @@ export default function BlogActions({
       return
     }
 
+    // Optimistic update - cập nhật UI ngay lập tức
+    const previousLiked = liked
+    const previousCount = likeCount
+    const newLiked = !liked
+    const newCount = newLiked ? likeCount + 1 : likeCount - 1
+
+    // Cập nhật UI ngay
+    setLiked(newLiked)
+    setLikeCount(newCount)
+    
     // Animation
     setLikeAnimating(true)
     setTimeout(() => setLikeAnimating(false), 300)
@@ -74,11 +76,21 @@ export default function BlogActions({
 
       if (response.ok) {
         const data = await response.json()
-        setLiked(data.liked)
-        const newCount = data.liked ? likeCount + 1 : likeCount - 1
-        setLikeCount(newCount)
+        // Chỉ cập nhật nếu response khác với optimistic update
+        if (data.liked !== newLiked) {
+          setLiked(data.liked)
+          setLikeCount(data.liked ? likeCount + 1 : likeCount - 1)
+        }
+      } else {
+        // Rollback nếu có lỗi
+        setLiked(previousLiked)
+        setLikeCount(previousCount)
+        console.error('Like failed')
       }
     } catch (error) {
+      // Rollback nếu có lỗi
+      setLiked(previousLiked)
+      setLikeCount(previousCount)
       console.error('Like error:', error)
     } finally {
       setLoading(false)
@@ -104,11 +116,48 @@ export default function BlogActions({
   }
 
   const handleShare = () => {
+    if (authenticated === null || !authenticated) {
+      router.push('/login')
+      return
+    }
+
     // Animation
     setShareAnimating(true)
     setTimeout(() => setShareAnimating(false), 300)
     
-    // TODO: Implement share functionality
+    // Mở modal share
+    setShowShareModal(true)
+  }
+
+  const handleShareSubmit = async () => {
+    setShareLoading(true)
+    try {
+      const response = await fetch('/api/blog/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          blogId: displayBlogId,
+          caption: shareCaption,
+        }),
+      })
+
+      if (response.ok) {
+        // Đóng modal và reset
+        setShowShareModal(false)
+        setShareCaption('')
+        // Refresh trang để hiển thị bài share mới
+        router.refresh()
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Có lỗi xảy ra' }))
+        alert(errorData.error || 'Chia sẻ bài viết thất bại')
+      }
+    } catch (error) {
+      console.error('Error sharing blog:', error)
+      alert('Chia sẻ bài viết thất bại')
+    } finally {
+      setShareLoading(false)
+    }
   }
 
   return (
@@ -197,6 +246,52 @@ export default function BlogActions({
             onClose={() => setShowComments(false)}
             inline={true}
           />
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div 
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fadeIn"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowShareModal(false)
+              setShareCaption('')
+            }
+          }}
+        >
+          <div 
+            className="bg-gray-900 rounded-lg p-6 w-full max-w-md border border-gray-800 animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-white font-semibold text-lg mb-4">Chia sẻ bài viết</h3>
+            <textarea
+              value={shareCaption}
+              onChange={(e) => setShareCaption(e.target.value)}
+              placeholder="Viết cảm nghĩ của bạn..."
+              className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg p-3 mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-purple-primary"
+              rows={4}
+            />
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowShareModal(false)
+                  setShareCaption('')
+                }}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+                disabled={shareLoading}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleShareSubmit}
+                disabled={shareLoading}
+                className="px-4 py-2 bg-[#877EFF] text-white rounded-lg hover:bg-[#7565E6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {shareLoading ? 'Đang chia sẻ...' : 'Chia sẻ'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

@@ -2,9 +2,9 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useSession, signOut } from 'next-auth/react'
+import { signOut } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCurrentUser } from '@/app/contexts/CurrentUserContext'
 
 const iconSize = 22
 
@@ -27,29 +27,10 @@ const navItems = [
 ]
 
 export default function Navigation() {
-  const { data: session } = useSession()
   const pathname = usePathname()
-  const [user, setUser] = useState<{ fullname: string; username?: string } | null>(null)
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch('/api/me', { credentials: 'include' })
-        if (res.ok) {
-          const userData = await res.json()
-          setUser({ fullname: userData.fullname, username: userData.username })
-        }
-      } catch (error) {
-        console.error('Error fetching user:', error)
-      }
-    }
-
-    if (session) {
-      fetchUser()
-    }
-  }, [session])
-
-  const userInitial = user?.fullname?.charAt(0).toUpperCase() || 'U'
+  const { user } = useCurrentUser()
+  const displayName = user?.fullname || user?.username || 'User'
+  const userInitial = displayName.charAt(0).toUpperCase()
 
   return (
     <nav className="fixed left-0 top-0 h-full w-64 bg-black border-r border-gray-800 z-50">
@@ -63,6 +44,7 @@ export default function Navigation() {
         {user && (
           <Link
             href="/profile"
+            prefetch={true}
             className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors mb-4 border-b border-gray-800 pb-4 ${
               pathname === '/profile'
                 ? 'text-white font-semibold bg-gray-900'
@@ -72,7 +54,7 @@ export default function Navigation() {
             <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
               <span className="text-white font-bold text-sm">{userInitial}</span>
             </div>
-            <span className="text-white font-medium">{user.fullname}</span>
+            <span className="text-white font-medium">{displayName}</span>
           </Link>
         )}
 
@@ -84,6 +66,7 @@ export default function Navigation() {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 className={`group flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                   isActive
                     ? 'text-white font-semibold bg-gray-900'

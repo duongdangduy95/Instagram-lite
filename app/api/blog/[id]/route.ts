@@ -1,97 +1,248 @@
-import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import fs from 'fs'
-import path from 'path'
+import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { createClient } from '@supabase/supabase-js'
 
-const prisma = new PrismaClient()
+/* =========================
+   GET – LẤY CHI TIẾT BLOG
+========================= */
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: blogId } = await params
+
+  const session = await getServerSession(authOptions)
+  const currentUserId = session?.user?.id
+
+
+
+  try {
+    const blog = await prisma.blog.findUnique({
+      where: { id: blogId },
+      include: {
+        author: {
+          select: {
+            id: true,
+            fullname: true,
+            username: true,
+          },
+        },
+        sharedFrom: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                fullname: true,
+                username: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: true,
+                comments: true,
+              },
+            },
+          },
+        },
+        likes: currentUserId
+          ? {
+              where: { userId: currentUserId },
+              select: { userId: true },
+            }
+          : undefined,
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
+    })
+
+    if (!blog) {
+      return NextResponse.json({ error: 'Blog not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(blog)
+  } catch (error) {
+    console.error('GET blog error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch blog' },
+      { status: 500 }
+    )
+  }
+}
+
+/* =========================
+   PATCH – CHỈNH SỬA BLOG
+========================= */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = cookies()
-  const session = (await cookieStore).get('session')
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const [userId] = session.value.split(':')
   const { id: blogId } = await params
 
-  const form = await req.formData()
-  const caption = form.get('caption') as string
-  const hashtagsStr = form.get('hashtags') as string
-  const hashtags = hashtagsStr ? JSON.parse(hashtagsStr) : []
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id
 
-  const existingImages: string[] = []
-  form.forEach((v, key) => {
-    if (key === 'existingImages') existingImages.push(v.toString())
-  })
-
-  const files: File[] = []
-  form.forEach((v, key) => {
-    if (v instanceof File && (key === 'images' || key === 'videos')) {
-      files.push(v)
-    }
-  })
-  
-
-  const newImageUrls: string[] = [...existingImages]
-
-  for (const file of files) {
-    if (file.size === 0) continue
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const filename = `${Date.now()}-${file.name}`
-    const filepath = path.join(process.cwd(), 'public', 'uploads', filename)
-    fs.writeFileSync(filepath, buffer)
-    newImageUrls.push(`/uploads/${filename}`)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
     const blog = await prisma.blog.findUnique({ where: { id: blogId } })
-    if (!blog || blog.authorId !== userId)
-      return NextResponse.json({ error: 'Unauthorized or not found' }, { status: 403 })
+    if (!blog || blog.authorId !== userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized or not found' },
+        { status: 403 }
+      )
+    }
 
-    const updated = await prisma.blog.update({
+    const form = await req.formData()
+    const caption = (form.get('caption') as string) || ''
+
+    /* ẢNH CŨ GIỮ LẠI */
+    const existingImages: string[] = []
+    form.forEach((value, key) => {
+      if (key === 'existingImages') {
+        existingImages.push(value.toString())
+      }
+    })
+
+    /* FILE MỚI */
+    const newFiles: File[] = []
+    form.forEach((value, key) => {
+      if (value instanceof File && key === 'newFiles') {
+        newFiles.push(value)
+      }
+    })
+
+    const newImageUrls: string[] = [...existingImages]
+
+    for (const file of newFiles) {
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const fileName = `posts/${userId}/${Date.now()}-${file.name}`
+
+      const { error } = await supabase.storage
+        .from('instagram')
+        .upload(fileName, buffer, {
+          contentType: file.type,
+          upsert: false,
+        })
+
+      if (error) {
+        console.error('Supabase upload error:', error)
+        return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+      }
+
+      const { data } = supabase.storage.from('instagram').getPublicUrl(fileName)
+      newImageUrls.push(data.publicUrl)
+    }
+
+
+    const updatedBlog = await prisma.blog.update({
       where: { id: blogId },
       data: {
         caption,
-        hashtags,
         imageUrls: newImageUrls,
       },
     })
 
-    return NextResponse.json({ message: 'Blog updated', blog: updated })
+    return NextResponse.json({
+      message: 'Blog updated',
+      blog: updatedBlog,
+    })
   } catch (error) {
-    console.error('Update error:', error)
-    return NextResponse.json({ error: 'Failed to update blog' }, { status: 500 })
+    console.error('PATCH blog error:', error)
+    return NextResponse.json(
+      { error: 'Failed to update blog' },
+      { status: 500 }
+    )
   }
 }
 
-
-// DELETE - Delete blog
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const cookieStore = cookies()
-  const session = (await cookieStore).get('session')
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const [userId] = session.value.split(':')
+/* =========================
+   DELETE – XÓA BLOG
+========================= */
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const { id: blogId } = await params
 
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
-    const blog = await prisma.blog.findUnique({ where: { id: blogId } })
-    if (!blog || blog.authorId !== userId)
-      return NextResponse.json({ error: 'Unauthorized or not found' }, { status: 403 })
+    const blog = await prisma.blog.findUnique({
+      where: { id: blogId },
+    })
 
-    await prisma.blog.delete({ where: { id: blogId } })
-    for (const url of blog.imageUrls) {
-      const filepath = path.join(process.cwd(), 'public', url.replace('/uploads/', 'uploads/'))
-      if (fs.existsSync(filepath)) fs.unlinkSync(filepath)
+    if (!blog || blog.authorId !== userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized or not found' },
+        { status: 403 }
+      )
     }
-    
 
-    return NextResponse.json({ message: 'Blog deleted' })
+
+    const bucketName = 'instagram'
+
+    const filesToDelete: string[] = []
+
+    for (const url of blog.imageUrls ?? []) {
+      try {
+        const pathname = new URL(url).pathname
+        const filePath = pathname.split(`/object/public/${bucketName}/`)[1]
+
+        if (filePath) {
+          filesToDelete.push(filePath)
+        }
+      } catch {
+      }
+    }
+
+    if (filesToDelete.length > 0) {
+      const { error } = await supabase.storage
+        .from(bucketName)
+        .remove(filesToDelete)
+
+      if (error) {
+        console.error('Supabase delete error:', error)
+      }
+    }
+
+    await prisma.$transaction([
+      prisma.like.deleteMany({
+        where: { blogId },
+      }),
+      prisma.comment.deleteMany({
+        where: { blogId },
+      }),
+      prisma.blog.delete({
+        where: { id: blogId },
+      }),
+    ])
+
+    return NextResponse.json({ message: 'Blog deleted successfully' })
   } catch (error) {
-    console.error('Delete error:', error)
-    return NextResponse.json({ error: 'Failed to delete blog' }, { status: 500 })
+    console.error('DELETE blog error:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete blog' },
+      { status: 500 }
+    )
   }
 }
+

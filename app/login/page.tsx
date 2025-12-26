@@ -29,7 +29,7 @@ export default function LoginPage() {
       } else if (result?.ok) {
         router.push('/profile')
       }
-    } catch (_err) {
+    } catch {
       setError('Có lỗi xảy ra, vui lòng thử lại')
     } finally {
       setIsLoading(false)
