@@ -45,34 +45,34 @@ export async function POST(req: Request) {
     let imageUrl: string | null = null
 
     // ===== Upload avatar (GIỐNG blog/create) =====
-    if (avatar instanceof File && avatar.size > 0) {
-      const buffer = Buffer.from(await avatar.arrayBuffer())
-      const ext = avatar.type.split('/')[1] || 'jpg'
+    // if (avatar instanceof File && avatar.size > 0) {
+    //   const buffer = Buffer.from(await avatar.arrayBuffer())
+    //   const ext = avatar.type.split('/')[1] || 'jpg'
 
-      const fileName = `${username}-${Date.now()}.${ext}`
+    //   const fileName = `${username}-${Date.now()}.${ext}`
 
-      const { error } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, buffer, {
-          contentType: avatar.type,
-          upsert: true
-        })
+    //   const { error } = await supabase.storage
+    //     .from('avatars')
+    //     .upload(fileName, buffer, {
+    //       contentType: avatar.type,
+    //       upsert: true
+    //     })
 
-      if (error) {
-        console.error('Supabase upload error:', error)
-        return NextResponse.json(
-          { error: 'Upload avatar failed' },
-          { status: 500 }
-        )
-      }
+    //   if (error) {
+    //     console.error('Supabase upload error:', error)
+    //     return NextResponse.json(
+    //       { error: 'Upload avatar failed' },
+    //       { status: 500 }
+    //     )
+    //   }
 
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName)
+    //   const { data } = supabase.storage
+    //     .from('avatars')
+    //     .getPublicUrl(fileName)
 
-      imageUrl = data.publicUrl
-    }
-
+    //   imageUrl = data.publicUrl
+    // }
+    
     const user = await prisma.user.create({
       data: {
         username,
