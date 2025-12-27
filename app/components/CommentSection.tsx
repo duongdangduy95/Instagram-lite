@@ -6,6 +6,7 @@ import type { CurrentUserSafe } from '@/types/dto';
 
 interface Comment {
   id: string;
+  blogId: string;
   content: string;
   createdAt: string;
   parentId: string | null;
@@ -259,20 +260,57 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
   const [liked, setLiked] = useState(comment.liked || false)
   const [likeCount, setLikeCount] = useState(comment.likeCount || 0)
   const [likeAnimating, setLikeAnimating] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const handleLike = () => {
+  useEffect(() => {
+    setLiked(comment.liked || false)
+    setLikeCount(comment.likeCount || 0)
+  }, [comment.liked, comment.likeCount])
+
+
+  const handleLike = async () => {
     if (!currentUser) return
+    if (loading) return
+    setLoading(true)
     
-    // Animation
-    setLikeAnimating(true)
-    setTimeout(() => setLikeAnimating(false), 300)
-    
+    const prevLiked = liked
+    const prevCount = likeCount
+
     // Toggle liked state
     const newLiked = !liked
     setLiked(newLiked)
     setLikeCount(newLiked ? likeCount + 1 : Math.max(0, likeCount - 1))
+
+    // Animation
+    setLikeAnimating(true)
+    setTimeout(() => setLikeAnimating(false), 300)
     
-    // TODO: Call API to like/unlike comment
+    
+    
+    try {
+      const res = await fetch(
+        `/api/blog/${comment.blogId}/comment/${comment.id}/like`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      )
+
+      if (!res.ok) throw new Error('Like failed')
+
+      const data: { liked: boolean; likeCount: number } = await res.json()
+
+      setLiked(data.liked)
+      setLikeCount(data.likeCount)
+    } catch (err) {
+      console.error(err)
+
+
+      setLiked(prevLiked)
+      setLikeCount(prevCount)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (inline) {

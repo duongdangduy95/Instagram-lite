@@ -11,15 +11,41 @@ async function getCurrentUserId() {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: blogId } = await params
+  const userId = await getCurrentUserId();
   const comments = await prisma.comment.findMany({
     where: { blogId },
     include: {
       author: { select: { fullname: true, username: true } },
+
+      likes: userId
+        ? {
+            where: { userId },
+            select: { id: true },
+          }
+        : false,
+
+      _count: {
+        select: { likes: true },
+      },
     },
     orderBy: { createdAt: 'asc' },
-  });
+  })
 
-  return NextResponse.json(comments);
+  const result = comments.map((c) => ({
+    id: c.id,
+    blogId: c.blogId,
+    content: c.content,
+    createdAt: c.createdAt,
+    parentId: c.parentId,
+    author: c.author,
+
+    likeCount: c._count.likes,
+    liked: userId ? c.likes.length > 0 : false,
+  }))
+
+
+
+  return NextResponse.json(result);
 }
 export async function POST(
   req: NextRequest,

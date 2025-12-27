@@ -76,16 +76,21 @@ model Comment {
   blog      Blog      @relation(fields: [blogId], references: [id])
   parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies   Comment[] @relation("CommentReplies")
+  likes     Like[]
 }
 
 model Like {
   id     String @id @default(cuid())
   userId String
-  blogId String
-  blog   Blog   @relation(fields: [blogId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  blogId String?
+  commentId String?
 
-  @@unique([userId, blogId])
+  blog   Blog?   @relation(fields: [blogId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  comment Comment? @relation(fields: [commentId], references: [id])
+
+  @@index([blogId])
+  @@index([commentId])
 }
 
 model Follow {
