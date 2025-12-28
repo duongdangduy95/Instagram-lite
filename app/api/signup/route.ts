@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcrypt'
+import { sendEmail, generateOTP, generateOTPEmail } from '@/lib/email'
 
 const prisma = new PrismaClient()
 
@@ -80,22 +81,80 @@ export async function POST(req: Request) {
         email,
         phone,
         password: hashedPassword,
-        image: imageUrl
+        image: imageUrl,
+        emailVerified: null // Will be set after OTP verification
       }
     })
 
-    return NextResponse.json(
-      {
-        message: 'Signup successful',
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          image: user.image
+    // Send OTP for email verification
+    try {
+      const otp = generateOTP()
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+
+      console.log('=== SIGNUP OTP DEBUG ===')
+      console.log('Generated OTP:', otp)
+      console.log('For email:', email)
+      console.log('========================')
+
+      // Delete any existing OTPs for this email
+      await prisma.emailOTP.deleteMany({
+        where: { email }
+      })
+
+      // Save OTP to database
+      await prisma.emailOTP.create({
+        data: {
+          email,
+          otp,
+          expires: otpExpiry,
+          verified: false
         }
-      },
-      { status: 201 }
-    )
+      })
+
+      // Send OTP email
+      const emailHtml = generateOTPEmail(otp, username)
+      await sendEmail({
+        to: email,
+        subject: 'Xác thực email - Instagram Lite',
+        html: emailHtml
+      })
+
+      console.log('OTP sent successfully to:', email)
+
+      return NextResponse.json(
+        {
+          message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.',
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            image: user.image
+          },
+          requiresVerification: true,
+          // Remove this in production
+          otp: process.env.NODE_ENV === 'development' ? otp : undefined
+        },
+        { status: 201 }
+      )
+    } catch (emailError) {
+      console.error('Failed to send OTP email:', emailError)
+      
+      // Still return success but inform user to resend OTP
+      return NextResponse.json(
+        {
+          message: 'Đăng ký thành công! Không thể gửi email xác thực. Vui lòng yêu cầu gửi lại OTP.',
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            image: user.image
+          },
+          requiresVerification: true,
+          emailError: true
+        },
+        { status: 201 }
+      )
+    }
   } catch (error) {
     console.error('Signup error:', error)
     return NextResponse.json(

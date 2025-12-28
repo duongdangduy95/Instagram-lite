@@ -97,21 +97,29 @@ export default function SignupPage() {
       const data = await res.json()
 
       if (res.ok) {
-        setMessage('Đăng ký thành công!')
+        setMessage(data.message || 'Đăng ký thành công!')
         setMessageType('success')
 
-        setFormData({
-          username: '',
-          fullname: '',
-          email: '',
-          phone: '',
-          password: ''
-        })
-        setConfirmPassword('')
-        
-        setTimeout(() => {
-          router.push('/login')
-        }, 1500)
+        // If requires OTP verification, redirect to verify page
+        if (data.requiresVerification) {
+          setTimeout(() => {
+            router.push(`/verify-otp?email=${encodeURIComponent(formData.email)}&username=${encodeURIComponent(formData.username)}`)
+          }, 1500)
+        } else {
+          // Old flow - direct to login
+          setFormData({
+            username: '',
+            fullname: '',
+            email: '',
+            phone: '',
+            password: ''
+          })
+          setConfirmPassword('')
+          
+          setTimeout(() => {
+            router.push('/login')
+          }, 1500)
+        }
       } else {
         setMessage(data.message || 'Đăng ký thất bại')
         setMessageType('error')

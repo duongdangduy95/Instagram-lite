@@ -135,6 +135,17 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model EmailOTP {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String
+  expires   DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
 model Conversation {
   id           String        @id @default(cuid())
   name         String? // tên nhóm, nếu là nhóm chat

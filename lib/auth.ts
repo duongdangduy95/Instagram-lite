@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import { prisma } from '@/lib/prisma'
 import { compare } from 'bcrypt'
+import { sendEmail, generateOTP, generateOTPEmail } from '@/lib/email'
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -63,20 +64,68 @@ export const authOptions: AuthOptions = {
 
         if (!existingUser) {
           // Tạo user mới từ Google OAuth
-          await prisma.user.create({
+          const newUser = await prisma.user.create({
             data: {
               email: user.email!,
               username: user.email?.split('@')[0] || '',
               fullname: user.name || '',
               image: user.image,
               password: null, // OAuth users không cần password
+              emailVerified: null, // Chưa verify
             },
           })
+
+          // Gửi OTP cho user mới
+          try {
+            const otp = generateOTP()
+            const otpExpiry = new Date(Date.now() + 3 * 60 * 1000) // 3 minutes
+
+            // Delete any existing OTPs for this email
+            await prisma.emailOTP.deleteMany({
+              where: { email: user.email! }
+            })
+
+            // Save OTP to database
+            await prisma.emailOTP.create({
+              data: {
+                email: user.email!,
+                otp,
+                expires: otpExpiry,
+                verified: false
+              }
+            })
+
+            // Send OTP email
+            const emailHtml = generateOTPEmail(otp, newUser.username)
+            await sendEmail({
+              to: user.email!,
+              subject: 'Xác thực email - Instagram Lite',
+              html: emailHtml
+            })
+
+            console.log('OTP sent to new Google OAuth user:', user.email)
+          } catch (emailError) {
+            console.error('Failed to send OTP to Google OAuth user:', emailError)
+          }
         }
       }
       return true
     },
     async jwt({ token, user, account, trigger }) {
+      // Nếu trigger là 'update', refresh user data từ DB
+      if (trigger === 'update') {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: token.email! },
+        })
+        if (dbUser) {
+          token.id = dbUser.id
+          token.fullname = dbUser.fullname
+          token.username = dbUser.username
+          token.emailVerified = dbUser.emailVerified
+        }
+        return token
+      }
+
       // Nếu là Google OAuth và chưa có id trong token, fetch user từ DB
       if (account?.provider === 'google') {
         const dbUser = await prisma.user.findUnique({
@@ -86,25 +135,28 @@ export const authOptions: AuthOptions = {
           token.id = dbUser.id
           token.fullname = dbUser.fullname
           token.username = dbUser.username
+          token.emailVerified = dbUser.emailVerified
           return token
         }
       }
       
       if (user) {
         // NOTE: user lấy từ DB (authorize), có thể chứa fullname/username
-        const u = user as { id: string; fullname?: string | null; username?: string | null }
+        const u = user as { id: string; fullname?: string | null; username?: string | null; emailVerified?: Date | null }
         token.id = u.id
         token.fullname = u.fullname ?? null
         token.username = u.username ?? null
+        token.emailVerified = u.emailVerified ?? null
       }
       return token
     },
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = (token.id as string) || (token.sub as string)
-        const t = token as { fullname?: string | null; username?: string | null }
+        const t = token as { fullname?: string | null; username?: string | null; emailVerified?: Date | null }
         session.user.fullname = t.fullname ?? null
         session.user.username = t.username ?? null
+        session.user.emailVerified = t.emailVerified ?? null
       }
       return session
     },

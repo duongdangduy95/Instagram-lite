@@ -8,6 +8,20 @@ export const middleware = withAuth(
       const loginUrl = new URL("/login", req.url)
       return NextResponse.redirect(loginUrl)
     }
+
+    // Nếu user chưa verify email và không đang ở trang verify-otp
+    const isVerifyOTPPage = req.nextUrl.pathname === '/verify-otp'
+    const emailVerified = req.nextauth.token.emailVerified as Date | null
+    
+    if (!emailVerified && !isVerifyOTPPage) {
+      const email = req.nextauth.token.email
+      const username = req.nextauth.token.username || req.nextauth.token.name || 'User'
+      const verifyUrl = new URL("/verify-otp", req.url)
+      verifyUrl.searchParams.set('email', email as string)
+      verifyUrl.searchParams.set('username', username as string)
+      return NextResponse.redirect(verifyUrl)
+    }
+
     return NextResponse.next()
   },
   {
@@ -28,5 +42,6 @@ export const config = {
     "/profile/:path*",
     "/search",
     "/user/:path*",
+    "/verify-otp",
   ],
 }
