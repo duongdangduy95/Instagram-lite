@@ -1,62 +1,123 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 async function getCurrentUserId() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return null;
-  return session.user.id;
+  const session = await getServerSession(authOptions)
+  return session?.user?.id ?? null
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+/* =========================
+   GET COMMENTS (OPTIMIZED)
+========================= */
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const { id: blogId } = await params
-  const comments = await prisma.comment.findMany({
-    where: { blogId },
-    include: {
-      author: { select: { fullname: true, username: true } },
+
+  /* 1️⃣ LẤY COMMENT GỐC */
+  const parentComments = await prisma.comment.findMany({
+    where: {
+      blogId,
+      parentId: null,
+    },
+    select: {
+      id: true,
+      content: true,
+      createdAt: true,
+      author: {
+        select: {
+          fullname: true,
+          username: true,
+        },
+      },
     },
     orderBy: { createdAt: 'asc' },
-  });
+  })
 
-  return NextResponse.json(comments);
+  if (parentComments.length === 0) {
+    return NextResponse.json([])
+  }
+
+  const parentIds = parentComments.map((c) => c.id)
+
+  /* 2️⃣ LẤY TOÀN BỘ REPLIES TRONG 1 QUERY */
+  const replies = await prisma.comment.findMany({
+    where: {
+      parentId: { in: parentIds },
+    },
+    select: {
+      id: true,
+      content: true,
+      createdAt: true,
+      parentId: true,
+      author: {
+        select: {
+          fullname: true,
+          username: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  /* 3️⃣ MAP REPLIES VÀO COMMENT CHA */
+  const replyMap: Record<string, any[]> = {}
+  for (const r of replies) {
+    if (!replyMap[r.parentId!]) replyMap[r.parentId!] = []
+    replyMap[r.parentId!].push(r)
+  }
+
+  const result = parentComments.map((c) => ({
+    ...c,
+    replies: replyMap[c.id] ?? [],
+  }))
+
+  return NextResponse.json(result)
 }
+
+/* =========================
+   POST COMMENT
+========================= */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: blogId } = await params
-  const userId = await getCurrentUserId();
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const userId = await getCurrentUserId()
 
-  const body = await req.json();
-  const { content, parentId } = body;
-
-  if (!content) {
-    return NextResponse.json({ error: 'Missing content' }, { status: 400 });
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  try {
-    const comment = await prisma.comment.create({
-      data: {
-        content,
-        authorId: userId,
-        blogId,
-        parentId: parentId || null,
-      },
-      include: {
-        author: {
-          select: {
-            fullname: true,
-            username: true,
-          },
+  const { content, parentId } = await req.json()
+
+  if (!content?.trim()) {
+    return NextResponse.json({ error: 'Missing content' }, { status: 400 })
+  }
+
+  const comment = await prisma.comment.create({
+    data: {
+      content,
+      blogId,
+      authorId: userId,
+      parentId: parentId || null,
+    },
+    select: {
+      id: true,
+      content: true,
+      createdAt: true,
+      parentId: true,
+      author: {
+        select: {
+          fullname: true,
+          username: true,
         },
       },
-    });
+    },
+  })
 
-    return NextResponse.json(comment);
-  } catch (err) {
-    console.error('API ERROR:', err);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
-  }
+  return NextResponse.json(comment)
 }

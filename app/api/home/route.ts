@@ -11,12 +11,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const userId = session.user.id
   const { searchParams } = new URL(req.url)
   const cursor = searchParams.get('cursor')
 
   const blogs = await prisma.blog.findMany({
-    where: { authorId: userId }, // 🔥 QUAN TRỌNG
     take: PAGE_SIZE,
     ...(cursor && {
       skip: 1,
@@ -32,6 +30,29 @@ export async function GET(req: Request) {
       imageUrls: true,
       createdAt: true,
 
+      author: {
+        select: {
+          id: true,
+          fullname: true,
+          username: true,
+        },
+      },
+
+      sharedFrom: {
+        select: {
+          id: true,
+          caption: true,
+          imageUrls: true,
+          author: {
+            select: {
+              id: true,
+              fullname: true,
+              username: true,
+            },
+          },
+        },
+      },
+
       _count: {
         select: {
           likes: true,
@@ -40,7 +61,7 @@ export async function GET(req: Request) {
       },
 
       likes: {
-        where: { userId },
+        where: { userId: session.user.id },
         select: { id: true },
         take: 1,
       },
@@ -55,4 +76,3 @@ export async function GET(req: Request) {
     }))
   )
 }
-
