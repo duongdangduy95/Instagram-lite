@@ -9,7 +9,9 @@ export default function MessagesPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Tin nhắn</h1>
       <ChatButton />
-      <ChatWindow />
+      <ChatWindow targetUserId={''} onClose={function (): void {
+        throw new Error('Function not implemented.')
+      } } />
     </div>
   )
 }

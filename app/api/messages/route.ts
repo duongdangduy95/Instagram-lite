@@ -1,4 +1,3 @@
-// app/api/messages/route.ts
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -9,17 +8,18 @@ export async function GET(req: Request) {
   const url = new URL(req.url)
   const targetUserId = url.searchParams.get('userId')
 
-  if (!currentUserId || !targetUserId) return new Response('Unauthorized', { status: 401 })
+  if (!currentUserId || !targetUserId) {
+    return new Response('Unauthorized', { status: 401 })
+  }
 
-  // Tìm conversation 1-1 giữa currentUser và targetUser
   const conversation = await prisma.conversation.findFirst({
     where: {
       isGroup: false,
       participants: {
-        every: { userId: { in: [currentUserId, targetUserId] } },
-      },
+        some: { userId: { in: [currentUserId, targetUserId] } }
+      }
     },
-    include: { messages: true },
+    include: { messages: true }
   })
 
   const messages = conversation?.messages || []
@@ -33,16 +33,18 @@ export async function POST(req: Request) {
   const body = await req.json()
   const { targetUserId, content } = body
 
-  if (!currentUserId || !targetUserId || !content) return new Response('Bad Request', { status: 400 })
+  if (!currentUserId || !targetUserId || !content) {
+    return new Response('Missing data', { status: 400 })
+  }
 
-  // Tìm hoặc tạo conversation 1-1
+  // Tìm hoặc tạo conversation
   let conversation = await prisma.conversation.findFirst({
     where: {
       isGroup: false,
       participants: {
-        every: { userId: { in: [currentUserId, targetUserId] } },
-      },
-    },
+        some: { userId: { in: [currentUserId, targetUserId] } }
+      }
+    }
   })
 
   if (!conversation) {
@@ -50,12 +52,9 @@ export async function POST(req: Request) {
       data: {
         isGroup: false,
         participants: {
-          create: [
-            { userId: currentUserId },
-            { userId: targetUserId },
-          ],
-        },
-      },
+          create: [{ userId: currentUserId }, { userId: targetUserId }]
+        }
+      }
     })
   }
 
@@ -64,8 +63,8 @@ export async function POST(req: Request) {
     data: {
       conversationId: conversation.id,
       senderId: currentUserId,
-      content,
-    },
+      content
+    }
   })
 
   return new Response(JSON.stringify(message))
