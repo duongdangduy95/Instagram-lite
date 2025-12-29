@@ -4,6 +4,20 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createClient } from '@supabase/supabase-js'
 
+
+
+const HASHTAG_REGEX = /#[\p{L}\p{N}_]+/gu
+
+function extractHashtags(text: string): string[] {
+  return Array.from(
+    new Set(
+      (text.match(HASHTAG_REGEX) || []).map(h =>
+        h.slice(1).toLowerCase()
+      )
+    )
+  )
+}
+
 /* =========================
    GET – LẤY CHI TIẾT BLOG
 ========================= */
@@ -98,7 +112,16 @@ export async function PATCH(
   }
 
   try {
-    const blog = await prisma.blog.findUnique({ where: { id: blogId } })
+    const blog = await prisma.blog.findUnique({
+      where: { id: blogId },
+      include: {
+        hashtags: {
+          include: {
+            hashtag: true,
+          },
+        },
+      },
+    })
     if (!blog || blog.authorId !== userId) {
       return NextResponse.json(
         { error: 'Unauthorized or not found' },
@@ -108,6 +131,12 @@ export async function PATCH(
 
     const form = await req.formData()
     const caption = (form.get('caption') as string) || ''
+
+    const newTags = extractHashtags(caption)
+    const oldTags = blog.hashtags.map(bh => bh.hashtag.name)
+
+    const tagsToAdd = newTags.filter(t => !oldTags.includes(t))
+    const tagsToRemove = oldTags.filter(t => !newTags.includes(t))
 
     /* ẢNH CŨ GIỮ LẠI */
     const existingImages: string[] = []
@@ -148,12 +177,59 @@ export async function PATCH(
     }
 
 
-    const updatedBlog = await prisma.blog.update({
-      where: { id: blogId },
-      data: {
-        caption,
-        imageUrls: newImageUrls,
-      },
+    const updatedBlog = await prisma.$transaction(async (tx) => {
+      // UPDATE BLOG
+      const updated = await tx.blog.update({
+        where: { id: blogId },
+        data: {
+          caption,
+          imageUrls: newImageUrls,
+        },
+      })
+
+      // ADD HASHTAGS
+      for (const tag of tagsToAdd) {
+        const hashtag = await tx.hashtag.upsert({
+          where: { name: tag },
+          update: { usage_count: { increment: 1 } },
+          create: { name: tag, usage_count: 1 },
+        })
+
+        await tx.blogHashtag.create({
+          data: {
+            blog_id: blogId,
+            hashtag_id: hashtag.id,
+          },
+        })
+      }
+
+      // REMOVE HASHTAGS
+      for (const tag of tagsToRemove) {
+        const hashtag = await tx.hashtag.findUnique({
+          where: { name: tag },
+        })
+        if (!hashtag) continue
+
+        await tx.blogHashtag.delete({
+          where: {
+            blog_id_hashtag_id: {
+              blog_id: blogId,
+              hashtag_id: hashtag.id,
+            },
+          },
+        })
+
+        const updatedHashtag = await tx.hashtag.update({
+          where: { id: hashtag.id },
+          data: { usage_count: { decrement: 1 } },
+        })
+
+        if (updatedHashtag.usage_count <= 0) {
+          await tx.hashtag.delete({ where: { id: hashtag.id } })
+        }
+      }
+
+      return updated
     })
 
     return NextResponse.json({
@@ -172,12 +248,12 @@ export async function PATCH(
 /* =========================
    DELETE – XÓA BLOG
 ========================= */
+
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: blogId } = await params
-
   const session = await getServerSession(authOptions)
   const userId = session?.user?.id
 
@@ -188,6 +264,11 @@ export async function DELETE(
   try {
     const blog = await prisma.blog.findUnique({
       where: { id: blogId },
+      include: {
+        hashtags: {
+          include: { hashtag: true },
+        },
+      },
     })
 
     if (!blog || blog.authorId !== userId) {
@@ -197,44 +278,54 @@ export async function DELETE(
       )
     }
 
-
+    /* XÓA ẢNH SUPABASE */
     const bucketName = 'instagram'
-
     const filesToDelete: string[] = []
 
     for (const url of blog.imageUrls ?? []) {
       try {
         const pathname = new URL(url).pathname
         const filePath = pathname.split(`/object/public/${bucketName}/`)[1]
-
-        if (filePath) {
-          filesToDelete.push(filePath)
-        }
-      } catch {
-      }
+        if (filePath) filesToDelete.push(filePath)
+      } catch {}
     }
 
     if (filesToDelete.length > 0) {
-      const { error } = await supabase.storage
-        .from(bucketName)
-        .remove(filesToDelete)
-
-      if (error) {
-        console.error('Supabase delete error:', error)
-      }
+      await supabase.storage.from(bucketName).remove(filesToDelete)
     }
 
-    await prisma.$transaction([
-      prisma.like.deleteMany({
-        where: { blogId },
-      }),
-      prisma.comment.deleteMany({
-        where: { blogId },
-      }),
-      prisma.blog.delete({
+    /* TRANSACTION DELETE */
+
+    await prisma.$transaction(async (tx) => {
+      await tx.like.deleteMany({ where: { blogId } })
+      await tx.comment.deleteMany({ where: { blogId } })
+
+      for (const bh of blog.hashtags) {
+        await tx.blogHashtag.delete({
+          where: {
+            blog_id_hashtag_id: {
+              blog_id: blogId,
+              hashtag_id: bh.hashtag_id,
+            },
+          },
+        })
+
+        const updated = await tx.hashtag.update({
+          where: { id: bh.hashtag_id },
+          data: { usage_count: { decrement: 1 } },
+        })
+
+        if (updated.usage_count <= 0) {
+          await tx.hashtag.delete({
+            where: { id: bh.hashtag_id },
+          })
+        }
+      }
+
+      await tx.blog.delete({
         where: { id: blogId },
-      }),
-    ])
+      })
+    })
 
     return NextResponse.json({ message: 'Blog deleted successfully' })
   } catch (error) {
@@ -245,4 +336,3 @@ export async function DELETE(
     )
   }
 }
-

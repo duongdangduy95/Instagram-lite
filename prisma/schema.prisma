@@ -60,10 +60,37 @@ model Blog {
   shares           Blog[]                   @relation("BlogShare")
   comments         Comment[]
   likes            Like[]
+  blogHashtags BlogHashtag[]
 
   @@index([caption_unaccent(ops: raw("gin_trgm_ops"))], map: "blog_caption_trgm_idx", type: Gin)
   @@index([search_vector], map: "blog_search_vector_idx", type: Gin)
 }
+
+model Hashtag {
+  id         BigInt   @id @default(autoincrement())
+  name       String   @unique
+  usage_count Int      @default(0)
+  created_at  DateTime @default(now())
+
+  blogs      BlogHashtag[]
+  @@map("hashtag")
+}
+
+model BlogHashtag {
+  blog_id    String
+  hashtag_id BigInt
+  created_at DateTime @default(now())
+
+  blog      Blog    @relation(fields: [blog_id], references: [id], onDelete: Cascade)
+  hashtag   Hashtag @relation(fields: [hashtag_id], references: [id], onDelete: Cascade)
+
+  @@id([blog_id, hashtag_id])
+  @@index([hashtag_id])
+  @@index([blog_id])
+  @@map("blog_hashtag")
+
+}
+
 
 model Comment {
   id        String    @id @default(cuid())
