@@ -58,7 +58,7 @@ model Blog {
   shares           Blog[]                   @relation("BlogShare")
   comments         Comment[]
   likes            Like[]
-  blog_hashtag     blog_hashtag[]
+  blogHashtags BlogHashtag[]
 
   @@index([caption_unaccent(ops: raw("gin_trgm_ops"))], map: "blog_caption_trgm_idx", type: Gin)
   @@index([search_vector], map: "blog_search_vector_idx", type: Gin)
@@ -72,6 +72,32 @@ model Blog {
   @@index([createdAt(sort: Desc)], map: "idx_blog_createdat")
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "idx_blog_createdat_id")
 }
+
+model Hashtag {
+  id         BigInt   @id @default(autoincrement())
+  name       String   @unique
+  usage_count Int      @default(0)
+  created_at  DateTime @default(now())
+
+  blogs      BlogHashtag[]
+  @@map("hashtag")
+}
+
+model BlogHashtag {
+  blog_id    String
+  hashtag_id BigInt
+  created_at DateTime @default(now())
+
+  blog      Blog    @relation(fields: [blog_id], references: [id], onDelete: Cascade)
+  hashtag   Hashtag @relation(fields: [hashtag_id], references: [id], onDelete: Cascade)
+
+  @@id([blog_id, hashtag_id])
+  @@index([hashtag_id])
+  @@index([blog_id])
+  @@map("blog_hashtag")
+
+}
+
 
 model Comment {
   id        String    @id @default(cuid())
@@ -110,6 +136,21 @@ model Like {
   @@unique([blogId, userId], map: "idx_like_blog_user")
   @@unique([userId, blogId], map: "idx_like_user_blog")
   @@index([blogId, userId], map: "like_blog_user_idx")
+  likes     Like[]
+}
+
+model Like {
+  id     String @id @default(cuid())
+  userId String
+  blogId String?
+  commentId String?
+
+  blog   Blog?   @relation(fields: [blogId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  comment Comment? @relation(fields: [commentId], references: [id])
+
+  @@index([blogId])
+  @@index([commentId])
 }
 
 model Follow {

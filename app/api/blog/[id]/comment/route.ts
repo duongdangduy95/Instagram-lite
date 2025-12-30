@@ -16,66 +16,41 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: blogId } = await params
+  const userId = await getCurrentUserId();
+  const comments = await prisma.comment.findMany({
+    where: { blogId },
+    include: {
+      author: { select: { fullname: true, username: true } },
 
-  /* 1️⃣ LẤY COMMENT GỐC */
-  const parentComments = await prisma.comment.findMany({
-    where: {
-      blogId,
-      parentId: null,
-    },
-    select: {
-      id: true,
-      content: true,
-      createdAt: true,
-      author: {
-        select: {
-          fullname: true,
-          username: true,
-        },
+      likes: userId
+        ? {
+            where: { userId },
+            select: { id: true },
+          }
+        : false,
+
+      _count: {
+        select: { likes: true },
       },
     },
     orderBy: { createdAt: 'asc' },
   })
 
-  if (parentComments.length === 0) {
-    return NextResponse.json([])
-  }
+  const result = comments.map((c) => ({
+    id: c.id,
+    blogId: c.blogId,
+    content: c.content,
+    createdAt: c.createdAt,
+    parentId: c.parentId,
+    author: c.author,
 
-  const parentIds = parentComments.map((c) => c.id)
-
-  /* 2️⃣ LẤY TOÀN BỘ REPLIES TRONG 1 QUERY */
-  const replies = await prisma.comment.findMany({
-    where: {
-      parentId: { in: parentIds },
-    },
-    select: {
-      id: true,
-      content: true,
-      createdAt: true,
-      parentId: true,
-      author: {
-        select: {
-          fullname: true,
-          username: true,
-        },
-      },
-    },
-    orderBy: { createdAt: 'asc' },
-  })
-
-  /* 3️⃣ MAP REPLIES VÀO COMMENT CHA */
-  const replyMap: Record<string, any[]> = {}
-  for (const r of replies) {
-    if (!replyMap[r.parentId!]) replyMap[r.parentId!] = []
-    replyMap[r.parentId!].push(r)
-  }
-
-  const result = parentComments.map((c) => ({
-    ...c,
-    replies: replyMap[c.id] ?? [],
+    likeCount: c._count.likes,
+    liked: userId ? c.likes.length > 0 : false,
   }))
 
-  return NextResponse.json(result)
+
+
+  return NextResponse.json(result);
 }
 
 /* =========================

@@ -13,6 +13,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const HASHTAG_REGEX = /#[\p{L}\p{N}_]+/gu
+
 export async function POST(req: Request) {
   try {
     // Lấy session từ NextAuth
@@ -39,6 +41,14 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+
+    const hashtags = Array.from(
+      new Set(
+        (caption.match(HASHTAG_REGEX) || []).map((h) =>
+          h.slice(1).toLowerCase()
+        )
+      )
+    )
 
     const uploadedUrls: string[] = []
 
@@ -79,6 +89,26 @@ export async function POST(req: Request) {
         authorId: userId,
       },
     })
+
+    for (const tag of hashtags) {
+      const hashtag = await prisma.hashtag.upsert({
+        where: { name: tag },
+        update: {
+          usage_count: { increment: 1 },
+        },
+        create: {
+          name: tag,
+          usage_count: 1,
+        },
+      })
+
+      await prisma.blogHashtag.create({
+        data: {
+          blog_id: blog.id,
+          hashtag_id: hashtag.id,
+        },
+      })
+    }
 
     return NextResponse.json({ message: 'Blog created', blog })
   } catch (error) {

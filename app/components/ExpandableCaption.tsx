@@ -32,9 +32,45 @@ export default function ExpandableCaption({
           overflow: 'hidden',
         }
 
+  function parseCaption(text: string) {
+    const regex = /#([\p{L}\p{N}_]+)/gu
+    const parts: React.ReactNode[] = []
+
+    let lastIndex = 0
+    let match
+
+    while ((match = regex.exec(text)) !== null) {
+      const start = match.index
+      const end = regex.lastIndex
+      const tag = match[1]
+
+      if (start > lastIndex) {
+        parts.push(text.slice(lastIndex, start))
+      }
+
+      parts.push(
+        <a
+          key={`${tag}-${start}`}
+          href={`/hashtags/${tag.toLowerCase()}`}
+          className="text-sky-500 hover:text-sky-400 cursor-pointer font-medium"
+        >
+          #{tag}
+        </a>
+      )
+
+      lastIndex = end
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex))
+    }
+
+    return parts
+  }
+
   return (
     <div className="text-gray-200 text-sm leading-relaxed break-words">
-      <p style={style}>{text}</p>
+      <p style={style}>{parseCaption(text)}</p>
       {shouldClamp && (
         <button
           type="button"

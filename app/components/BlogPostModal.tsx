@@ -1,13 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import BlogImages from '@/app/components/BlogImages'
 import CommentSection from '@/app/components/CommentSection'
 import { formatTimeAgo } from '@/lib/formatTimeAgo'
 import { useCurrentUser } from '@/app/contexts/CurrentUserContext'
 import type { CurrentUserSafe } from '@/types/dto'
+import RenderCaption from '@/app/components/RenderCaption'
+import { usePathname, useRouter } from 'next/navigation'
+
 
 type BlogAuthor = {
   id: string
@@ -29,6 +31,13 @@ type BlogDetail = {
 }
 
 export default function BlogPostModal({ blogId }: { blogId: string }) {
+  const pathname = usePathname()
+  const isOpen = pathname.startsWith('/blog/')
+
+
+  
+
+
   const router = useRouter()
   const { user: currentUser } = useCurrentUser()
 
@@ -46,8 +55,16 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
   const close = useCallback(() => router.back(), [router])
 
+  useEffect(() => {
+    const handler = () => close()
+    window.addEventListener('modal:close', handler)
+    return () => window.removeEventListener('modal:close', handler)
+  }, [close])
+
+
   // Lock background scroll while modal is open
   useEffect(() => {
+    if (!isOpen) return
     const prevBodyOverflow = document.body.style.overflow
     const prevHtmlOverflow = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
@@ -56,7 +73,8 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
       document.body.style.overflow = prevBodyOverflow
       document.documentElement.style.overflow = prevHtmlOverflow
     }
-  }, [])
+  }, [isOpen])
+
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -206,6 +224,10 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
     }
   }
 
+  if (!isOpen) {
+    return null
+  }
+
   return (
     <div
       className="fixed inset-0 z-[60] bg-black/45 flex items-center justify-center p-4"
@@ -263,9 +285,10 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
                   {blog.caption && (
                     <div className="mt-3 text-gray-200 whitespace-pre-wrap">
-                      {blog.caption}
+                      <RenderCaption text={blog.caption} />
                     </div>
                   )}
+
                 </div>
 
                 <div className="p-4">
