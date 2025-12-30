@@ -6,21 +6,15 @@ import { useSession } from 'next-auth/react'
 import { supabase } from '@/lib/supabaseClientClient'
 
 type Message = {
-  fileNames: any
   id: string
   senderId: string
   content: string
-  conversationId?: string
+  conversationId: string
   fileUrls?: string[]
+  fileNames?: string[]
 }
 
-export default function ChatWindow({
-  targetUserId,
-  onClose
-}: {
-  targetUserId: string
-  onClose: () => void
-}) {
+export default function ChatWindow({ targetUserId, onClose }: { targetUserId: string, onClose: () => void }) {
   const { data: session } = useSession()
   const currentUserId = session?.user?.id
 
@@ -29,174 +23,151 @@ export default function ChatWindow({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isTyping, setIsTyping] = useState(false)
 
-  const conversationIdRef = useRef<string | null>(null)
-  const supabaseChannelRef = useRef<any>(null)
+  const convIdRef = useRef<string | null>(null)
   const socketRef = useRef<Socket | null>(null)
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const channelRef = useRef<any>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  // ----------------- INIT CONVERSATION & SUPABASE REALTIME -----------------
   useEffect(() => {
-    if (!currentUserId) return
-    let active = true
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+  }, [messages, isTyping])
 
-    async function initConversation() {
-      // 1️⃣ Lấy tin nhắn hiện có
+  // --- INIT CHAT & REALTIME ---
+  useEffect(() => {
+    if (!currentUserId || !targetUserId) return
+    let active = true
+    setMessages([]); if (channelRef.current) supabase.removeChannel(channelRef.current)
+
+    async function initChat() {
       const res = await fetch(`/api/messages?userId=${targetUserId}`)
-      const data: Message[] = await res.json()
+      const data = await res.json()
       if (!active) return
 
-      setMessages(data)
-      let conversationId = data[0]?.conversationId
+      setMessages(data.messages || [])
+      let cid = data.conversationId
 
-      // 2️⃣ Nếu chưa có conversation, tạo mới
-      if (!conversationId) {
-        const createRes = await fetch('/api/conversations', {
+      if (!cid) {
+        const resC = await fetch('/api/conversations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ targetUserId })
         })
-        if (!createRes.ok) {
-          console.error('Lỗi tạo conversation', await createRes.text())
-          return
-        }
-        const conv = await createRes.json()
-        conversationId = conv.id
+        const newC = await resC.json()
+        cid = newC.id
       }
 
-      conversationIdRef.current = conversationId
-
-      // 3️⃣ Hủy channel cũ nếu có
-      if (supabaseChannelRef.current) supabase.removeChannel(supabaseChannelRef.current)
-
-      // 4️⃣ Subscribe Supabase Realtime
-      const channel = supabase
-        .channel(`chat:${conversationId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'Message',
-            filter: `conversationId=eq.${conversationId}`
-          },
+      convIdRef.current = cid
+      if (cid) {
+        const channel = supabase.channel(`chat:${cid}`)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Message', filter: `conversationId=eq.${cid}` }, 
           (payload) => {
             const newMsg = payload.new as Message
-            setMessages((prev) => {
-              if (prev.find((m) => m.id === newMsg.id)) return prev
-              return [...prev, newMsg]
-            })
-          }
-        )
-        .subscribe()
-
-      supabaseChannelRef.current = channel
+            setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg])
+          }).subscribe()
+        channelRef.current = channel
+      }
     }
-
-    initConversation()
-    return () => { active = false }
+    initChat(); return () => { active = false }
   }, [targetUserId, currentUserId])
 
-  // ----------------- SOCKET.IO TYPING INDICATOR -----------------
+  // --- TYPING INDICATOR ---
   useEffect(() => {
-    if (!currentUserId) return
     socketRef.current = io("http://localhost:4000")
-    const socket = socketRef.current
-
-    socket.on("connect", () => console.log("Socket connected:", socket.id))
-
-    socket.on("typing", ({ senderId, conversationId }: { senderId: string, conversationId: string }) => {
-      if (senderId === targetUserId && conversationId === conversationIdRef.current) {
+    socketRef.current.on("typing", ({ senderId, conversationId }) => {
+      if (senderId === targetUserId && conversationId === convIdRef.current) {
         setIsTyping(true)
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-        typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 1000)
+        setTimeout(() => setIsTyping(false), 3000)
       }
     })
+    return () => { socketRef.current?.disconnect() }
+  }, [targetUserId])
 
-    return () => socket.disconnect()
-  }, [targetUserId, currentUserId])
-   
-  // ----------------- INPUT & FILE CHANGE -----------------
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value)
-    if (conversationIdRef.current && currentUserId) {
-      socketRef.current?.emit("typing", { senderId: currentUserId, conversationId: conversationIdRef.current })
-    }
-  }
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) setSelectedFiles(Array.from(e.target.files))
-  }
-
+  // --- SEND MESSAGE LOGIC ---
   const sendMessage = async () => {
-    if (!conversationIdRef.current || !currentUserId) return
-    if (!input.trim() && selectedFiles.length === 0) return
+    if (!convIdRef.current || (!input.trim() && selectedFiles.length === 0)) return
 
     const formData = new FormData()
     formData.append('targetUserId', targetUserId)
     formData.append('content', input)
-    selectedFiles.forEach(file => formData.append('files', file))
-
-   const res = await fetch('/api/messages', { method: 'POST', body: formData })
-if (!res.ok) return console.error('Failed to send message', await res.text())
-
-const { message } = await res.json()
-setMessages(prev => [...prev, message])
-
-setInput('')
-setSelectedFiles([])
+    
+    // Gửi đúng key 'files' để Backend nhận diện được mảng File[]
+    selectedFiles.forEach(file => {
+      formData.append('files', file)
+    })
 
     setInput('')
     setSelectedFiles([])
+
+    try {
+      const res = await fetch('/api/messages', { method: 'POST', body: formData })
+      if (!res.ok) console.error("Gửi thất bại")
+    } catch (error) {
+      console.error("Lỗi kết nối:", error)
+    }
   }
 
-  // ----------------- RENDER -----------------
+  // Kiểm tra định dạng ảnh để hiển thị xem trước
+  const isImage = (url: string) => /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url)
+
   return (
-    <div className="fixed bottom-4 right-4 w-80 h-96 bg-gray-900 text-white rounded shadow-lg flex flex-col">
-      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+    <div className="fixed bottom-4 right-4 w-80 h-[480px] bg-gray-900 text-white rounded-lg shadow-2xl flex flex-col border border-gray-700">
+      <div className="p-3 bg-gray-800 border-b border-gray-700 flex justify-between items-center rounded-t-lg">
+        <span className="text-sm font-bold truncate">Chat: {targetUserId.slice(-6)}</span>
+        <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
         {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`p-1 rounded max-w-full ${
-              m.senderId === currentUserId ? 'bg-blue-600 self-end' : 'bg-gray-700 self-start'
-            }`}
-          >
-            {m.content && <div>{m.content}</div>}
-            {m.fileUrls?.map((url, idx) => (
-  <a
-    key={url}
-    href={url}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="block text-blue-400 underline mt-1"
-  >
-    {m.fileNames?.[idx] || `Download file (${url.split('.').pop()})`}
-  </a>
-))}
-
-
+          <div key={m.id} className={`flex flex-col ${m.senderId === currentUserId ? 'items-end' : 'items-start'}`}>
+            <div className={`p-2 rounded-lg max-w-[90%] text-sm ${
+              m.senderId === currentUserId ? 'bg-blue-600' : 'bg-gray-700'
+            }`}>
+              {m.content && <p className="mb-1">{m.content}</p>}
+              
+              {/* Hiển thị File / Ảnh */}
+              {m.fileUrls?.map((url, idx) => (
+                <div key={idx} className="mt-2">
+                  {isImage(url) ? (
+                    <img src={url} alt="upload" className="max-w-full rounded border border-white/10" />
+                  ) : (
+                    <a href={url} target="_blank" className="flex items-center gap-1 text-[11px] text-blue-300 underline">
+                      📎 {m.fileNames?.[idx] || 'Tệp tin'}
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         ))}
-        {isTyping && <div className="text-sm text-gray-300 italic">{targetUserId} is typing...</div>}
+        {isTyping && <div className="text-[10px] text-gray-400 italic">Đối phương đang nhập...</div>}
       </div>
 
-      <div className="p-2 flex flex-col gap-1">
-        <input
-          type="text"
-          className="flex-1 px-2 py-1 rounded text-black"
-          value={input}
-          onChange={handleInputChange}
-          onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-          placeholder="Type a message..."
-        />
-        <input type="file" multiple onChange={handleFileChange} className="text-sm" />
-        <button className="bg-blue-500 px-3 py-1 rounded mt-1" onClick={sendMessage}>
-          Send
-        </button>
+      <div className="p-3 bg-gray-800 border-t border-gray-700">
+        {selectedFiles.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1">
+            {selectedFiles.map((f, i) => (
+              <span key={i} className="text-[9px] bg-blue-900 px-1 rounded truncate max-w-[100px]">{f.name}</span>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            className="flex-1 bg-gray-700 rounded-md px-3 py-1 text-sm focus:outline-none"
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value)
+              socketRef.current?.emit("typing", { senderId: currentUserId, conversationId: convIdRef.current })
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            placeholder="Aa..."
+          />
+          <label className="cursor-pointer p-1 hover:bg-gray-600 rounded">
+            <input type="file" multiple className="hidden" onChange={(e) => e.target.files && setSelectedFiles(Array.from(e.target.files))} />
+            📎
+          </label>
+          <button onClick={sendMessage} className="bg-blue-600 px-3 py-1 rounded text-sm font-bold">Gửi</button>
+        </div>
       </div>
-
-      <button onClick={onClose} className="absolute top-1 right-1 text-gray-400 hover:text-white">
-        X
-      </button>
     </div>
   )
 }
