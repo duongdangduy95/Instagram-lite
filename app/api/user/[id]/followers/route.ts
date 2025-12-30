@@ -6,7 +6,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const followers = await prisma.follow.findMany({
     where: { followingId: id },
-    include: { follower: { select: { id: true, fullname: true, username: true } } }
+    include: { follower: { select: { id: true, fullname: true, username: true, image: true } } }
   })
 
   return new Response(JSON.stringify(followers.map(f => f.follower)))

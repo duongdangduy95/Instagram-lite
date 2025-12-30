@@ -76,7 +76,7 @@ export const authOptions: AuthOptions = {
       }
       return true
     },
-    async jwt({ token, user, account, trigger }) {
+    async jwt({ token, user, account, trigger, session }) {
       // Nếu là Google OAuth và chưa có id trong token, fetch user từ DB
       if (account?.provider === 'google') {
         const dbUser = await prisma.user.findUnique({
@@ -86,25 +86,37 @@ export const authOptions: AuthOptions = {
           token.id = dbUser.id
           token.fullname = dbUser.fullname
           token.username = dbUser.username
+          token.image = dbUser.image ?? null
           return token
         }
+      }
+
+      // Cho phép client gọi useSession().update({ fullname, username }) để refresh session sau khi update profile
+      if (trigger === 'update' && session?.user) {
+        const s = session.user as { fullname?: string | null; username?: string | null; image?: string | null }
+        if (typeof s.fullname !== 'undefined') token.fullname = s.fullname ?? null
+        if (typeof s.username !== 'undefined') token.username = s.username ?? null
+        if (typeof s.image !== 'undefined') token.image = s.image ?? null
+        return token
       }
       
       if (user) {
         // NOTE: user lấy từ DB (authorize), có thể chứa fullname/username
-        const u = user as { id: string; fullname?: string | null; username?: string | null }
+        const u = user as { id: string; fullname?: string | null; username?: string | null; image?: string | null }
         token.id = u.id
         token.fullname = u.fullname ?? null
         token.username = u.username ?? null
+        token.image = u.image ?? null
       }
       return token
     },
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = (token.id as string) || (token.sub as string)
-        const t = token as { fullname?: string | null; username?: string | null }
+        const t = token as { fullname?: string | null; username?: string | null; image?: string | null }
         session.user.fullname = t.fullname ?? null
         session.user.username = t.username ?? null
+        session.user.image = t.image ?? null
       }
       return session
     },

@@ -33,6 +33,7 @@ export async function GET(
             id: true,
             fullname: true,
             username: true,
+            image: true,
           },
         },
         sharedFrom: {
@@ -42,6 +43,7 @@ export async function GET(
                 id: true,
                 fullname: true,
                 username: true,
+                image: true,
               },
             },
             _count: {

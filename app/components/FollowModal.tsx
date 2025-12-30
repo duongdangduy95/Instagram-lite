@@ -1,11 +1,13 @@
 'use client'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 interface User {
   id: string
   fullname: string
   username: string
+  image?: string | null
 }
 
 interface Props {
@@ -62,8 +64,12 @@ export default function FollowModal({ isOpen, onClose, userId, type }: Props) {
             {users.map(u => (
               <li key={u.id} className="py-3 flex justify-between items-center hover:bg-gray-800 px-2 rounded transition-colors">
                 <Link href={`/profile/${u.id}`} className="flex-1 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
-                    {u.fullname.charAt(0).toUpperCase()}
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold overflow-hidden">
+                    {u.image ? (
+                      <Image src={u.image} alt={u.fullname} width={40} height={40} className="object-cover w-full h-full" />
+                    ) : (
+                      u.fullname.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div>
                     <p className="font-medium text-white">{u.fullname}</p>

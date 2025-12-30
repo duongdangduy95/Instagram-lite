@@ -13,6 +13,7 @@ type BlogAuthor = {
   id: string
   fullname: string
   username: string
+  image?: string | null
 }
 
 type BlogCounts = { likes: number; comments: number }
@@ -92,6 +93,32 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
       cancelled = true
     }
   }, [blogId, close])
+
+  // Realtime update avatar/fullname/username nếu user vừa sửa profile ở tab khác
+  useEffect(() => {
+    const onProfileChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { userId: string; fullname?: string | null; username?: string | null; image?: string | null }
+        | undefined
+      if (!detail?.userId) return
+      setBlog((prev) => {
+        if (!prev) return prev
+        if (prev.author?.id !== detail.userId) return prev
+        return {
+          ...prev,
+          author: {
+            ...prev.author,
+            fullname: (detail.fullname ?? prev.author.fullname) as string,
+            username: (detail.username ?? prev.author.username) as string,
+            image: typeof detail.image !== 'undefined' ? detail.image : prev.author.image,
+          },
+        }
+      })
+    }
+
+    window.addEventListener('user:profile-change', onProfileChange as EventListener)
+    return () => window.removeEventListener('user:profile-change', onProfileChange as EventListener)
+  }, [])
 
   const handleLike = async () => {
     if (!currentUser) {
@@ -248,10 +275,20 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                 <div className="p-4 border-b border-gray-800">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center">
-                        <span className="text-white font-bold">
-                          {blog.author.fullname.charAt(0).toUpperCase()}
-                        </span>
+                      <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                        {blog.author.image ? (
+                          <Image
+                            src={blog.author.image}
+                            alt={blog.author.fullname}
+                            width={36}
+                            height={36}
+                            className="object-cover w-full h-full"
+                          />
+                        ) : (
+                          <span className="text-white font-bold">
+                            {blog.author.fullname.charAt(0).toUpperCase()}
+                          </span>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className="text-gray-100 font-semibold truncate">

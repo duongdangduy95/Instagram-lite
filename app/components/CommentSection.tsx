@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { CurrentUserSafe } from '@/types/dto';
@@ -13,6 +13,7 @@ interface Comment {
   author: {
     fullname: string;
     username: string;
+    image?: string | null;
   };
   replies: Comment[];
   likeCount?: number;
@@ -147,6 +148,42 @@ export default function CommentSection({
 
     load();
   }, [blogId, reloadKey]);
+
+  // Realtime update avatar/fullname/username trong comment list (khi user vừa đổi profile)
+  useEffect(() => {
+    const onProfileChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { userId: string; fullname?: string | null; username?: string | null; image?: string | null }
+        | undefined
+      if (!detail?.userId) return
+
+      const patchTree = (items: Comment[]): Comment[] =>
+        items.map((c) => {
+          const next = { ...c }
+          if (next.author?.username && next.author.username === detail.username) {
+            // no-op (username changed) - handled below by id-less comments; fall back to fullname/image update by username
+          }
+          // Comments API hiện không trả author.id, nên match theo username cũ (tối thiểu) và update image/fullname.
+          if (next.author?.username && (detail.username || detail.fullname || typeof detail.image !== 'undefined')) {
+            if (next.author.username === (detail.username ?? next.author.username)) {
+              next.author = {
+                ...next.author,
+                fullname: (detail.fullname ?? next.author.fullname) as string,
+                username: (detail.username ?? next.author.username) as string,
+                image: typeof detail.image !== 'undefined' ? detail.image : next.author.image,
+              }
+            }
+          }
+          next.replies = patchTree(next.replies || [])
+          return next
+        })
+
+      setComments((prev) => patchTree(prev))
+    }
+
+    window.addEventListener('user:profile-change', onProfileChange as EventListener)
+    return () => window.removeEventListener('user:profile-change', onProfileChange as EventListener)
+  }, []);
   
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -350,10 +387,14 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
       <div className="ml-2 mt-2">
         <div className="flex items-start space-x-2">
           {/* Avatar */}
-          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-xs">
-              {comment.author.fullname.charAt(0).toUpperCase()}
-            </span>
+          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {comment.author.image ? (
+              <Image src={comment.author.image} alt={comment.author.fullname} width={32} height={32} className="object-cover w-full h-full" />
+            ) : (
+              <span className="text-white font-bold text-xs">
+                {comment.author.fullname.charAt(0).toUpperCase()}
+              </span>
+            )}
           </div>
           
           {/* Comment content */}

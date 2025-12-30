@@ -2,6 +2,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { formatTimeAgo } from '@/lib/formatTimeAgo'
 import BlogActions from './BlogActions'
 import BlogImages from './BlogImages'
@@ -55,8 +56,12 @@ export default function BlogFeed({
                 <div className="px-4 py-3 flex justify-between items-center">
                   <Link href={sharerProfileHref}>
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-                        <span className="font-bold">{blog.author.fullname.charAt(0)}</span>
+                      <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                        {blog.author.image ? (
+                          <Image src={blog.author.image} alt={blog.author.fullname} width={40} height={40} className="object-cover w-full h-full" />
+                        ) : (
+                          <span className="font-bold">{blog.author.fullname.charAt(0)}</span>
+                        )}
                       </div>
                       <div>
                         <p className="font-semibold">
@@ -102,8 +107,12 @@ export default function BlogFeed({
                       {displayBlog.author && (
                         <Link href={originalAuthorProfileHref} className="block">
                           <div className="flex items-center space-x-3">
-                            <div className="w-9 h-9 bg-gray-700 rounded-full flex items-center justify-center">
-                              <span className="font-bold">{displayBlog.author.fullname.charAt(0)}</span>
+                            <div className="w-9 h-9 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                              {displayBlog.author.image ? (
+                                <Image src={displayBlog.author.image} alt={displayBlog.author.fullname} width={36} height={36} className="object-cover w-full h-full" />
+                              ) : (
+                                <span className="font-bold">{displayBlog.author.fullname.charAt(0)}</span>
+                              )}
                             </div>
                             <div>
                               <p className="font-semibold">{displayBlog.author.fullname}</p>
@@ -134,8 +143,12 @@ export default function BlogFeed({
                     }
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-                        <span className="font-bold">{displayBlog.author.fullname.charAt(0)}</span>
+                      <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                        {displayBlog.author.image ? (
+                          <Image src={displayBlog.author.image} alt={displayBlog.author.fullname} width={40} height={40} className="object-cover w-full h-full" />
+                        ) : (
+                          <span className="font-bold">{displayBlog.author.fullname.charAt(0)}</span>
+                        )}
                       </div>
                       <div>
                         <p className="font-semibold">{displayBlog.author.fullname}</p>

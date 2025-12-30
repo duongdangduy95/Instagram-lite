@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -19,10 +20,10 @@ export async function GET() {
         include: {
           _count: { select: { likes: true, comments: true } },
           likes: { select: { userId: true } },
-          author: { select: { id: true, fullname: true, username: true } },
+          author: { select: { id: true, fullname: true, username: true, image: true } },
           sharedFrom: {
             include: {
-              author: { select: { id: true, fullname: true, username: true } },
+              author: { select: { id: true, fullname: true, username: true, image: true } },
               _count: { select: { likes: true, comments: true } },
             },
           },
@@ -35,10 +36,10 @@ export async function GET() {
             include: {
               _count: { select: { likes: true, comments: true } },
               likes: { select: { userId: true } },
-              author: { select: { id: true, fullname: true, username: true } },
+              author: { select: { id: true, fullname: true, username: true, image: true } },
               sharedFrom: {
                 include: {
-                  author: { select: { id: true, fullname: true, username: true } },
+                  author: { select: { id: true, fullname: true, username: true, image: true } },
                   _count: { select: { likes: true, comments: true } },
                 },
               },
@@ -81,23 +82,88 @@ export async function PATCH(req: Request) {
   }
 
   const userId = session.user.id
-  const { fullname, email, phone } = await req.json()
+
+  const contentType = req.headers.get('content-type') || ''
+  let fullname: string | undefined
+  let username: string | undefined
+  let phone: string | undefined
+  let avatarFile: File | null = null
+
+  // Hỗ trợ cả JSON (cũ) và multipart/form-data (mới, để upload avatar)
+  if (contentType.includes('multipart/form-data')) {
+    const form = await req.formData()
+    fullname = (form.get('fullname') as string) || undefined
+    username = (form.get('username') as string) || undefined
+    phone = (form.get('phone') as string) || undefined
+    const avatar = form.get('avatar')
+    avatarFile = avatar instanceof File && avatar.size > 0 ? avatar : null
+  } else {
+    const json = (await req.json().catch(() => ({}))) as Partial<{
+      fullname: string
+      username: string
+      phone: string
+    }>
+    fullname = json.fullname
+    username = json.username
+    phone = json.phone
+  }
 
   try {
-    // Kiểm tra email đã tồn tại không
-    if (email) {
-      const existingUser = await prisma.user.findUnique({ where: { email } })
-      if (existingUser && existingUser.id !== userId) {
-        return NextResponse.json({ error: 'Email đã được sử dụng' }, { status: 409 })
+    // Validate & check trùng username (bắt buộc unique cho route /user/[username])
+    if (typeof username === 'string') {
+      const nextUsername = username.trim()
+      if (nextUsername.length < 3 || nextUsername.length > 30) {
+        return NextResponse.json(
+          { error: 'Username phải có 3-30 ký tự' },
+          { status: 400 }
+        )
       }
+      if (!/^[a-zA-Z0-9._]+$/.test(nextUsername)) {
+        return NextResponse.json(
+          { error: 'Username chỉ được chứa chữ, số, dấu chấm và gạch dưới' },
+          { status: 400 }
+        )
+      }
+
+      const existed = await prisma.user.findFirst({
+        where: { username: nextUsername, NOT: { id: userId } },
+        select: { id: true },
+      })
+      if (existed) {
+        return NextResponse.json({ error: 'Username đã được sử dụng' }, { status: 409 })
+      }
+
+      username = nextUsername
+    }
+
+    // Upload avatar nếu có
+    let imageUrl: string | undefined
+    if (avatarFile) {
+      const buffer = Buffer.from(await avatarFile.arrayBuffer())
+      const ext = avatarFile.type?.split('/')[1] || 'jpg'
+      const fileName = `avatars/${userId}/${Date.now()}.${ext}`
+
+      const { error } = await supabase.storage.from('instagram').upload(fileName, buffer, {
+        contentType: avatarFile.type,
+        upsert: true,
+      })
+
+      if (error) {
+        console.error('Supabase upload error:', error)
+        return NextResponse.json({ error: 'Upload avatar failed' }, { status: 500 })
+      }
+
+      const { data } = supabase.storage.from('instagram').getPublicUrl(fileName)
+      imageUrl = data.publicUrl
     }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
         ...(fullname && { fullname }),
-        ...(email && { email }),
+        ...(username && { username }),
         ...(phone && { phone }),
+        ...(imageUrl && { image: imageUrl }),
       },
       include: {
         blogs: { orderBy: { createdAt: 'desc' } },
@@ -120,7 +186,7 @@ export async function PATCH(req: Request) {
       ...updatedUser,
       blogs: updatedUser.blogs.map(blog => ({
         ...blog,
-        imageUrls: blog.imageUrls ? [blog.imageUrls] : [],
+        imageUrls: blog.imageUrls || [],
       })),
     }
 

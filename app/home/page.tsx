@@ -17,6 +17,7 @@ type BlogWithRelations = {
     id: string
     fullname: string
     username: string
+    image?: string | null
     followers?: { followerId: string }[]
   }
   likes?: { userId: string }[]
@@ -33,6 +34,7 @@ type BlogWithRelations = {
       id: string
       fullname: string
       username: string
+      image?: string | null
     }
     _count: {
       likes: number
@@ -48,7 +50,7 @@ async function getCurrentUser() {
   // Chỉ lấy field cần thiết để tránh lộ thông tin nhạy cảm (vd: password)
   return prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, fullname: true, username: true },
+    select: { id: true, fullname: true, username: true, image: true },
   })
 }
 
@@ -61,6 +63,7 @@ export default async function HomePage() {
       id: true,
       fullname: true,
       username: true,
+      image: true,
       followers: currentUser
         ? { select: { followerId: true }, where: { followerId: currentUser.id } }
         : undefined,
@@ -85,6 +88,7 @@ export default async function HomePage() {
           id: true,
           fullname: true,
           username: true,
+          image: true,
           followers: currentUser
             ? { select: { followerId: true }, where: { followerId: currentUser.id } }
             : undefined,
@@ -96,7 +100,7 @@ export default async function HomePage() {
           caption: true,
           imageUrls: true,
           createdAt: true,
-          author: { select: { id: true, fullname: true, username: true } },
+          author: { select: { id: true, fullname: true, username: true, image: true } },
           _count: { select: { likes: true, comments: true } },
         },
       },

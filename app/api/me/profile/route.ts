@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
-// API endpoint nhẹ chỉ lấy thông tin cơ bản của user (cho Navigation)
+// API endpoint nhẹ cho trang settings/profile
 export async function GET() {
   const session = await getServerSession(authOptions)
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -19,6 +19,7 @@ export async function GET() {
       id: true,
       fullname: true,
       username: true,
+      phone: true,
       image: true,
     },
   })
@@ -29,4 +30,5 @@ export async function GET() {
 
   return NextResponse.json(user)
 }
+
 

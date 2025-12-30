@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const comments = await prisma.comment.findMany({
     where: { blogId },
     include: {
-      author: { select: { fullname: true, username: true } },
+      author: { select: { fullname: true, username: true, image: true } },
     },
     orderBy: { createdAt: 'asc' },
   });
@@ -49,6 +49,7 @@ export async function POST(
           select: {
             fullname: true,
             username: true,
+            image: true,
           },
         },
       },
