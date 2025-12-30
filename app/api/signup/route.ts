@@ -130,9 +130,7 @@ export async function POST(req: Request) {
             email: user.email,
             image: user.image
           },
-          requiresVerification: true,
-          // Remove this in production
-          otp: process.env.NODE_ENV === 'development' ? otp : undefined
+          requiresVerification: true
         },
         { status: 201 }
       )

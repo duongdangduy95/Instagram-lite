@@ -44,9 +44,7 @@ export async function POST(req: NextRequest) {
       console.log('OTP sent successfully to:', email)
 
       return NextResponse.json({
-        message: 'Mã OTP đã được gửi đến email của bạn',
-        // Remove this in production
-        otp: process.env.NODE_ENV === 'development' ? otp : undefined
+        message: 'Mã OTP đã được gửi đến email của bạn'
       })
     } catch (emailError) {
       console.error('Failed to send OTP email:', emailError)

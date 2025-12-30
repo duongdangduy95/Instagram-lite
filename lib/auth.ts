@@ -48,6 +48,14 @@ export const authOptions: AuthOptions = {
           throw new Error('Please sign in with OAuth provider')
         }
 
+        // Cho phép auto-login sau khi verify email (trong vòng 2 phút)
+        if (passwordInput === 'auto-verified' && user.emailVerified) {
+          const verifiedRecently = (new Date().getTime() - new Date(user.emailVerified).getTime()) < 2 * 60 * 1000 // 2 minutes
+          if (verifiedRecently) {
+            return user // Bypass password check for recently verified users
+          }
+        }
+
         const isValid = await compare(passwordInput, user.password)
         if (!isValid) throw new Error('Invalid password')
 

@@ -64,7 +64,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       message: 'Xác thực email thành công',
-      verified: true
+      verified: true,
+      user: user ? {
+        email: user.email,
+        username: user.username
+      } : null
     })
 
   } catch (error) {

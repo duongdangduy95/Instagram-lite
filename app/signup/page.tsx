@@ -25,6 +25,7 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -97,16 +98,20 @@ export default function SignupPage() {
       const data = await res.json()
 
       if (res.ok) {
-        setMessage(data.message || 'Đăng ký thành công!')
-        setMessageType('success')
-
         // If requires OTP verification, redirect to verify page
         if (data.requiresVerification) {
+          setMessage('✅ Đăng ký thành công! Đang chuyển đến trang nhập OTP...')
+          setMessageType('success')
+          
+          // Redirect ngay lập tức đến trang nhập OTP (sau 800ms để user thấy message)
           setTimeout(() => {
             router.push(`/verify-otp?email=${encodeURIComponent(formData.email)}&username=${encodeURIComponent(formData.username)}`)
-          }, 1500)
+          }, 800)
         } else {
-          // Old flow - direct to login
+          // Old flow - direct to login (trường hợp không cần OTP)
+          setMessage(data.message || 'Đăng ký thành công!')
+          setMessageType('success')
+          
           setFormData({
             username: '',
             fullname: '',
@@ -121,7 +126,7 @@ export default function SignupPage() {
           }, 1500)
         }
       } else {
-        setMessage(data.message || 'Đăng ký thất bại')
+        setMessage(data.message || data.error || 'Đăng ký thất bại')
         setMessageType('error')
       }
     } catch {
@@ -307,25 +312,31 @@ export default function SignupPage() {
                 )}
 
                 {/* Terms Checkbox */}
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-2 p-3 bg-white/5 border border-white/10 rounded-lg">
                   <input
                     type="checkbox"
                     id="terms"
-                    className="mt-1 w-4 h-4 rounded border-white/10 bg-white/5 text-purple-500 focus:ring-purple-500"
-                    defaultChecked={false}
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded border-white/10 bg-white/5 text-purple-500 focus:ring-purple-500 cursor-pointer"
                   />
-                  <label htmlFor="terms" className="text-xs text-gray-400">
+                  <label htmlFor="terms" className="text-xs text-gray-300 cursor-pointer">
                     Tôi đồng ý với {' '}
-                    <Link href="#" className="text-purple-400 hover:text-purple-300 underline">
+                    <Link href="#" className="text-purple-400 hover:text-purple-300 underline font-medium">
                       Điều khoản dịch vụ
                     </Link>
+                    {' '} và {' '}
+                    <Link href="#" className="text-purple-400 hover:text-purple-300 underline font-medium">
+                      Chính sách bảo mật
+                    </Link>
+                    {' '} của Instagram Lite *
                   </label>
                 </div>
 
                 {/* Sign Up Button */}
                 <button
                   onClick={handleSubmit}
-                  disabled={isLoading || !formData.username || !formData.fullname || !formData.email || !formData.password || !confirmPassword}
+                  disabled={isLoading || !formData.username || !formData.fullname || !formData.email || !formData.password || !confirmPassword || !agreedToTerms}
                   className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
