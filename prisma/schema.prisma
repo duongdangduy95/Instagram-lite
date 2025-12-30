@@ -22,26 +22,24 @@ model login_web {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  username      String
-  fullname      String
-  email         String    @unique
-  phone         String?
-  password      String?
-  createdAt     DateTime  @default(now())
-  emailVerified DateTime?
-  image         String?
-  Account       Account[]
-  blogs         Blog[]
-  comments      Comment[]
-  following     Follow[]  @relation("UserFollowers")
-  followers     Follow[]  @relation("UserFollowing")
-  likes         Like[]
-  Session       Session[]
-
-  // 🔹 Relation mới cho messaging
+  id             String        @id @default(cuid())
+  username       String
+  fullname       String
+  email          String        @unique
+  phone          String?
+  password       String?
+  createdAt      DateTime      @default(now())
+  emailVerified  DateTime?
+  image          String?
+  Account        Account[]
+  blogs          Blog[]
+  comments       Comment[]
+  following      Follow[]      @relation("UserFollowers")
+  followers      Follow[]      @relation("UserFollowing")
+  likes          Like[]
   sentMessages   Message[]     @relation("MessageSender")
   participations Participant[]
+  Session        Session[]
 }
 
 model Blog {
@@ -60,9 +58,19 @@ model Blog {
   shares           Blog[]                   @relation("BlogShare")
   comments         Comment[]
   likes            Like[]
+  blog_hashtag     blog_hashtag[]
 
   @@index([caption_unaccent(ops: raw("gin_trgm_ops"))], map: "blog_caption_trgm_idx", type: Gin)
   @@index([search_vector], map: "blog_search_vector_idx", type: Gin)
+  @@index([authorId, createdAt(sort: Desc)], map: "blog_author_createdat_idx")
+  @@index([sharedFromId, createdAt(sort: Desc)], map: "blog_sharedfrom_createdat_idx")
+  @@index([authorId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_blog_author_created")
+  @@index([authorId, createdAt(sort: Desc)], map: "idx_blog_author_created_at")
+  @@index([createdAt], map: "idx_blog_created_at")
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "idx_blog_created_at_id")
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "idx_blog_created_id")
+  @@index([createdAt(sort: Desc)], map: "idx_blog_createdat")
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "idx_blog_createdat_id")
 }
 
 model Comment {
@@ -76,16 +84,32 @@ model Comment {
   blog      Blog      @relation(fields: [blogId], references: [id])
   parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies   Comment[] @relation("CommentReplies")
+  Like      Like[]
+
+  @@index([authorId, createdAt(sort: Desc)], map: "comment_author_createdat_idx")
+  @@index([blogId, createdAt(sort: Desc)], map: "comment_blog_createdat_idx")
+  @@index([blogId, createdAt], map: "idx_comment_blog_createdat")
+  @@index([blogId, parentId, createdAt], map: "idx_comment_blog_parent")
+  @@index([blogId, parentId, createdAt], map: "idx_comment_blog_parent_created")
+  @@index([blogId], map: "idx_comment_blogid")
+  @@index([parentId, createdAt], map: "idx_comment_parent_created")
+  @@index([parentId], map: "idx_comment_parent_id")
+  @@index([parentId], map: "idx_comment_parentid")
 }
 
 model Like {
-  id     String @id @default(cuid())
-  userId String
-  blogId String
-  blog   Blog   @relation(fields: [blogId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  id        String   @id @default(cuid())
+  userId    String
+  blogId    String?
+  commentId String?
+  blog      Blog?    @relation(fields: [blogId], references: [id], onDelete: Restrict)
+  Comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Restrict)
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, blogId])
+  @@unique([blogId, userId], map: "idx_like_blog_user")
+  @@unique([userId, blogId], map: "idx_like_user_blog")
+  @@index([blogId, userId], map: "like_blog_user_idx")
 }
 
 model Follow {
@@ -99,6 +123,8 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+  @@index([followerId, createdAt(sort: Desc)], map: "follow_follower_createdat_idx")
+  @@index([followingId, createdAt(sort: Desc)], map: "follow_following_createdat_idx")
 }
 
 model Account {
@@ -137,35 +163,69 @@ model VerificationToken {
 
 model Conversation {
   id           String        @id @default(cuid())
-  name         String? // tên nhóm, nếu là nhóm chat
+  name         String?
   isGroup      Boolean       @default(false)
   createdAt    DateTime      @default(now())
-  participants Participant[]
-  messages     Message[]
   updatedAt    DateTime      @updatedAt
+  messages     Message[]
+  participants Participant[]
 }
 
 model Participant {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   userId         String
   conversationId String
-  joinedAt       DateTime @default(now())
-
-  user         User         @relation(fields: [userId], references: [id])
-  conversation Conversation @relation(fields: [conversationId], references: [id])
-  readMessages Message[]    @relation("MessageReadBy") // Tin nhắn đã đọc
+  joinedAt       DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+  readMessages   Message[]    @relation("MessageReadBy")
 
   @@unique([userId, conversationId])
+  @@index([conversationId, joinedAt], map: "participant_conversation_joinedat_idx")
 }
 
 model Message {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   conversationId String
   senderId       String
   content        String
-  createdAt      DateTime @default(now())
+  createdAt      DateTime      @default(now())
+  fileUrls       String[]      @default([])
+  conversation   Conversation  @relation(fields: [conversationId], references: [id])
+  sender         User          @relation("MessageSender", fields: [senderId], references: [id])
+  readBy         Participant[] @relation("MessageReadBy")
+  fileNames      String[]      @default([]) 
+  @@index([conversationId, createdAt(sort: Desc)], map: "message_conversation_createdat_idx")
+  @@index([senderId, createdAt(sort: Desc)], map: "message_sender_createdat_idx")
+}
 
-  conversation Conversation  @relation(fields: [conversationId], references: [id])
-  sender       User          @relation("MessageSender", fields: [senderId], references: [id])
-  readBy       Participant[] @relation("MessageReadBy") // Ai đã đọc
+model EmailOTP {
+  id        String   @id
+  email     String
+  otp       String
+  expires   DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model blog_hashtag {
+  blog_id    String
+  hashtag_id BigInt
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  Blog       Blog     @relation(fields: [blog_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_blog_hashtag_blog")
+  hashtag    hashtag  @relation(fields: [hashtag_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_blog_hashtag_hashtag")
+
+  @@id([blog_id, hashtag_id])
+  @@index([blog_id], map: "idx_blog_hashtag_blog_id")
+  @@index([hashtag_id], map: "idx_blog_hashtag_hashtag_id")
+}
+
+model hashtag {
+  id           BigInt         @id @default(autoincrement())
+  name         String         @unique(map: "uq_hashtag_name")
+  usage_count  Int            @default(0)
+  created_at   DateTime       @default(now()) @db.Timestamp(6)
+  blog_hashtag blog_hashtag[]
 }
