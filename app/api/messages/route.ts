@@ -1,17 +1,31 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+// Hàm dọn dẹp tên file của bạn
+function sanitizeFileName(name: string) {
+  return name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_');
+}
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   const currentUserId = session?.user?.id
-  const { searchParams } = new URL(req.url)
-  const targetUserId = searchParams.get('userId')
+  const url = new URL(req.url)
+  const targetUserId = url.searchParams.get('userId')
 
   if (!currentUserId || !targetUserId) return new Response('Unauthorized', { status: 401 })
 
-  // Tìm cuộc hội thoại 1-1
+  // Tìm cuộc hội thoại và include tin nhắn
   const conversation = await prisma.conversation.findFirst({
     where: {
       isGroup: false,
@@ -20,17 +34,13 @@ export async function GET(req: Request) {
         { participants: { some: { userId: targetUserId } } }
       ]
     },
-    // QUAN TRỌNG NHẤT: Phải include messages thì log Prisma mới có lệnh SELECT Message
-    include: { 
-      messages: {
-        orderBy: { createdAt: 'asc' } 
-      } 
-    }
+    include: { messages: { orderBy: { createdAt: 'asc' } } }
   })
 
+  // Trả về Object chứa ID hội thoại và mảng tin nhắn
   return NextResponse.json({
     conversationId: conversation?.id || null,
-    messages: conversation?.messages || [] // Nếu tìm thấy conv, messages sẽ ở đây
+    messages: conversation?.messages || []
   })
 }
 
@@ -42,10 +52,17 @@ export async function POST(req: Request) {
   const form = await req.formData()
   const targetUserId = form.get('targetUserId')?.toString()
   const content = form.get('content')?.toString() || ''
-  
-  // Xử lý files (nếu có)... (giữ nguyên logic upload của bạn)
+  const files: File[] = []
 
-  // Đảm bảo có Conversation trước khi tạo Message
+  form.forEach((value, key) => {
+    if (value instanceof File && (key === 'file' || key === 'files')) {
+      files.push(value)
+    }
+  })
+
+  if (!targetUserId) return new Response('Missing targetUserId', { status: 400 })
+
+  // Tìm hoặc tạo conversation
   let conversation = await prisma.conversation.findFirst({
     where: {
       isGroup: false,
@@ -60,9 +77,31 @@ export async function POST(req: Request) {
     conversation = await prisma.conversation.create({
       data: {
         isGroup: false,
-        participants: { create: [{ userId: currentUserId }, { userId: targetUserId! }] }
+        participants: { create: [{ userId: currentUserId }, { userId: targetUserId }] }
       }
     })
+  }
+
+  // Upload file lên Supabase (Logic của bạn)
+  const fileUrls: string[] = []
+  const fileNames: string[] = []
+
+  for (const file of files) {
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const safeName = sanitizeFileName(file.name)
+    const fileName = `messages/${currentUserId}/${Date.now()}-${safeName}`
+
+    const { error } = await supabase.storage
+      .from('messages')
+      .upload(fileName, buffer, { contentType: file.type })
+
+    if (!error) {
+      const { data: publicUrlData } = supabase.storage.from('messages').getPublicUrl(fileName)
+      if (publicUrlData?.publicUrl) {
+        fileUrls.push(publicUrlData.publicUrl)
+        fileNames.push(file.name) // Lưu tên gốc
+      }
+    }
   }
 
   const message = await prisma.message.create({
@@ -70,8 +109,8 @@ export async function POST(req: Request) {
       conversationId: conversation.id,
       senderId: currentUserId,
       content,
-      fileUrls: [], // Thêm logic url file của bạn vào đây
-      fileNames: []
+      fileUrls,
+      fileNames
     }
   })
 
