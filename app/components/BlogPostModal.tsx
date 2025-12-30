@@ -41,6 +41,8 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
   const [composer, setComposer] = useState('')
   const [posting, setPosting] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const [replyTo, setReplyTo] = useState<null | { parentId: string; username: string; fullname: string }>(null)
+  const composerRef = useRef<HTMLInputElement>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -191,13 +193,14 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, parentId: replyTo?.parentId ?? null }),
       })
       if (!res.ok) {
         const txt = await res.text().catch(() => '')
         throw new Error(txt)
       }
       setComposer('')
+      setReplyTo(null)
       setReloadKey((k) => k + 1)
     } catch {
       alert('Không thể gửi bình luận. Vui lòng thử lại.')
@@ -276,12 +279,46 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                     showComposer={false}
                     inlineScrollable={false}
                     reloadKey={reloadKey}
+                    onRequestReply={({ parentId, username, fullname }) => {
+                      setReplyTo({ parentId, username, fullname })
+
+                      // Prefill @tag cơ bản
+                      if (username) {
+                        const mention = `@${username}`
+                        setComposer((prev) => {
+                          const prevTrim = prev.trimStart()
+                          const replaced = prevTrim.replace(/^@[^\s]+\s+/, '')
+                          const nextBase = replaced.length > 0 ? replaced : ''
+                          return `${mention} ${nextBase}`.trimEnd() + ' '
+                        })
+                      }
+
+                      requestAnimationFrame(() => composerRef.current?.focus())
+                    }}
                   />
                 </div>
               </div>
 
               {/* Actions */}
               <div className="mt-auto border-t border-gray-800">
+                {replyTo && (
+                  <div className="px-4 pt-3 text-xs text-purple-primary flex items-center justify-between gap-3">
+                    <div className="truncate">
+                      Đang trả lời{' '}
+                      <span className="font-semibold">
+                        {replyTo.username ? `@${replyTo.username}` : replyTo.fullname}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-gray-400 hover:text-gray-200 underline whitespace-nowrap"
+                      onClick={() => setReplyTo(null)}
+                    >
+                      Huỷ
+                    </button>
+                  </div>
+                )}
+
                 {/* Row: like + share + save */}
                 <div className="px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -325,6 +362,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                 {/* Composer pinned bottom */}
                 <div className="px-4 py-3 border-t border-gray-800 flex items-center gap-3">
                   <input
+                    ref={composerRef}
                     value={composer}
                     onChange={(e) => setComposer(e.target.value)}
                     placeholder="Bình luận..."

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import { Providers } from "./providers"
+import ModalGate from "./components/ModalGate"
 
 // Phiên bản dùng fallback font
 const geist = { variable: "--font-geist-sans" }
@@ -19,9 +20,10 @@ export default function RootLayout({
   modal: React.ReactNode
 }>) {
   return (
-    <html lang="vi">
+    <html lang="vi" suppressHydrationWarning>
       {/* Gán cả 2 font vào body, dùng font hệ thống */}
       <body
+        suppressHydrationWarning
         className={`${geist.variable} ${inter.variable} antialiased`}
         style={{
           fontFamily: "var(--font-geist-sans), var(--font-inter), system-ui, -apple-system, sans-serif",
@@ -29,7 +31,7 @@ export default function RootLayout({
       >
         <Providers>
           {children}
-          {modal}
+          <ModalGate modal={modal} />
         </Providers>
       </body>
     </html>

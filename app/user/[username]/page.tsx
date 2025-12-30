@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { redirect } from 'next/navigation'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -6,28 +7,16 @@ interface Props {
 
 export default async function UserProfilePage({ params }: Props) {
   const { username } = await params
-  const user = await prisma.user.findUnique({
+
+  // NOTE: username không được đánh dấu @unique trong Prisma schema,
+  // nên không dùng findUnique({ where: { username } }) được.
+  const user = await prisma.user.findFirst({
     where: { username },
-    include: {
-      blogs: {
-        orderBy: { createdAt: 'desc' },
-      },
-    },
+    select: { id: true },
   })
 
   if (!user) return <div>User not found</div>
 
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">@{user.username}</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {user.blogs.map(blog => (
-          <div key={blog.id} className="bg-white p-4 rounded shadow">
-            <img src={blog.imageUrl} alt={blog.caption} className="w-full h-48 object-cover rounded" />
-            <p className="mt-2">{blog.caption}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+  // Dùng lại UI profile hiện có (/profile/[id]) để tránh trùng UI và tránh bug field cũ.
+  redirect(`/profile/${user.id}`)
 }

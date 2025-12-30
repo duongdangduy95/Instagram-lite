@@ -46,6 +46,7 @@ interface Like {
 interface UserType {
   id: string
   fullname: string
+  image?: string | null
   email: string
   phone?: string
   username: string
@@ -93,11 +94,10 @@ export default function ProfilePage() {
   }, [])
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showDropdown) {
-        setShowDropdown(null)
-      }
-      event.preventDefault()
+    if (!showDropdown) return
+
+    const handleClickOutside = () => {
+      setShowDropdown(null)
     }
 
     document.addEventListener('click', handleClickOutside)
