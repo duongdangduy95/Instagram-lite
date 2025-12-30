@@ -24,12 +24,20 @@ async function fetchMeBasic(): Promise<CurrentUserSafe> {
   if (!res.ok) return null
   const data = await res.json()
   if (!data?.id) return null
-  return { id: data.id, fullname: data.fullname ?? null, username: data.username ?? null }
+  return {
+    id: data.id,
+    fullname: data.fullname ?? null,
+    username: data.username ?? null,
+    image: data.image ?? null,
+  }
 }
 
 export function CurrentUserProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status: sessionStatus } = useSession()
   const sessionUserId = session?.user?.id ?? null
+  const sessionFullname = session?.user?.fullname ?? null
+  const sessionUsername = session?.user?.username ?? null
+  const sessionImage = (session?.user as { image?: string | null } | undefined)?.image ?? null
 
   const [user, setUser] = useState<CurrentUserSafe>(null)
 
@@ -49,25 +57,44 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
       return
     }
 
-    // Ưu tiên session (không cần gọi API)
+    // Ưu tiên session, nhưng nếu session chưa có image thì vẫn fetch /api/me/basic để lấy avatar
+    const cachedImage =
+      cachedUserId === sessionUserId && cachedUser && typeof (cachedUser as any).image !== 'undefined'
+        ? ((cachedUser as any).image as string | null | undefined)
+        : null
+
     const fromSession: CurrentUserSafe = {
       id: sessionUserId,
-      fullname: session?.user?.fullname ?? null,
-      username: session?.user?.username ?? null,
+      fullname: sessionFullname,
+      username: sessionUsername,
+      image: sessionImage ?? cachedImage ?? null,
     }
 
-    if (fromSession.fullname || fromSession.username) {
+    // Set nhanh từ session để UI có dữ liệu ngay.
+    // Nếu đã có image thì có thể return luôn; nếu chưa có image, sẽ tiếp tục fetch để bổ sung.
+    if (fromSession.fullname || fromSession.username || fromSession.image) {
       cachedUserId = sessionUserId
       cachedUser = fromSession
       inFlight = null
       setUser(fromSession)
-      return
+      if (fromSession.image) return
     }
 
     // Fallback: gọi /api/me/basic (dedupe)
     if (inFlight) {
       const u = await inFlight
-      setUser(u)
+      // Merge: ưu tiên fullname/username từ session (nếu có), ưu tiên image từ API
+      const merged: CurrentUserSafe = u
+        ? {
+            id: u.id,
+            fullname: fromSession.fullname ?? u.fullname ?? null,
+            username: fromSession.username ?? u.username ?? null,
+            image: (u as any).image ?? (fromSession as any).image ?? null,
+          }
+        : fromSession
+      cachedUserId = sessionUserId
+      cachedUser = merged
+      setUser(merged)
       return
     }
 
@@ -75,10 +102,19 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
     const u = await inFlight
     inFlight = null
 
+    const merged: CurrentUserSafe = u
+      ? {
+          id: u.id,
+          fullname: fromSession.fullname ?? u.fullname ?? null,
+          username: fromSession.username ?? u.username ?? null,
+          image: (u as any).image ?? (fromSession as any).image ?? null,
+        }
+      : fromSession
+
     cachedUserId = sessionUserId
-    cachedUser = u
-    setUser(u)
-  }, [sessionUserId, session?.user?.fullname, session?.user?.username])
+    cachedUser = merged
+    setUser(merged)
+  }, [sessionUserId, sessionFullname, sessionUsername, sessionImage])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -100,6 +136,33 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
 
     void refresh()
   }, [status, sessionUserId, refresh])
+
+  // Realtime sync: khi user đổi profile (avatar/fullname/username) thì cập nhật ngay navbar
+  useEffect(() => {
+    const onProfileChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { userId: string; fullname?: string | null; username?: string | null; image?: string | null }
+        | undefined
+      if (!detail?.userId) return
+      if (!sessionUserId || detail.userId !== sessionUserId) return
+
+      setUser((prev) => {
+        const base: NonNullable<CurrentUserSafe> = prev ?? { id: sessionUserId }
+        const next: NonNullable<CurrentUserSafe> = {
+          ...base,
+          fullname: typeof detail.fullname !== 'undefined' ? detail.fullname : base.fullname ?? null,
+          username: typeof detail.username !== 'undefined' ? detail.username : base.username ?? null,
+          image: typeof detail.image !== 'undefined' ? detail.image : (base as any).image ?? null,
+        }
+        cachedUserId = sessionUserId
+        cachedUser = next
+        return next
+      })
+    }
+
+    window.addEventListener('user:profile-change', onProfileChange as EventListener)
+    return () => window.removeEventListener('user:profile-change', onProfileChange as EventListener)
+  }, [sessionUserId])
 
   const value = useMemo<CurrentUserContextValue>(
     () => ({ user, status, refresh }),

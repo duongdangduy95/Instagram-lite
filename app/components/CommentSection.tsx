@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import type { CurrentUserSafe } from '@/types/dto';
 
 interface Comment {
@@ -13,6 +14,7 @@ interface Comment {
   author: {
     fullname: string;
     username: string;
+    image?: string | null;
   };
   replies: Comment[];
   likeCount?: number;
@@ -28,6 +30,29 @@ interface Props {
   showComposer?: boolean;
   inlineScrollable?: boolean;
   reloadKey?: number;
+  // Dành cho màn có composer riêng (vd: BlogPostModal). Khi click "Trả lời",
+  // component sẽ gọi callback này thay vì tự hiện composer nội bộ.
+  onRequestReply?: (args: { parentId: string; username: string; fullname: string }) => void;
+}
+
+function renderContentWithMentions(content: string) {
+  // Split giữ lại token @xxx để render link nổi bật
+  const parts = content.split(/(@[a-zA-Z0-9._]{1,30})/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('@') && part.length > 1) {
+      const username = part.slice(1);
+      return (
+        <Link
+          key={`${part}-${idx}`}
+          href={`/user/${username}`}
+          className="text-purple-primary hover:text-purple-primary-dark font-medium"
+        >
+          {part}
+        </Link>
+      );
+    }
+    return <span key={idx}>{part}</span>;
+  });
 }
 
 function buildCommentTree(comments: Omit<Comment, 'replies'>[]): Comment[] {
@@ -64,10 +89,46 @@ export default function CommentSection({
   showComposer = true,
   inlineScrollable = true,
   reloadKey,
+  onRequestReply,
 }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
-  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<null | { id: string; username: string; fullname: string }>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+
+  const focusComposer = () => {
+    // Chờ DOM cập nhật rồi focus
+    requestAnimationFrame(() => {
+      composerRef.current?.focus();
+    });
+  };
+
+  const handleReply = (comment: Comment) => {
+    const username = comment.author?.username || '';
+    const fullname = comment.author?.fullname || '';
+
+    // Nếu màn cha có composer riêng (BlogPostModal), chuyển request lên cha xử lý.
+    if (onRequestReply) {
+      onRequestReply({ parentId: comment.id, username, fullname });
+      return;
+    }
+
+    setReplyTo({ id: comment.id, username, fullname });
+
+    // Prefill mention cơ bản: @username (nếu có)
+    if (username) {
+      const mention = `@${username}`;
+      setNewComment((prev) => {
+        const prevTrim = prev.trimStart();
+        // Nếu đang reply người khác và đã có @... đầu câu, replace
+        const replaced = prevTrim.replace(/^@[^\s]+\s+/, '');
+        const nextBase = replaced.length > 0 ? replaced : '';
+        return `${mention} ${nextBase}`.trimEnd() + ' ';
+      });
+    }
+
+    focusComposer();
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -88,6 +149,42 @@ export default function CommentSection({
 
     load();
   }, [blogId, reloadKey]);
+
+  // Realtime update avatar/fullname/username trong comment list (khi user vừa đổi profile)
+  useEffect(() => {
+    const onProfileChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { userId: string; fullname?: string | null; username?: string | null; image?: string | null }
+        | undefined
+      if (!detail?.userId) return
+
+      const patchTree = (items: Comment[]): Comment[] =>
+        items.map((c) => {
+          const next = { ...c }
+          if (next.author?.username && next.author.username === detail.username) {
+            // no-op (username changed) - handled below by id-less comments; fall back to fullname/image update by username
+          }
+          // Comments API hiện không trả author.id, nên match theo username cũ (tối thiểu) và update image/fullname.
+          if (next.author?.username && (detail.username || detail.fullname || typeof detail.image !== 'undefined')) {
+            if (next.author.username === (detail.username ?? next.author.username)) {
+              next.author = {
+                ...next.author,
+                fullname: (detail.fullname ?? next.author.fullname) as string,
+                username: (detail.username ?? next.author.username) as string,
+                image: typeof detail.image !== 'undefined' ? detail.image : next.author.image,
+              }
+            }
+          }
+          next.replies = patchTree(next.replies || [])
+          return next
+        })
+
+      setComments((prev) => patchTree(prev))
+    }
+
+    window.addEventListener('user:profile-change', onProfileChange as EventListener)
+    return () => window.removeEventListener('user:profile-change', onProfileChange as EventListener)
+  }, []);
   
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -100,7 +197,7 @@ export default function CommentSection({
         credentials: 'include',
         body: JSON.stringify({
           content: newComment,
-          parentId: replyTo,
+          parentId: replyTo?.id ?? null,
         }),
       });
 
@@ -141,7 +238,7 @@ export default function CommentSection({
                 key={comment.id}
                 comment={comment}
                 currentUser={currentUser}
-                onReply={setReplyTo}
+                onReply={handleReply}
                 inline={true}
               />
             ))
@@ -154,7 +251,11 @@ export default function CommentSection({
             <form onSubmit={handleSubmit}>
               {replyTo && (
                 <div className="text-sm text-purple-primary mb-2">
-                  Trả lời một bình luận.{' '}
+                  Đang trả lời{' '}
+                  <span className="font-semibold">
+                    {replyTo.username ? `@${replyTo.username}` : replyTo.fullname}
+                  </span>
+                  .{' '}
                   <button
                     onClick={() => setReplyTo(null)}
                     type="button"
@@ -166,6 +267,7 @@ export default function CommentSection({
               )}
               <div className="flex items-center space-x-2">
                 <textarea
+                  ref={composerRef}
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   rows={1}
@@ -207,7 +309,7 @@ export default function CommentSection({
               key={comment.id}
               comment={comment}
               currentUser={currentUser}
-              onReply={setReplyTo}
+              onReply={handleReply}
             />
           ))}
         </div>
@@ -219,7 +321,11 @@ export default function CommentSection({
           <form onSubmit={handleSubmit}>
             {replyTo && (
               <div className="text-sm text-purple-primary mb-2">
-                Trả lời một bình luận.{' '}
+                Đang trả lời{' '}
+                <span className="font-semibold">
+                  {replyTo.username ? `@${replyTo.username}` : replyTo.fullname}
+                </span>
+                .{' '}
                 <button
                   onClick={() => setReplyTo(null)}
                   type="button"
@@ -230,6 +336,7 @@ export default function CommentSection({
               </div>
             )}
             <textarea
+              ref={composerRef}
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               rows={2}
@@ -252,7 +359,7 @@ export default function CommentSection({
 interface CommentItemProps {
   comment: Comment;
   currentUser: Props['currentUser'];
-  onReply: (id: string) => void;
+  onReply: (comment: Comment) => void;
   inline?: boolean;
 }
 
@@ -318,10 +425,14 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
       <div className="ml-2 mt-2">
         <div className="flex items-start space-x-2">
           {/* Avatar */}
-          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-xs">
-              {comment.author.fullname.charAt(0).toUpperCase()}
-            </span>
+          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {comment.author.image ? (
+              <Image src={comment.author.image} alt={comment.author.fullname} width={32} height={32} className="object-cover w-full h-full" />
+            ) : (
+              <span className="text-white font-bold text-xs">
+                {comment.author.fullname.charAt(0).toUpperCase()}
+              </span>
+            )}
           </div>
           
           {/* Comment content */}
@@ -339,7 +450,7 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
                 })}
               </span>
             </div>
-            <p className="text-sm text-gray-300 mt-1">{comment.content}</p>
+            <p className="text-sm text-gray-300 mt-1">{renderContentWithMentions(comment.content)}</p>
             <div className="flex items-center space-x-4 mt-1">
               {currentUser && (
                 <>
@@ -358,7 +469,8 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
                     <span className="text-xs">{likeCount}</span>
                   </button>
                   <button
-                    onClick={() => onReply(comment.id)}
+                    type="button"
+                    onClick={() => onReply(comment)}
                     className="text-xs text-gray-400 hover:text-purple-primary transition-colors"
                   >
                     Trả lời
@@ -396,10 +508,11 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
             {new Date(comment.createdAt).toLocaleString()}
           </span>
         </p>
-        <p className="text-sm text-gray-300 mt-1">{comment.content}</p>
+        <p className="text-sm text-gray-300 mt-1">{renderContentWithMentions(comment.content)}</p>
         {currentUser && (
           <button
-            onClick={() => onReply(comment.id)}
+            type="button"
+            onClick={() => onReply(comment)}
             className="text-xs text-gray-400 hover:text-purple-primary transition-colors mt-2"
           >
             Trả lời

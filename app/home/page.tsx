@@ -7,17 +7,51 @@ import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
 
 const FEED_LIMIT = 10
 
+
+
+type BlogWithRelations = {
+  id: string
+  caption?: string
+  imageUrls: string[]
+  createdAt: Date
+  author: {
+    id: string
+    fullname: string
+    username: string
+    image?: string | null
+    followers?: { followerId: string }[]
+  }
+  likes?: { userId: string }[]
+  _count: {
+    likes: number
+    comments: number
+  }
+  sharedFrom?: {
+    id: string
+    caption?: string
+    imageUrls: string[]
+    createdAt: Date
+    author: {
+      id: string
+      fullname: string
+      username: string
+      image?: string | null
+    }
+    _count: {
+      likes: number
+      comments: number
+    }
+  }
+}
+
+// Lấy người dùng hiện tại từ NextAuth session
 async function getCurrentUser() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return null
 
   return prisma.user.findUnique({
     where: { id: session.user.id },
-    select: {
-      id: true,
-      fullname: true,
-      username: true,
-    },
+    select: { id: true, fullname: true, username: true, image: true },
   })
 }
 
@@ -34,13 +68,9 @@ export default async function HomePage() {
       id: true,
       fullname: true,
       username: true,
-      _count: { select: { followers: true } },
-      followers: currentUserId
-        ? {
-            where: { followerId: currentUserId },
-            select: { followerId: true },
-            take: 1, // 🔥 CHỈ CẦN BIẾT CÓ FOLLOW HAY KHÔNG
-          }
+      image: true,
+      followers: currentUser
+        ? { select: { followerId: true }, where: { followerId: currentUser.id } }
         : undefined,
     },
     orderBy: { createdAt: 'desc' },
@@ -64,12 +94,9 @@ export default async function HomePage() {
           id: true,
           fullname: true,
           username: true,
-          followers: currentUserId
-            ? {
-                where: { followerId: currentUserId },
-                select: { followerId: true },
-                take: 1, // 🔥 KHÔNG COUNT
-              }
+          image: true,
+          followers: currentUser
+            ? { select: { followerId: true }, where: { followerId: currentUser.id } }
             : undefined,
         },
       },
@@ -95,19 +122,8 @@ export default async function HomePage() {
           caption: true,
           imageUrls: true,
           createdAt: true,
-          author: {
-            select: {
-              id: true,
-              fullname: true,
-              username: true,
-            },
-          },
-          _count: {
-            select: {
-              likes: true,
-              comments: true,
-            },
-          },
+          author: { select: { id: true, fullname: true, username: true, image: true } },
+          _count: { select: { likes: true, comments: true } },
         },
       },
     },

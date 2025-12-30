@@ -26,6 +26,7 @@ export const config = {
     "/home",
     "/blog/:path*",
     "/profile/:path*",
+    "/settings/:path*",
     "/search",
     "/user/:path*",
   ],

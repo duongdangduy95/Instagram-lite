@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import FollowButton from './FollowButton'
 
 interface UserSuggestionItemProps {
@@ -8,6 +9,7 @@ interface UserSuggestionItemProps {
     id: string
     fullname: string
     username: string
+    image?: string | null
     followers?: { followerId: string }[]
     _count?: {
       followers: number
@@ -41,8 +43,12 @@ export default function UserSuggestionItem({
         prefetch={true}
         className="flex items-center space-x-3 flex-1 min-w-0"
       >
-        <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-white font-semibold flex-shrink-0">
-          {user.fullname.charAt(0).toUpperCase()}
+        <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-white font-semibold flex-shrink-0 overflow-hidden">
+          {user.image ? (
+            <Image src={user.image} alt={user.fullname} width={48} height={48} className="object-cover w-full h-full" />
+          ) : (
+            user.fullname.charAt(0).toUpperCase()
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-gray-100 font-semibold break-words">{user.fullname}</p>

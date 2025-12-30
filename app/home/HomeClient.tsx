@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import BlogFeed from '@/app/components/BlogFeed'
 import UserSuggestionItem from '@/app/components/UserSuggestionItem'
 import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
@@ -10,7 +10,11 @@ export default function HomeClient(props: {
   users: SuggestUserDTO[]
   currentUser: CurrentUserSafe
 }) {
-  const { blogs, users, currentUser } = props
+  const { currentUser } = props
+
+  // Local state để có thể update realtime khi user đổi avatar/fullname/username
+  const [blogs, setBlogs] = useState<BlogDTO[]>(props.blogs)
+  const [users, setUsers] = useState<SuggestUserDTO[]>(props.users)
 
   const initialFollowMap = useMemo(() => {
     const map: Record<string, boolean> = {}
@@ -41,6 +45,59 @@ export default function HomeClient(props: {
 
   const [followMap, setFollowMap] = useState<Record<string, boolean>>(initialFollowMap)
   const [followersCountMap, setFollowersCountMap] = useState<Record<string, number>>(initialFollowersCount)
+
+  useEffect(() => {
+    const onProfileChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { userId: string; fullname?: string | null; username?: string | null; image?: string | null }
+        | undefined
+      if (!detail?.userId) return
+
+      // Update sidebar suggestions
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === detail.userId
+            ? {
+                ...u,
+                fullname: (detail.fullname ?? u.fullname) as string,
+                username: (detail.username ?? u.username) as string,
+                image: typeof detail.image !== 'undefined' ? detail.image : u.image,
+              }
+            : u
+        )
+      )
+
+      // Update feed authors (sharer + original author)
+      setBlogs((prev) =>
+        prev.map((b) => {
+          const next = { ...b }
+          if (next.author?.id === detail.userId) {
+            next.author = {
+              ...next.author,
+              fullname: (detail.fullname ?? next.author.fullname) as string,
+              username: (detail.username ?? next.author.username) as string,
+              image: typeof detail.image !== 'undefined' ? detail.image : next.author.image,
+            }
+          }
+          if (next.sharedFrom?.author?.id === detail.userId) {
+            next.sharedFrom = {
+              ...next.sharedFrom,
+              author: {
+                ...next.sharedFrom.author,
+                fullname: (detail.fullname ?? next.sharedFrom.author.fullname) as string,
+                username: (detail.username ?? next.sharedFrom.author.username) as string,
+                image: typeof detail.image !== 'undefined' ? detail.image : next.sharedFrom.author.image,
+              },
+            }
+          }
+          return next
+        })
+      )
+    }
+
+    window.addEventListener('user:profile-change', onProfileChange as EventListener)
+    return () => window.removeEventListener('user:profile-change', onProfileChange as EventListener)
+  }, [])
 
   const handleFollowChange = (targetUserId: string, isFollowing: boolean, followersCount?: number) => {
     setFollowMap((prev) => ({ ...prev, [targetUserId]: isFollowing }))

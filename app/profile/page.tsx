@@ -5,7 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Navigation from "../components/Navigation"
 import FollowModal from '../components/FollowModal'
-import ChatButton from '../components/ChatButton'
 
 interface Blog {
   _count: {
@@ -46,6 +45,7 @@ interface Like {
 interface UserType {
   id: string
   fullname: string
+  image?: string | null
   email: string
   phone?: string
   username: string
@@ -65,15 +65,7 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [showDropdown, setShowDropdown] = useState<string | null>(null)
-  const [showEditProfileModal, setShowEditProfileModal] = useState<boolean>(false)
   const [showFollowModal, setShowFollowModal] = useState<'followers' | 'following' | null>(null)
-
-  const [editProfileData, setEditProfileData] = useState({
-    fullname: '',
-    email: '',
-    phone: ''
-  })
-  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const fetchData = async () => {
@@ -93,11 +85,10 @@ export default function ProfilePage() {
   }, [])
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showDropdown) {
-        setShowDropdown(null)
-      }
-      event.preventDefault()
+    if (!showDropdown) return
+
+    const handleClickOutside = () => {
+      setShowDropdown(null)
     }
 
     document.addEventListener('click', handleClickOutside)
@@ -122,80 +113,6 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error deleting post:', error)
       alert('Có lỗi xảy ra khi xóa bài viết')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleOpenEditProfile = () => {
-    if (!user) return
-    setEditProfileData({
-      fullname: user.fullname,
-      email: user.email,
-      phone: user.phone || ''
-    })
-    setProfileErrors({})
-    setShowEditProfileModal(true)
-  }
-
-  const validateProfileData = (data = editProfileData) => {
-    const errors: Record<string, string> = {}
-
-    if (!data.fullname.trim()) {
-      errors.fullname = 'Họ và tên không được để trống'
-    } else if (data.fullname.trim().length < 2) {
-      errors.fullname = 'Họ và tên phải có ít nhất 2 ký tự'
-    } else if (data.fullname.trim().length > 50) {
-      errors.fullname = 'Họ và tên không được quá 50 ký tự'
-    }
-
-    if (!data.email.trim()) {
-      errors.email = 'Email không được để trống'
-    } else if (!/\S+@\S+\.\S+/.test(data.email)) {
-      errors.email = 'Email không hợp lệ'
-    }
-
-    if (data.phone.trim()) {
-      const phoneRegex = /^[0-9]{10,11}$/
-      if (!phoneRegex.test(data.phone.replace(/\s/g, ''))) {
-        errors.phone = 'Số điện thoại phải có 10-11 chữ số'
-      }
-    }
-
-    setProfileErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
-  const handleSaveProfile = async () => {
-    if (!validateProfileData()) {
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      const response = await fetch('/api/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editProfileData),
-        credentials: 'include',
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setUser(result)
-        setShowEditProfileModal(false)
-        setProfileErrors({})
-        alert('Cập nhật hồ sơ thành công!')
-      } else {
-        const data = await response.json()
-        if (response.status === 409) {
-          setProfileErrors({ email: 'Email đã được sử dụng' })
-        } else {
-          alert(data.error || 'Không thể cập nhật hồ sơ')
-        }
-      }
-    } catch {
-      alert('Có lỗi xảy ra')
     } finally {
       setIsLoading(false)
     }
@@ -251,23 +168,12 @@ export default function ProfilePage() {
               {/* Username và Settings */}
               <div className="flex items-center gap-4 mb-4">
                 <h1 className="text-xl sm:text-2xl font-light text-white">{user.username}</h1>
-                <button
-                  onClick={handleOpenEditProfile}
+                <Link
+                  href="/settings/profile"
                   className="px-4 py-1.5 text-sm font-medium bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
                 >
                   Chỉnh sửa trang cá nhân
-                </button>
-                <Link
-                  href="/blog/create"
-                  className="px-4 py-1.5 text-sm font-medium bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Xem kho lưu trữ
                 </Link>
-                <button className="p-1.5">
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                  </svg>
-                </button>
               </div>
 
               {/* Stats */}
@@ -628,105 +534,6 @@ export default function ProfilePage() {
           userId={user.id}
           type={showFollowModal}
         />
-      )}
-
-      {/* Edit Profile Modal */}
-      {showEditProfileModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
-          <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-gray-800">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-white">Chỉnh sửa hồ sơ</h3>
-              <button
-                onClick={() => setShowEditProfileModal(false)}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Họ và tên</label>
-                <input
-                  type="text"
-                  value={editProfileData.fullname}
-                  onChange={(e) => {
-                    const newData = {...editProfileData, fullname: e.target.value}
-                    setEditProfileData(newData)
-                    validateProfileData(newData)
-                  }}
-                  className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
-                    profileErrors.fullname ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
-                  }`}
-                  placeholder="Nhập họ và tên"
-                />
-                {profileErrors.fullname && (
-                  <p className="text-red-500 text-sm mt-1">{profileErrors.fullname}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Email</label>
-                <input
-                  type="email"
-                  value={editProfileData.email}
-                  onChange={(e) => {
-                    const newData = {...editProfileData, email: e.target.value}
-                    setEditProfileData(newData)
-                    validateProfileData(newData)
-                  }}
-                  className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
-                    profileErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
-                  }`}
-                  placeholder="Nhập email"
-                />
-                {profileErrors.email && (
-                  <p className="text-red-500 text-sm mt-1">{profileErrors.email}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Số điện thoại</label>
-                <input
-                  type="tel"
-                  value={editProfileData.phone}
-                  onChange={(e) => {
-                    const newData = {...editProfileData, phone: e.target.value}
-                    setEditProfileData(newData)
-                    validateProfileData(newData)
-                  }}
-                  className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
-                    profileErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
-                  }`}
-                  placeholder="Nhập số điện thoại"
-                />
-                {profileErrors.phone && (
-                  <p className="text-red-500 text-sm mt-1">{profileErrors.phone}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3 mt-8">
-              <button
-                onClick={handleSaveProfile}
-                disabled={isLoading || Object.keys(profileErrors).length > 0}
-                className={`flex-1 px-4 py-3 rounded-lg transition-all font-semibold ${
-                  Object.keys(profileErrors).length > 0
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-500 text-white hover:bg-blue-600'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {isLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
-              </button>
-              <button
-                onClick={() => setShowEditProfileModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-all font-semibold"
-              >
-                Hủy
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Delete Confirmation Modal */}

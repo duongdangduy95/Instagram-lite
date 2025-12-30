@@ -2,6 +2,7 @@ export type UserBasicDTO = {
   id: string
   fullname: string
   username: string
+  image?: string | null
 }
 
 // Dùng cho client-only contexts: đôi khi chỉ có `id` (vd: lấy từ session) là đủ.
@@ -10,6 +11,7 @@ export type CurrentUserSafe =
       id: string
       fullname?: string | null
       username?: string | null
+      image?: string | null
     }
   | null
 
