@@ -28,6 +28,7 @@ export async function GET(
       include: {
         author: true,
         likes: true,
+        savedBy: true,
         comments: true,
         _count: {
           select: {
@@ -35,7 +36,7 @@ export async function GET(
             comments: true,
           },
         },
-      },
+      } as any,
     })
 
     return NextResponse.json({

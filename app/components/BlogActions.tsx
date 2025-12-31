@@ -12,6 +12,7 @@ interface BlogActionsProps {
   initialLikeCount: number
   initialCommentCount: number
   initialLiked: boolean
+  initialSaved: boolean
   currentUser: CurrentUserSafe
 }
 
@@ -21,6 +22,7 @@ export default function BlogActions({
   initialLikeCount,
   initialCommentCount,
   initialLiked,
+  initialSaved,
   currentUser
 }: BlogActionsProps) {
   const router = useRouter()
@@ -28,7 +30,7 @@ export default function BlogActions({
   const [likeCount, setLikeCount] = useState(initialLikeCount)
   const [commentCount, setCommentCount] = useState(initialCommentCount)
   const [liked, setLiked] = useState(initialLiked)
-  const [saved, setSaved] = useState(false)
+  const [saved, setSaved] = useState(initialSaved)
   const [loading, setLoading] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
@@ -79,7 +81,7 @@ export default function BlogActions({
     // Cập nhật UI ngay
     setLiked(newLiked)
     setLikeCount(newCount)
-    
+
     // Animation
     setLikeAnimating(true)
     setTimeout(() => setLikeAnimating(false), 300)
@@ -115,13 +117,59 @@ export default function BlogActions({
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (authenticated === null || !authenticated) {
+      router.push('/login')
+      return
+    }
+
+    // Optimistic update
+    const previousSaved = saved
+    const newSaved = !saved
+    setSaved(newSaved)
+
     // Animation
     setSaveAnimating(true)
     setTimeout(() => setSaveAnimating(false), 300)
-    
-    // Toggle saved state
-    setSaved(!saved)
+
+    try {
+      const response = await fetch(`/api/blog/${blogId}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.saved !== newSaved) {
+          setSaved(data.saved)
+        }
+        // Dispatch event to notify profile page to refresh saved posts
+        window.dispatchEvent(
+          new CustomEvent('blog:save-change', {
+            detail: { blogId, saved: data.saved },
+          })
+        )
+      } else {
+        // Rollback
+        setSaved(previousSaved)
+        console.error('Save failed')
+        window.dispatchEvent(
+          new CustomEvent('blog:save-change', {
+            detail: { blogId, saved: previousSaved },
+          })
+        )
+      }
+    } catch (error) {
+      // Rollback
+      setSaved(previousSaved)
+      console.error('Save error:', error)
+      window.dispatchEvent(
+        new CustomEvent('blog:save-change', {
+          detail: { blogId, saved: previousSaved },
+        })
+      )
+    }
   }
 
   const handleComment = () => {
@@ -150,7 +198,7 @@ export default function BlogActions({
     // Animation
     setShareAnimating(true)
     setTimeout(() => setShareAnimating(false), 300)
-    
+
     // Mở modal share
     setShowShareModal(true)
   }
@@ -197,14 +245,13 @@ export default function BlogActions({
               <button
                 onClick={handleLike}
                 disabled={loading || authenticated === null}
-                className={`text-gray-300 hover:text-gray-100 transition-all duration-300 disabled:opacity-50 ${
-                  likeAnimating ? 'scale-75' : 'scale-100'
-                }`}
+                className={`text-gray-300 hover:text-gray-100 transition-all duration-300 disabled:opacity-50 ${likeAnimating ? 'scale-75' : 'scale-100'
+                  }`}
               >
-                <Image 
-                  src={liked ? '/icons/liked.svg' : '/icons/like.svg'} 
-                  alt="Thích" 
-                  width={24} 
+                <Image
+                  src={liked ? '/icons/liked.svg' : '/icons/like.svg'}
+                  alt="Thích"
+                  width={24}
                   height={24}
                 />
               </button>
@@ -215,14 +262,13 @@ export default function BlogActions({
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleComment}
-                className={`text-gray-300 hover:text-gray-100 transition-all duration-300 ${
-                  commentAnimating ? 'scale-75' : 'scale-100'
-                }`}
+                className={`text-gray-300 hover:text-gray-100 transition-all duration-300 ${commentAnimating ? 'scale-75' : 'scale-100'
+                  }`}
               >
-                <Image 
-                  src="/icons/chat.svg" 
-                  alt="Bình luận" 
-                  width={24} 
+                <Image
+                  src="/icons/chat.svg"
+                  alt="Bình luận"
+                  width={24}
                   height={24}
                 />
               </button>
@@ -230,32 +276,30 @@ export default function BlogActions({
             </div>
 
             {/* Share button */}
-            <button 
+            <button
               onClick={handleShare}
-              className={`text-gray-300 hover:text-gray-100 transition-all duration-300 ${
-                shareAnimating ? 'scale-75' : 'scale-100'
-              }`}
+              className={`text-gray-300 hover:text-gray-100 transition-all duration-300 ${shareAnimating ? 'scale-75' : 'scale-100'
+                }`}
             >
-              <Image 
-                src="/icons/share.svg" 
-                alt="Chia sẻ" 
-                width={24} 
+              <Image
+                src="/icons/share.svg"
+                alt="Chia sẻ"
+                width={24}
                 height={24}
               />
             </button>
           </div>
 
           {/* Right side: Save button */}
-          <button 
+          <button
             onClick={handleSave}
-            className={`text-gray-300 hover:text-gray-100 transition-all duration-300 ${
-              saveAnimating ? 'scale-75' : 'scale-100'
-            }`}
+            className={`text-gray-300 hover:text-gray-100 transition-all duration-300 ${saveAnimating ? 'scale-75' : 'scale-100'
+              }`}
           >
-            <Image 
-              src={saved ? '/icons/saved.svg' : '/icons/bookmark.svg'} 
-              alt="Lưu" 
-              width={24} 
+            <Image
+              src={saved ? '/icons/saved.svg' : '/icons/bookmark.svg'}
+              alt="Lưu"
+              width={24}
               height={24}
             />
           </button>
@@ -265,8 +309,8 @@ export default function BlogActions({
       {/* Comment Section Inline */}
       {showComments && (
         <div className="px-4 pb-4 border-t border-gray-800 pt-3">
-          <CommentSection 
-            blogId={blogId} 
+          <CommentSection
+            blogId={blogId}
             currentUser={currentUser}
             onCommentAdded={() => setCommentCount(prev => prev + 1)}
             onClose={() => setShowComments(false)}
@@ -277,7 +321,7 @@ export default function BlogActions({
 
       {/* Share Modal */}
       {showShareModal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fadeIn"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
@@ -286,7 +330,7 @@ export default function BlogActions({
             }
           }}
         >
-          <div 
+          <div
             className="bg-gray-900 rounded-lg p-6 w-full max-w-md border border-gray-800 animate-slideUp"
             onClick={(e) => e.stopPropagation()}
           >

@@ -8,11 +8,11 @@ export type UserBasicDTO = {
 // Dùng cho client-only contexts: đôi khi chỉ có `id` (vd: lấy từ session) là đủ.
 export type CurrentUserSafe =
   | {
-      id: string
-      fullname?: string | null
-      username?: string | null
-      image?: string | null
-    }
+    id: string
+    fullname?: string | null
+    username?: string | null
+    image?: string | null
+  }
   | null
 
 export type FollowEdgeDTO = { followerId: string }
@@ -34,7 +34,7 @@ export type SharedFromDTO = {
   caption?: string | null
   imageUrls: string[]
   createdAt: string
-  author: UserBasicDTO
+  author: BlogAuthorDTO
   _count: BlogCountsDTO
 } | null
 
@@ -47,6 +47,7 @@ export type BlogDTO = {
   likes?: BlogLikeEdgeDTO[]
   _count: BlogCountsDTO
   sharedFrom?: SharedFromDTO
+  isSaved?: boolean
 }
 
 export type SuggestUserDTO = UserBasicDTO & {

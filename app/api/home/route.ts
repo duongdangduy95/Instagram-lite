@@ -65,14 +65,21 @@ export async function GET(req: Request) {
         select: { id: true },
         take: 1,
       },
-    },
+      savedBy: {
+        where: { userId: session.user.id },
+        select: { id: true },
+        take: 1,
+      },
+    } as any,
   })
 
   return NextResponse.json(
-    blogs.map(b => ({
+    blogs.map((b: any) => ({
       ...b,
-      liked: b.likes.length > 0,
+      liked: (b.likes as any[]).length > 0,
+      isSaved: (b.savedBy as any[]).length > 0,
       likes: undefined,
+      savedBy: undefined,
     }))
   )
 }

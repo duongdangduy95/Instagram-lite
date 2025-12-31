@@ -40,6 +40,7 @@ model User {
   sentMessages   Message[]     @relation("MessageSender")
   participations Participant[]
   Session        Session[]
+  savedPosts     SavedPost[]
 }
 
 model Blog {
@@ -59,6 +60,7 @@ model Blog {
   comments         Comment[]
   likes            Like[]
   blogHashtags BlogHashtag[]
+  savedBy      SavedPost[]
 
   @@index([caption_unaccent(ops: raw("gin_trgm_ops"))], map: "blog_caption_trgm_idx", type: Gin)
   @@index([search_vector], map: "blog_search_vector_idx", type: Gin)
@@ -110,7 +112,7 @@ model Comment {
   blog      Blog      @relation(fields: [blogId], references: [id])
   parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies   Comment[] @relation("CommentReplies")
-  Like      Like[]
+  likes     Like[]
 
   @@index([authorId, createdAt(sort: Desc)], map: "comment_author_createdat_idx")
   @@index([blogId, createdAt(sort: Desc)], map: "comment_blog_createdat_idx")
@@ -128,30 +130,16 @@ model Like {
   userId    String
   blogId    String?
   commentId String?
-  blog      Blog?    @relation(fields: [blogId], references: [id], onDelete: Restrict)
-  Comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Restrict)
+  blog      Blog?    @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  Comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, blogId])
-  @@unique([blogId, userId], map: "idx_like_blog_user")
-  @@unique([userId, blogId], map: "idx_like_user_blog")
-  @@index([blogId, userId], map: "like_blog_user_idx")
-  likes     Like[]
-}
-
-model Like {
-  id     String @id @default(cuid())
-  userId String
-  blogId String?
-  commentId String?
-
-  blog   Blog?   @relation(fields: [blogId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
-  comment Comment? @relation(fields: [commentId], references: [id])
-
   @@index([blogId])
   @@index([commentId])
+  @@index([userId])
 }
+
 
 model Follow {
   id          String   @id @default(cuid())
@@ -251,22 +239,14 @@ model EmailOTP {
   @@index([email])
 }
 
-model blog_hashtag {
-  blog_id    String
-  hashtag_id BigInt
-  created_at DateTime @default(now()) @db.Timestamp(6)
-  Blog       Blog     @relation(fields: [blog_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_blog_hashtag_blog")
-  hashtag    hashtag  @relation(fields: [hashtag_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_blog_hashtag_hashtag")
+model SavedPost {
+  id        String   @id @default(cuid())
+  userId    String
+  blogId    String
+  createdAt DateTime @default(now())
 
-  @@id([blog_id, hashtag_id])
-  @@index([blog_id], map: "idx_blog_hashtag_blog_id")
-  @@index([hashtag_id], map: "idx_blog_hashtag_hashtag_id")
-}
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blog Blog @relation(fields: [blogId], references: [id], onDelete: Cascade)
 
-model hashtag {
-  id           BigInt         @id @default(autoincrement())
-  name         String         @unique(map: "uq_hashtag_name")
-  usage_count  Int            @default(0)
-  created_at   DateTime       @default(now()) @db.Timestamp(6)
-  blog_hashtag blog_hashtag[]
+  @@unique([userId, blogId])
 }

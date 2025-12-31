@@ -22,6 +22,7 @@ type BlogWithRelations = {
     followers?: { followerId: string }[]
   }
   likes?: { userId: string }[]
+  savedBy?: { userId: string }[]
   _count: {
     likes: number
     comments: number
@@ -103,10 +104,18 @@ export default async function HomePage() {
 
       likes: currentUserId
         ? {
-            where: { userId: currentUserId },
-            select: { userId: true },
-            take: 1, // 🔥 LIKE HAY KHÔNG
-          }
+          where: { userId: currentUserId },
+          select: { userId: true },
+          take: 1, // 🔥 LIKE HAY KHÔNG
+        }
+        : undefined,
+
+      savedBy: currentUserId
+        ? {
+          where: { userId: currentUserId },
+          select: { userId: true },
+          take: 1,
+        }
         : undefined,
 
       _count: {
@@ -126,20 +135,21 @@ export default async function HomePage() {
           _count: { select: { likes: true, comments: true } },
         },
       },
-    },
+    } as any,
   })
 
   /* =====================
      SERIALIZE DATE
   ====================== */
-  const blogsDto: BlogDTO[] = blogs.map((b) => ({
+  const blogsDto: BlogDTO[] = (blogs as any[]).map((b: any) => ({
     ...b,
     createdAt: b.createdAt.toISOString(),
+    isSaved: !!(currentUserId && b.savedBy?.length),
     sharedFrom: b.sharedFrom
       ? {
-          ...b.sharedFrom,
-          createdAt: b.sharedFrom.createdAt.toISOString(),
-        }
+        ...b.sharedFrom,
+        createdAt: b.sharedFrom.createdAt.toISOString(),
+      }
       : null,
   }))
 

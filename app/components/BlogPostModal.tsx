@@ -28,6 +28,7 @@ type BlogDetail = {
   hashtags?: string[]
   author: BlogAuthor
   likes?: { userId: string }[]
+  savedBy?: { userId: string }[]
   _count: BlogCounts
 }
 
@@ -36,7 +37,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
   const isOpen = pathname.startsWith('/blog/')
 
 
-  
+
 
 
   const router = useRouter()
@@ -102,6 +103,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
         setBlog(data)
         setLiked((data.likes?.length ?? 0) > 0)
         setLikeCount(data._count?.likes ?? 0)
+        setSaved((data.savedBy?.length ?? 0) > 0)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -406,7 +408,30 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                   </div>
 
                   <button
-                    onClick={() => setSaved((v) => !v)}
+                    onClick={async () => {
+                      if (!currentUser) {
+                        router.push('/login')
+                        return
+                      }
+                      const prevSaved = saved
+                      setSaved(!prevSaved)
+                      try {
+                        const res = await fetch(`/api/blog/${blog.id}/save`, {
+                          method: 'POST',
+                          credentials: 'include',
+                        })
+                        if (!res.ok) {
+                          setSaved(prevSaved)
+                          return
+                        }
+                        const data = await res.json()
+                        if (typeof data?.saved === 'boolean') {
+                          setSaved(data.saved)
+                        }
+                      } catch {
+                        setSaved(prevSaved)
+                      }
+                    }}
                     className="text-gray-200 hover:text-white"
                     aria-label="Lưu"
                   >

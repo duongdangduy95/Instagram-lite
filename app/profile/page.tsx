@@ -61,6 +61,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<UserType | null>(null)
   const [myBlogs, setMyBlogs] = useState<Blog[]>([])
   const [likedBlogs, setLikedBlogs] = useState<Blog[]>([])
+  const [savedBlogs, setSavedBlogs] = useState<Blog[]>([])
   const [activeTab, setActiveTab] = useState<'posts' | 'shared' | 'saved' | 'liked'>('posts')
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -83,6 +84,46 @@ export default function ProfilePage() {
 
     fetchData()
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'saved' && savedBlogs.length === 0) {
+      const fetchSaved = async () => {
+        setIsLoading(true)
+        try {
+          const res = await fetch('/api/user/saved', { credentials: 'include' })
+          const data = await res.json()
+          if (Array.isArray(data)) {
+            setSavedBlogs(data)
+          }
+        } catch (error) {
+          console.error('Error fetching saved blogs:', error)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+      fetchSaved()
+    }
+  }, [activeTab, savedBlogs.length])
+
+  // Listen for save/unsave events to refresh saved posts in real-time
+  useEffect(() => {
+    const handleSaveChange = () => {
+      // Only refetch if we're on the saved tab and have already loaded data
+      if (activeTab === 'saved' && savedBlogs.length > 0) {
+        fetch('/api/user/saved', { credentials: 'include' })
+          .then(res => res.json())
+          .then(data => {
+            if (Array.isArray(data)) {
+              setSavedBlogs(data)
+            }
+          })
+          .catch(err => console.error('Error refetching saved blogs:', err))
+      }
+    }
+
+    window.addEventListener('blog:save-change', handleSaveChange)
+    return () => window.removeEventListener('blog:save-change', handleSaveChange)
+  }, [activeTab, savedBlogs.length])
 
   useEffect(() => {
     if (!showDropdown) return
@@ -145,21 +186,21 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className="flex-shrink-0">
               <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-gray-700 bg-gray-800 flex items-center justify-center">
-  {user.image ? (
-    <Image
-      src={user.image}
-      alt={user.fullname}
-      width={128}
-      height={128}
-      className="object-cover w-full h-full"
-      priority
-    />
-  ) : (
-    <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold">
-      {user.fullname?.charAt(0).toUpperCase()}
-    </div>
-  )}
-</div>
+                {user.image ? (
+                  <Image
+                    src={user.image}
+                    alt={user.fullname}
+                    width={128}
+                    height={128}
+                    className="object-cover w-full h-full"
+                    priority
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold">
+                    {user.fullname?.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
 
             </div>
 
@@ -209,11 +250,10 @@ export default function ProfilePage() {
           <div className="flex items-center justify-center gap-0 border-t border-gray-800 mt-8">
             <button
               onClick={() => setActiveTab('posts')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
-                activeTab === 'posts'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'posts'
+                ? 'border-white text-white'
+                : 'border-transparent text-gray-400 hover:text-white'
+                }`}
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -222,11 +262,10 @@ export default function ProfilePage() {
             </button>
             <button
               onClick={() => setActiveTab('saved')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
-                activeTab === 'saved'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'saved'
+                ? 'border-white text-white'
+                : 'border-transparent text-gray-400 hover:text-white'
+                }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -235,11 +274,10 @@ export default function ProfilePage() {
             </button>
             <button
               onClick={() => setActiveTab('shared')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
-                activeTab === 'shared'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'shared'
+                ? 'border-white text-white'
+                : 'border-transparent text-gray-400 hover:text-white'
+                }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -253,11 +291,10 @@ export default function ProfilePage() {
             </button>
             <button
               onClick={() => setActiveTab('liked')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
-                activeTab === 'liked'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'liked'
+                ? 'border-white text-white'
+                : 'border-transparent text-gray-400 hover:text-white'
+                }`}
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path
@@ -429,17 +466,60 @@ export default function ProfilePage() {
           )}
 
           {activeTab === 'saved' && (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-24 h-24 mb-6 flex items-center justify-center">
-                <svg className="w-full h-full text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Chỉ bạn mới có thể thấy những gì bạn đã lưu</h3>
-              <p className="text-gray-400 text-center max-w-sm">
-                Lưu ảnh và video mà bạn muốn xem lại. Không ai được thông báo và chỉ bạn mới có thể thấy những gì bạn đã lưu.
-              </p>
-            </div>
+            <>
+              {savedBlogs.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1">
+                  {savedBlogs.map((blog) => {
+                    const displayBlog = blog.sharedFrom ?? blog
+                    return (
+                      <Link
+                        key={blog.id}
+                        href={`/blog/${displayBlog.id}`}
+                        className="aspect-square bg-gray-900 relative group overflow-hidden"
+                      >
+                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (
+                          <Image
+                            src={displayBlog.imageUrls[0]}
+                            alt={displayBlog.caption || 'Post'}
+                            fill
+                            className="object-cover group-hover:opacity-70 transition-opacity"
+                            sizes="(max-width: 768px) 33vw, 300px"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-6 text-white">
+                            <div className="flex items-center gap-2">
+                              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                              </svg>
+                              <span className="font-semibold">{blog._count?.likes || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                              <span className="font-semibold">{blog._count?.comments || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="w-24 h-24 mb-6 flex items-center justify-center">
+                    <svg className="w-full h-full text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Chỉ bạn mới có thể thấy những gì bạn đã lưu</h3>
+                  <p className="text-gray-400 text-center max-w-sm">
+                    Lưu ảnh và video mà bạn muốn xem lại. Không ai được thông báo và chỉ bạn mới có thể thấy những gì bạn đã lưu.
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           {activeTab === 'liked' && (
@@ -563,6 +643,6 @@ export default function ProfilePage() {
         </div>
       )}
     </div>
-    
+
   )
 }

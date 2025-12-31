@@ -66,6 +66,9 @@ export async function GET(req: Request) {
       likes: userId
         ? { where: { userId } }
         : false,
+      savedBy: userId
+        ? { where: { userId } }
+        : false,
 
       sharedFrom: {
         select: {
@@ -95,11 +98,17 @@ export async function GET(req: Request) {
           comments: true,
         },
       },
-    },
+    } as any,
     orderBy: {
       createdAt: 'desc',
     },
   })
 
-  return NextResponse.json(blogs)
+  return NextResponse.json(blogs.map((b: any) => ({
+    ...b,
+    liked: !!(userId && (b.likes as any[])?.length),
+    isSaved: !!(userId && (b.savedBy as any[])?.length),
+    likes: undefined,
+    savedBy: undefined,
+  })))
 }

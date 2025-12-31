@@ -44,7 +44,7 @@ export default function BlogFeed({
         const initialIsFollowing =
           typeof followMap?.[followTargetUserId] === 'boolean'
             ? followMap![followTargetUserId]
-            : ((isShared ? blog.author.followers : displayBlog.author.followers)?.length ?? 0) > 0
+            : (((isShared ? blog.author : displayBlog.author) as any).followers?.length ?? 0) > 0
 
         return (
           <div key={blog.id} className="bg-black text-gray-100">
@@ -190,6 +190,7 @@ export default function BlogFeed({
               initialLikeCount={blog._count.likes}
               initialCommentCount={blog._count.comments}
               initialLiked={isLiked}
+              initialSaved={!!blog.isSaved}
               currentUser={currentUser}
             />
           </div>
