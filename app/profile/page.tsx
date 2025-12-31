@@ -79,7 +79,7 @@ export default function ProfilePage() {
 
       setUser(data)
       setMyBlogs(data.blogs || [])
-      setLikedBlogs(data.likes?.map((like: Like) => like.blog) || [])
+      setLikedBlogs(data.likes?.map((like: Like) => like.blog).filter((b: Blog | null) => b !== null) || [])
     }
 
     fetchData()
@@ -93,7 +93,7 @@ export default function ProfilePage() {
           const res = await fetch('/api/user/saved', { credentials: 'include' })
           const data = await res.json()
           if (Array.isArray(data)) {
-            setSavedBlogs(data)
+            setSavedBlogs(data.filter((b: Blog) => b && b.id))
           }
         } catch (error) {
           console.error('Error fetching saved blogs:', error)
@@ -114,7 +114,7 @@ export default function ProfilePage() {
           .then(res => res.json())
           .then(data => {
             if (Array.isArray(data)) {
-              setSavedBlogs(data)
+              setSavedBlogs(data.filter((b: Blog) => b && b.id))
             }
           })
           .catch(err => console.error('Error refetching saved blogs:', err))
@@ -174,7 +174,7 @@ export default function ProfilePage() {
   const sharedBlogs = myBlogs.filter((b) => !!b.sharedFrom)
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#0B0E11]">
       {/* NAVIGATION - Cố định bên trái */}
       <Navigation />
 

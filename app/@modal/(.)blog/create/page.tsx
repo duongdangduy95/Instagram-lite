@@ -35,7 +35,7 @@ export default function CreateBlogModal() {
       </button>
 
       <div
-        className="w-full max-w-3xl bg-black border border-gray-800 rounded-2xl p-6 shadow-2xl text-white"
+        className="w-full max-w-3xl bg-[#0B0E11] border border-gray-800 rounded-2xl p-6 shadow-2xl text-white"
         onClick={(e) => e.stopPropagation()}
       >
         <CreateBlogForm onCancel={() => router.back()} onSuccess={() => router.back()} />

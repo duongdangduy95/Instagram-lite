@@ -35,7 +35,7 @@ const navItems = [
     href: '/blog/create',
     icon: '/icons/edit.svg',
   },
-  
+
 ]
 
 export default function Navigation() {
@@ -66,7 +66,7 @@ export default function Navigation() {
   }, [settingsOpen])
 
   return (
-    <nav className="fixed left-0 top-0 h-full w-64 bg-black border-r border-gray-800 z-50">
+    <nav className="fixed left-0 top-0 h-full w-64 bg-[#0B0E11] border-r border-gray-800 z-50">
       <div className="flex flex-col h-full px-4 py-6">
         {/* Logo */}
         <Link href="/" className="text-2xl font-bold text-white mb-6 px-2">
@@ -78,11 +78,10 @@ export default function Navigation() {
           <Link
             href="/profile"
             prefetch={true}
-            className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors mb-4 border-b border-gray-800 pb-4 ${
-              pathname === '/profile'
-                ? 'text-white font-semibold bg-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors mb-4 border-b border-gray-800 pb-4 ${pathname === '/profile'
+              ? 'text-white font-semibold bg-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
           >
             <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
               {userImage ? (
@@ -104,17 +103,16 @@ export default function Navigation() {
                 key={item.href}
                 href={item.href}
                 prefetch={true}
-                className={`group flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                  isActive
-                    ? 'text-white font-semibold bg-gray-900'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                }`}
+                className={`group flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${isActive
+                  ? 'text-white font-semibold bg-gray-900'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  }`}
               >
                 <div className="w-[22px] h-[22px] flex items-center justify-center flex-shrink-0">
-                  <Image 
-                    src={item.icon} 
-                    alt={item.label} 
-                    width={iconSize} 
+                  <Image
+                    src={item.icon}
+                    alt={item.label}
+                    width={iconSize}
                     height={iconSize}
                     className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-12"
                   />
@@ -131,10 +129,10 @@ export default function Navigation() {
             className="group flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors w-full"
           >
             <div className="w-[22px] h-[22px] flex items-center justify-center flex-shrink-0">
-              <Image 
-                src="/icons/notification-13-svgrepo-com.svg" 
-                alt="Thông báo" 
-                width={iconSize} 
+              <Image
+                src="/icons/notification-13-svgrepo-com.svg"
+                alt="Thông báo"
+                width={iconSize}
                 height={iconSize}
                 className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-12"
               />
@@ -149,10 +147,10 @@ export default function Navigation() {
               className="group flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors w-full"
             >
               <div className="w-[22px] h-[22px] flex items-center justify-center flex-shrink-0">
-                <Image 
-                  src="/icons/icons8-setting-50.svg" 
-                  alt="Cài đặt" 
-                  width={iconSize} 
+                <Image
+                  src="/icons/icons8-setting-50.svg"
+                  alt="Cài đặt"
+                  width={iconSize}
                   height={iconSize}
                   className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-12"
                 />
@@ -161,25 +159,23 @@ export default function Navigation() {
             </button>
 
             {settingsOpen && (
-              <div className="absolute left-0 bottom-12 w-56 bg-black border border-gray-800 rounded-lg shadow-xl overflow-hidden z-50">
+              <div className="absolute left-0 bottom-12 w-56 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-xl overflow-hidden z-50">
                 <Link
                   href="/settings/profile"
-                  className={`block px-4 py-3 text-sm transition-colors ${
-                    pathname.startsWith('/settings/profile')
-                      ? 'text-white bg-gray-900'
-                      : 'text-gray-300 hover:bg-gray-900 hover:text-white'
-                  }`}
+                  className={`block px-4 py-3 text-sm transition-colors ${pathname.startsWith('/settings/profile')
+                    ? 'text-white bg-gray-900'
+                    : 'text-gray-300 hover:bg-gray-900 hover:text-white'
+                    }`}
                   onClick={() => setSettingsOpen(false)}
                 >
                   Chỉnh sửa trang cá nhân
                 </Link>
                 <Link
                   href="/settings/security"
-                  className={`block px-4 py-3 text-sm transition-colors ${
-                    pathname.startsWith('/settings/security')
-                      ? 'text-white bg-gray-900'
-                      : 'text-gray-300 hover:bg-gray-900 hover:text-white'
-                  }`}
+                  className={`block px-4 py-3 text-sm transition-colors ${pathname.startsWith('/settings/security')
+                    ? 'text-white bg-gray-900'
+                    : 'text-gray-300 hover:bg-gray-900 hover:text-white'
+                    }`}
                   onClick={() => setSettingsOpen(false)}
                 >
                   Bảo mật
@@ -187,21 +183,21 @@ export default function Navigation() {
               </div>
             )}
           </div>
-          
+
           <button
             onClick={() => signOut({ redirect: true, callbackUrl: '/login' })}
             className="group flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-gray-800 transition-colors w-full"
           >
-            <Image 
-              src="/icons/logout.svg" 
-              alt="Đăng xuất" 
-              width={iconSize} 
+            <Image
+              src="/icons/logout.svg"
+              alt="Đăng xuất"
+              width={iconSize}
               height={iconSize}
               className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-12"
             />
             <span>Đăng xuất</span>
           </button>
-          
+
         </div>
       </div>
     </nav>

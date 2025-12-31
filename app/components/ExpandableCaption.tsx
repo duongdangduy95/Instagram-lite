@@ -26,11 +26,11 @@ export default function ExpandableCaption({
     expanded || !shouldClamp
       ? {}
       : {
-          display: '-webkit-box',
-          WebkitLineClamp: initialLines,
-          WebkitBoxOrient: 'vertical' as const,
-          overflow: 'hidden',
-        }
+        display: '-webkit-box',
+        WebkitLineClamp: initialLines,
+        WebkitBoxOrient: 'vertical' as const,
+        overflow: 'hidden',
+      }
 
   function parseCaption(text: string) {
     const regex = /#([\p{L}\p{N}_]+)/gu
@@ -52,7 +52,7 @@ export default function ExpandableCaption({
         <a
           key={`${tag}-${start}`}
           href={`/hashtags/${tag.toLowerCase()}`}
-          className="text-sky-500 hover:text-sky-400 cursor-pointer font-medium"
+          className="text-[#7565E6] hover:text-[#877EFF] cursor-pointer font-medium"
         >
           #{tag}
         </a>

@@ -21,7 +21,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-gray-100">
+    <div className="min-h-screen bg-[#0B0E11] text-gray-100">
       <Navigation />
 
       <div className="ml-64 grid grid-cols-1 lg:grid-cols-[1fr_400px]">
@@ -34,7 +34,7 @@ export default function SearchPage() {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Tìm caption hoặc username..."
-                className="w-full bg-black border border-gray-700 px-4 py-2 rounded"
+                className="w-full bg-[#0B0E11] border border-gray-700 px-4 py-2 rounded"
               />
 
               <button
@@ -51,7 +51,7 @@ export default function SearchPage() {
           </div>
         </main>
 
-        <aside className="hidden lg:block border-l border-gray-800 bg-black" />
+        <aside className="hidden lg:block border-l border-gray-800 bg-[#0B0E11]" />
       </div>
     </div>
   )

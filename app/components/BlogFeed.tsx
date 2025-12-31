@@ -47,7 +47,7 @@ export default function BlogFeed({
             : (((isShared ? blog.author : displayBlog.author) as any).followers?.length ?? 0) > 0
 
         return (
-          <div key={blog.id} className="bg-black text-gray-100">
+          <div key={blog.id} className="bg-[#0B0E11] text-gray-100">
 
             {/* ===== SHARE POST ===== */}
             {isShared ? (

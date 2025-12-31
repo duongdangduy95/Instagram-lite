@@ -166,7 +166,7 @@ export default function SettingsProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#0B0E11]">
       <Navigation />
 
       <div className="ml-64 min-h-screen">

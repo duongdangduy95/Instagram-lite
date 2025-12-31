@@ -161,7 +161,7 @@ export default async function HomePage() {
   }))
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#0B0E11]">
       <Navigation />
       <HomeClient
         blogs={blogsDto}

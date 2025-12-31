@@ -278,7 +278,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
       <div
         ref={dialogRef}
-        className="w-full max-w-5xl bg-black border border-gray-800 rounded-2xl overflow-hidden shadow-2xl md:h-[82vh] md:max-h-[760px]"
+        className="w-full max-w-5xl bg-[#0B0E11] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl md:h-[82vh] md:max-h-[760px]"
         onClick={(e) => e.stopPropagation()}
       >
         {loading && (
@@ -288,7 +288,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
         {!loading && blog && (
           <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] md:h-full">
             {/* Left: media */}
-            <div className="bg-black md:h-full">
+            <div className="bg-[#0B0E11] md:h-full">
               <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="fill" />
             </div>
 

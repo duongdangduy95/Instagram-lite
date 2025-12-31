@@ -61,7 +61,7 @@ export default function ProfileOtherClient(props: {
   const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#0B0E11]">
       <Navigation />
 
       <div className="ml-64 min-h-screen">
@@ -77,9 +77,9 @@ export default function ProfileOtherClient(props: {
 
             {/* Profile Info */}
             <div className="flex-1 min-w-0">
-              {/* Username + Follow button */}
+              {/* Fullname + Follow button */}
               <div className="flex items-center gap-4 mb-4">
-                <h1 className="text-xl sm:text-2xl font-light text-white">{user.username}</h1>
+                <h1 className="text-xl sm:text-2xl font-light text-white">{user.fullname}</h1>
 
                 {currentUserId && (
                   <>
@@ -104,12 +104,6 @@ export default function ProfileOtherClient(props: {
                     </button>
                   </>
                 )}
-
-                <button className="p-1.5">
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                  </svg>
-                </button>
               </div>
 
               {/* Stats */}
@@ -134,9 +128,9 @@ export default function ProfileOtherClient(props: {
                 </button>
               </div>
 
-              {/* Full Name */}
+              {/* Username */}
               <div className="mb-2">
-                <h2 className="text-white font-semibold">{user.fullname}</h2>
+                <h2 className="text-white font-semibold">{user.username}</h2>
               </div>
             </div>
           </div>
