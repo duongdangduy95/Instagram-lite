@@ -58,7 +58,7 @@ export default function ProfileOtherClient(props: {
   const originalBlogs = useMemo(() => myBlogs.filter((b) => !b.sharedFrom), [myBlogs])
   const sharedBlogs = useMemo(() => myBlogs.filter((b) => !!b.sharedFrom), [myBlogs])
   const [isChatOpen, setIsChatOpen] = useState(false)
-const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
+  const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
 
   return (
     <div className="min-h-screen bg-black">
@@ -82,28 +82,28 @@ const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
                 <h1 className="text-xl sm:text-2xl font-light text-white">{user.username}</h1>
 
                 {currentUserId && (
-    <>
-      <FollowButton
-        targetUserId={user.id}
-        initialIsFollowing={initialIsFollowing}
-        onFollowChange={(_isFollowing, newFollowersCount) => {
-          if (typeof newFollowersCount === 'number') setFollowersCount(newFollowersCount)
-        }}
-        size="md"
-      />
-      
-      {/* Nút Message */}
-      <button
-        onClick={() => {
-          setChatTargetUserId(user.id)
-          setIsChatOpen(true)
-        }}
-        className="px-3 py-1 bg-blue-600 text-white rounded"
-      >
-        Message
-      </button>
-    </>
-  )}
+                  <>
+                    <FollowButton
+                      targetUserId={user.id}
+                      initialIsFollowing={initialIsFollowing}
+                      onFollowChange={(_isFollowing, newFollowersCount) => {
+                        if (typeof newFollowersCount === 'number') setFollowersCount(newFollowersCount)
+                      }}
+                      size="md"
+                    />
+
+                    {/* Nút Message */}
+                    <button
+                      onClick={() => {
+                        setChatTargetUserId(user.id)
+                        setIsChatOpen(true)
+                      }}
+                      className="px-4 py-2 bg-[#877EFF] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+                    >
+                      Nhắn tin
+                    </button>
+                  </>
+                )}
 
                 <button className="p-1.5">
                   <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -145,11 +145,10 @@ const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
           <div className="flex items-center justify-center gap-0 border-t border-gray-800 mt-8">
             <button
               onClick={() => setActiveTab('posts')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
-                activeTab === 'posts'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'posts'
+                ? 'border-white text-white'
+                : 'border-transparent text-gray-400 hover:text-white'
+                }`}
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -158,11 +157,10 @@ const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
             </button>
             <button
               onClick={() => setActiveTab('saved')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
-                activeTab === 'saved'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'saved'
+                ? 'border-white text-white'
+                : 'border-transparent text-gray-400 hover:text-white'
+                }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -171,11 +169,10 @@ const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
             </button>
             <button
               onClick={() => setActiveTab('shared')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
-                activeTab === 'shared'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'shared'
+                ? 'border-white text-white'
+                : 'border-transparent text-gray-400 hover:text-white'
+                }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -189,11 +186,10 @@ const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
             </button>
             <button
               onClick={() => setActiveTab('liked')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${
-                activeTab === 'liked'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'liked'
+                ? 'border-white text-white'
+                : 'border-transparent text-gray-400 hover:text-white'
+                }`}
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path
@@ -398,11 +394,11 @@ const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
         />
       )}
       {isChatOpen && chatTargetUserId && (
-  <ChatWindow
-    targetUserId={chatTargetUserId}
-    onClose={() => setIsChatOpen(false)}
-  />
-)}
+        <ChatWindow
+          targetUserId={chatTargetUserId}
+          onClose={() => setIsChatOpen(false)}
+        />
+      )}
 
     </div>
   )

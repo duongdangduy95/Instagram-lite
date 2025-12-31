@@ -171,17 +171,11 @@ export default function SettingsProfilePage() {
 
       <div className="ml-64 min-h-screen">
         <div className="max-w-3xl mx-auto px-4 py-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-white">Chỉnh sửa trang cá nhân</h1>
-              <p className="text-sm text-gray-400 mt-1">Cập nhật ảnh đại diện, họ tên, username và số điện thoại.</p>
-            </div>
-            <Link href="/profile" className="text-gray-300 hover:text-white underline">
-              Quay lại
-            </Link>
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-white">Chỉnh sửa trang cá nhân</h1>
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div>
             {/* Avatar */}
             <div className="flex items-center gap-5 mb-8">
               <div className="w-20 h-20 rounded-full overflow-hidden border border-gray-700 bg-gray-800 flex items-center justify-center flex-shrink-0">
@@ -240,9 +234,8 @@ export default function SettingsProfilePage() {
                   value={fullname}
                   onChange={(e) => setFullname(e.target.value)}
                   onBlur={validate}
-                  className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
-                    errors.fullname ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
-                  }`}
+                  className={`w-full px-4 py-3 bg-[#212227] border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${errors.fullname ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
+                    }`}
                   placeholder="Nhập họ và tên"
                 />
                 {errors.fullname && <p className="text-red-500 text-sm mt-1">{errors.fullname}</p>}
@@ -255,9 +248,8 @@ export default function SettingsProfilePage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   onBlur={validate}
-                  className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
-                    errors.username ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
-                  }`}
+                  className={`w-full px-4 py-3 bg-[#212227] border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${errors.username ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
+                    }`}
                   placeholder="Nhập username"
                 />
                 {errors.username && <p className="text-red-500 text-sm mt-1">{errors.username}</p>}
@@ -270,9 +262,8 @@ export default function SettingsProfilePage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   onBlur={validate}
-                  className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
-                    errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
-                  }`}
+                  className={`w-full px-4 py-3 bg-[#212227] border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:ring-blue-500'
+                    }`}
                   placeholder="Nhập số điện thoại (tuỳ chọn)"
                 />
                 {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
@@ -283,7 +274,7 @@ export default function SettingsProfilePage() {
               <button
                 onClick={onSave}
                 disabled={saving}
-                className="px-5 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold disabled:opacity-50"
+                className="px-5 py-3 bg-[#877EFF] text-white rounded-lg hover:opacity-90 transition-opacity font-semibold disabled:opacity-50"
               >
                 {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
               </button>

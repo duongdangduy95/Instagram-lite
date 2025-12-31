@@ -208,7 +208,7 @@ export default function ProfilePage() {
             <div className="flex-1 min-w-0">
               {/* Username và Settings */}
               <div className="flex items-center gap-4 mb-4">
-                <h1 className="text-xl sm:text-2xl font-light text-white">{user.username}</h1>
+                <h1 className="text-xl sm:text-2xl font-light text-white">{user.fullname}</h1>
                 <Link
                   href="/settings/profile"
                   className="px-4 py-1.5 text-sm font-medium bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -241,7 +241,7 @@ export default function ProfilePage() {
 
               {/* Full Name */}
               <div className="mb-2">
-                <h2 className="text-white font-semibold">{user.fullname}</h2>
+                <h2 className="text-white font-semibold">{user.username}</h2>
               </div>
             </div>
           </div>
@@ -373,7 +373,7 @@ export default function ProfilePage() {
                   </p>
                   <Link
                     href="/blog/create"
-                    className="text-blue-500 hover:text-blue-400 font-medium"
+                    className="text-[#877EFF] hover:opacity-80 font-medium"
                   >
                     Chia sẻ ảnh đầu tiên của bạn
                   </Link>
