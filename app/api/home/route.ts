@@ -35,6 +35,12 @@ export async function GET(req: Request) {
           id: true,
           fullname: true,
           username: true,
+          image: true,
+          followers: {
+            where: { followerId: session.user.id },
+            select: { followerId: true },
+            take: 1,
+          },
         },
       },
 
@@ -43,11 +49,19 @@ export async function GET(req: Request) {
           id: true,
           caption: true,
           imageUrls: true,
+          createdAt: true,
           author: {
             select: {
               id: true,
               fullname: true,
               username: true,
+              image: true,
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
             },
           },
         },
