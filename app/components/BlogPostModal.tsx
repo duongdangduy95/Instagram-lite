@@ -34,7 +34,7 @@ type BlogDetail = {
 
 export default function BlogPostModal({ blogId }: { blogId: string }) {
   const pathname = usePathname()
-  const isOpen = pathname.startsWith('/blog/')
+  const isOpen = pathname.startsWith('/blog/') && !pathname.endsWith('/edit')
 
 
 
@@ -52,10 +52,24 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
   const [composer, setComposer] = useState('')
   const [posting, setPosting] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [replyTo, setReplyTo] = useState<null | { parentId: string; username: string; fullname: string }>(null)
+  const [showOptions, setShowOptions] = useState(false)
   const composerRef = useRef<HTMLInputElement>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
+  const optionsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (optionsRef.current && !optionsRef.current.contains(e.target as Node)) {
+        setShowOptions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const close = useCallback(() => router.back(), [router])
 
@@ -276,6 +290,8 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
         ✕
       </button>
 
+
+
       <div
         ref={dialogRef}
         className="w-full max-w-5xl bg-[#0B0E11] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl md:h-[82vh] md:max-h-[760px]"
@@ -323,6 +339,52 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                         </p>
                       </div>
                     </div>
+                    {currentUser?.id === blog.author.id && (
+                      <div className="relative" ref={optionsRef}>
+                        <button
+                          onClick={() => setShowOptions(!showOptions)}
+                          className="p-2 rounded-full hover:bg-gray-800 transition-colors"
+                        >
+                          <div
+                            className="w-5 h-5 bg-[#7565E6]"
+                            style={{
+                              maskImage: 'url(/icons/edit.svg)',
+                              maskRepeat: 'no-repeat',
+                              maskPosition: 'center',
+                              maskSize: 'contain',
+                              WebkitMaskImage: 'url(/icons/edit.svg)',
+                              WebkitMaskRepeat: 'no-repeat',
+                              WebkitMaskPosition: 'center',
+                              WebkitMaskSize: 'contain'
+                            }}
+                          />
+                        </button>
+
+                        {showOptions && (
+                          <div className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[100]">
+                            <button
+                              onClick={() => {
+                                setShowOptions(false)
+                                router.push(`/blog/${blog.id}/edit`)
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-t-lg"
+                            >
+                              Chỉnh sửa
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setShowOptions(false)
+                                setShowDeleteConfirm(true)
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-b-lg"
+                            >
+                              Xóa bài viết
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {blog.caption && (
@@ -473,6 +535,43 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
           </div>
         )}
       </div>
+
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4"
+          onClick={(e) => e.stopPropagation()} // Prevent clicking through
+        >
+          <div className="w-full max-w-sm bg-[#212227] border border-gray-700 rounded-lg p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-white mb-2">Xóa bài viết?</h2>
+            <p className="text-gray-300 mb-6 text-sm">
+              Bạn có chắc chắn muốn xóa bài viết này không?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={async () => {
+                  if (blog?.id) {
+                    await fetch(`/api/blog/${blog.id}`, { method: 'DELETE' })
+                    window.dispatchEvent(new CustomEvent('blog:deleted', { detail: { blogId: blog.id } }))
+                    close()
+                    router.refresh()
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-[#7565E6] hover:bg-[#6455C2] text-white text-sm font-medium transition-colors"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

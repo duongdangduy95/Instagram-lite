@@ -83,6 +83,22 @@ export default function ProfilePage() {
     }
 
     fetchData()
+
+    const onBlogCreated = () => fetchData()
+    const onBlogDeleted = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { blogId: string } | undefined
+      if (detail?.blogId) {
+        setMyBlogs((prev) => prev.filter((b) => b.id !== detail.blogId))
+      }
+    }
+
+    window.addEventListener('blog:created', onBlogCreated)
+    window.addEventListener('blog:deleted', onBlogDeleted)
+
+    return () => {
+      window.removeEventListener('blog:created', onBlogCreated)
+      window.removeEventListener('blog:deleted', onBlogDeleted)
+    }
   }, [])
 
   useEffect(() => {

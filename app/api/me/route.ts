@@ -3,16 +3,18 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
- 
+
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const session = await getServerSession(authOptions)
- 
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
- 
+
   const userId = session.user.id
- 
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
@@ -56,38 +58,38 @@ export async function GET() {
       },
     },
   })
- 
+
   if (!user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
- 
+
   // Map blogs để client dùng imageUrls
   const userWithMappedBlogs = {
     ...user,
     blogs: user.blogs.map(blog => ({
       ...blog,
-       imageUrls: blog.imageUrls || [], // imageUrl -> imageUrls
+      imageUrls: blog.imageUrls || [], // imageUrl -> imageUrls
     })),
   }
- 
+
   return NextResponse.json(userWithMappedBlogs)
 }
- 
+
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions)
- 
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
- 
+
   const userId = session.user.id
- 
+
   const contentType = req.headers.get('content-type') || ''
   let fullname: string | undefined
   let username: string | undefined
   let phone: string | undefined
   let avatarFile: File | null = null
- 
+
   // Hỗ trợ cả JSON (cũ) và multipart/form-data (mới, để upload avatar)
   if (contentType.includes('multipart/form-data')) {
     const form = await req.formData()
@@ -106,7 +108,7 @@ export async function PATCH(req: Request) {
     username = json.username
     phone = json.phone
   }
- 
+
   try {
     // Validate & check trùng username (bắt buộc unique cho route /user/[username])
     if (typeof username === 'string') {
@@ -123,7 +125,7 @@ export async function PATCH(req: Request) {
           { status: 400 }
         )
       }
- 
+
       const existed = await prisma.user.findFirst({
         where: { username: nextUsername, NOT: { id: userId } },
         select: { id: true },
@@ -131,31 +133,31 @@ export async function PATCH(req: Request) {
       if (existed) {
         return NextResponse.json({ error: 'Username đã được sử dụng' }, { status: 409 })
       }
- 
+
       username = nextUsername
     }
- 
+
     // Upload avatar nếu có
     let imageUrl: string | undefined
     if (avatarFile) {
       const buffer = Buffer.from(await avatarFile.arrayBuffer())
       const ext = avatarFile.type?.split('/')[1] || 'jpg'
       const fileName = `avatars/${userId}/${Date.now()}.${ext}`
- 
+
       const { error } = await supabase.storage.from('instagram').upload(fileName, buffer, {
         contentType: avatarFile.type,
         upsert: true,
       })
- 
+
       if (error) {
         console.error('Supabase upload error:', error)
         return NextResponse.json({ error: 'Upload avatar failed' }, { status: 500 })
       }
- 
+
       const { data } = supabase.storage.from('instagram').getPublicUrl(fileName)
       imageUrl = data.publicUrl
     }
- 
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
@@ -179,7 +181,7 @@ export async function PATCH(req: Request) {
         _count: { select: { following: true, followers: true } },
       },
     })
- 
+
     // Map blogs để client dùng imageUrls
     const updatedUserWithMappedBlogs = {
       ...updatedUser,
@@ -188,7 +190,7 @@ export async function PATCH(req: Request) {
         imageUrls: blog.imageUrls || [],
       })),
     }
- 
+
     return NextResponse.json(updatedUserWithMappedBlogs)
   } catch (error) {
     console.error('Error updating user:', error)

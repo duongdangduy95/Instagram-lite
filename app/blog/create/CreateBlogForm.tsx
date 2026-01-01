@@ -105,6 +105,7 @@ export default function CreateBlogForm({ onSuccess, onCancel }: Props) {
       })
 
       if (res.ok) {
+        window.dispatchEvent(new CustomEvent('blog:created'))
         if (onSuccess) onSuccess()
         else router.push('/home')
       } else {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import BlogFeed from '@/app/components/BlogFeed'
 import UserSuggestionItem from '@/app/components/UserSuggestionItem'
 import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
@@ -99,6 +100,36 @@ export default function HomeClient(props: {
     window.addEventListener('user:profile-change', onProfileChange as EventListener)
     return () => window.removeEventListener('user:profile-change', onProfileChange as EventListener)
   }, [])
+
+  // Sync props -> state (khi router.refresh chạy xong)
+  useEffect(() => {
+    setBlogs(props.blogs)
+    setUsers(props.users)
+  }, [props.blogs, props.users])
+
+  const router = useRouter()
+
+  // Realtime delete/create events
+  useEffect(() => {
+    const onBlogDeleted = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { blogId: string } | undefined
+      if (detail?.blogId) {
+        setBlogs((prev) => prev.filter((b) => b.id !== detail.blogId))
+      }
+    }
+
+    const onBlogCreated = () => {
+      router.refresh()
+    }
+
+    window.addEventListener('blog:deleted', onBlogDeleted)
+    window.addEventListener('blog:created', onBlogCreated)
+
+    return () => {
+      window.removeEventListener('blog:deleted', onBlogDeleted)
+      window.removeEventListener('blog:created', onBlogCreated)
+    }
+  }, [router])
 
   const handleFollowChange = (targetUserId: string, isFollowing: boolean, followersCount?: number) => {
     setFollowMap((prev) => ({ ...prev, [targetUserId]: isFollowing }))

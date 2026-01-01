@@ -18,7 +18,7 @@ export default function RenderCaption({ text }: Props) {
             <Link
               key={idx}
               href={`/hashtags/${encodeURIComponent(tag.toLowerCase())}`}
-              className="text-sky-500 hover:underline"
+              className="text-[#7565E6] hover:underline"
             >
               {part}
             </Link>
