@@ -4,6 +4,27 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createClient } from '@supabase/supabase-js'
 
+const HASHTAG_REGEX = /#([\p{L}\p{N}_]+)/gu
+
+function extractHashtags(text: string): string[] {
+  return Array.from(
+    new Set(
+      [...text.matchAll(/#([\p{L}\p{N}_]+)/gu)].map(m =>
+        m[1].toLowerCase()
+      )
+    )
+  )
+}
+function sanitizeFileName(filename: string) {
+  return filename
+    .normalize('NFD')                    // tách dấu
+    .replace(/[\u0300-\u036f]/g, '')     // bỏ dấu
+    .replace(/[^a-zA-Z0-9._-]/g, '-')    // ký tự lạ → -
+    .replace(/-+/g, '-')                 // gộp ---
+    .toLowerCase()
+}
+
+
 /* =========================
    GET – LẤY CHI TIẾT BLOG
 ========================= */
@@ -111,7 +132,18 @@ export async function PATCH(
   }
 
   try {
-    const blog = await prisma.blog.findUnique({ where: { id: blogId } })
+    const blog = await prisma.blog.findUnique({
+      where: { id: blogId },
+      include: {
+        blogHashtags: {
+          include: {
+            hashtag: true,
+          },
+        },
+      },
+    })
+
+
     if (!blog || blog.authorId !== userId) {
       return NextResponse.json(
         { error: 'Unauthorized or not found' },
@@ -142,7 +174,9 @@ export async function PATCH(
 
     for (const file of newFiles) {
       const buffer = Buffer.from(await file.arrayBuffer())
-      const fileName = `posts/${userId}/${Date.now()}-${file.name}`
+      const safeName = sanitizeFileName(file.name)
+      const fileName = `posts/${userId}/${Date.now()}-${safeName}`
+
 
       const { error } = await supabase.storage
         .from('instagram')
@@ -160,6 +194,63 @@ export async function PATCH(
       newImageUrls.push(data.publicUrl)
     }
 
+    const newTags = extractHashtags(caption)
+
+    const oldTags = blog.blogHashtags.map(bh =>
+      bh.hashtag.name.toLowerCase()
+    )
+
+    const tagsToAdd = newTags.filter(t => !oldTags.includes(t))
+    const tagsToRemove = oldTags.filter(t => !newTags.includes(t))
+
+
+    //  thêm hashtag
+    for (const tag of tagsToAdd) {
+      let hashtag = await prisma.hashtag.findUnique({
+        where: { name: tag },
+      })
+
+      if (!hashtag) {
+        hashtag = await prisma.hashtag.create({
+          data: { name: tag, usage_count: 1 },
+        })
+      } else {
+        await prisma.hashtag.update({
+          where: { id: hashtag.id },
+          data: { usage_count: { increment: 1 } },
+        })
+      }
+
+      await prisma.blogHashtag.create({
+        data: {
+          blog_id: blogId,
+          hashtag_id: hashtag.id,
+        },
+      })
+    }
+
+    // xoá hashtag
+    for (const tag of tagsToRemove) {
+      const hashtag = await prisma.hashtag.findUnique({
+        where: { name: tag },
+      })
+
+      if (!hashtag) continue
+
+      await prisma.blogHashtag.delete({
+        where: {
+          blog_id_hashtag_id: {
+            blog_id: blogId,
+            hashtag_id: hashtag.id,
+          },
+        },
+      })
+
+      await prisma.hashtag.update({
+        where: { id: hashtag.id },
+        data: { usage_count: { decrement: 1 } },
+      })
+    }
 
     const updatedBlog = await prisma.blog.update({
       where: { id: blogId },
@@ -201,6 +292,13 @@ export async function DELETE(
   try {
     const blog = await prisma.blog.findUnique({
       where: { id: blogId },
+      include: {
+        blogHashtags: {
+          include: {
+            hashtag: true,
+          },
+        },
+      },
     })
 
     if (!blog || blog.authorId !== userId) {
@@ -237,17 +335,59 @@ export async function DELETE(
       }
     }
 
-    await prisma.$transaction([
-      prisma.like.deleteMany({
-        where: { blogId },
-      }),
-      prisma.comment.deleteMany({
-        where: { blogId },
-      }),
-      prisma.blog.delete({
-        where: { id: blogId },
-      }),
-    ])
+    for (const bh of blog.blogHashtags) {
+      const hashtagId = bh.hashtag.id
+
+      // 1. Xóa liên kết blog_hashtag
+      await prisma.blogHashtag.delete({
+        where: {
+          blog_id_hashtag_id: {
+            blog_id: blogId,
+            hashtag_id: hashtagId,
+          },
+        },
+      })
+
+      // 2. Lấy usage_count hiện tại
+      const current = bh.hashtag.usage_count
+
+      if (current > 1) {
+        // 3a. Còn blog khác dùng → giảm
+        await prisma.hashtag.update({
+          where: { id: hashtagId },
+          data: {
+            usage_count: { decrement: 1 },
+          },
+        })
+      } else {
+        // 3b. usage_count = 1 → xóa luôn hashtag
+        await prisma.hashtag.delete({
+          where: { id: hashtagId },
+        })
+      }
+    }
+
+
+
+    await prisma.like.deleteMany({
+      where: { blogId },
+    })
+
+    await prisma.comment.deleteMany({
+      where: { blogId },
+    })
+
+    await prisma.savedPost.deleteMany({
+      where: { blogId },
+    })
+
+    await prisma.blog.deleteMany({
+      where: { sharedFromId: blogId },
+    })
+
+    await prisma.blog.delete({
+      where: { id: blogId },
+    })
 
     return NextResponse.json({ message: 'Blog deleted successfully' })
   } catch (error) {
