@@ -1,42 +1,67 @@
-import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
-export async function POST(req: Request) {
+export async function GET() {
   const session = await getServerSession(authOptions)
-  const currentUserId = session?.user?.id
 
-  if (!currentUserId) {
-    return new Response('Unauthorized', { status: 401 })
+  if (!session?.user?.id) {
+    return NextResponse.json([], { status: 401 })
   }
 
-  const body = await req.json()
-  const { targetUserId } = body
+  const userId = session.user.id
 
-  if (!targetUserId) {
-    return new Response('Missing targetUserId', { status: 400 })
-  }
-
-  // Tìm hoặc tạo conversation 1-1
-  let conversation = await prisma.conversation.findFirst({
+  const conversations = await prisma.conversation.findMany({
     where: {
-      isGroup: false,
       participants: {
-        some: { userId: { in: [currentUserId, targetUserId] } }
+        some: { userId }
       }
+    },
+    include: {
+      participants: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              fullname: true,
+              image: true
+            }
+          }
+        }
+      },
+      messages: {
+        orderBy: { createdAt: 'desc' },
+        take: 1
+      }
+    },
+    orderBy: {
+      updatedAt: 'desc'
     }
   })
 
-  if (!conversation) {
-    conversation = await prisma.conversation.create({
-      data: {
-        isGroup: false,
-        participants: {
-          create: [{ userId: currentUserId }, { userId: targetUserId }]
-        }
+  const result = conversations
+    .map(c => {
+      const other = c.participants.find(
+        p => p.userId !== userId
+      )
+
+      // ⛔ conversation lỗi – bỏ luôn
+      if (!other?.user) return null
+
+      return {
+        id: c.id,
+        otherUser: other.user,
+        lastMessage: c.messages[0]
+          ? {
+              content: c.messages[0].content,
+              createdAt: c.messages[0].createdAt
+            }
+          : null
       }
     })
-  }
+    .filter(Boolean) // ⬅️ QUAN TRỌNG
 
-  return new Response(JSON.stringify(conversation))
+  return NextResponse.json(result)
 }
