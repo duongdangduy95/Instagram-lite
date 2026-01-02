@@ -9,6 +9,7 @@ import { useCurrentUser } from '@/app/contexts/CurrentUserContext'
 import type { CurrentUserSafe } from '@/types/dto'
 import RenderCaption from '@/app/components/RenderCaption'
 import { usePathname, useRouter } from 'next/navigation'
+import ShareModal from '@/app/components/ShareModal'
 
 
 type BlogAuthor = {
@@ -55,6 +56,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [replyTo, setReplyTo] = useState<null | { parentId: string; username: string; fullname: string }>(null)
   const [showOptions, setShowOptions] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const composerRef = useRef<HTMLInputElement>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -215,29 +217,15 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
     }
   }
 
-  const safeUser: CurrentUserSafe = currentUser
-  const shareUrl = useMemo(() => {
-    if (typeof window === 'undefined') return ''
-    return `${window.location.origin}/blog/${blogId}`
-  }, [blogId])
-
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ url: shareUrl })
-        return
-      }
-    } catch {
-      // ignore
+  const handleShare = () => {
+    if (!currentUser) {
+      router.push('/login')
+      return
     }
-
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      alert('Đã sao chép link bài viết')
-    } catch {
-      alert('Không thể chia sẻ lúc này')
-    }
+    setShowShareModal(true)
   }
+
+  const safeUser: CurrentUserSafe = currentUser
 
   const handleSubmitComment = async () => {
     if (!blog) return
@@ -571,6 +559,14 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
             </div>
           </div>
         </div>
+      )}
+      {/* Share Modal */}
+      {blog && (
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          blogId={blog.id}
+        />
       )}
     </div>
   )
