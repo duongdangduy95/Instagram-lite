@@ -1,17 +1,34 @@
-// app/messages/page.tsx
 'use client'
 
-import ChatButton from '../components/ChatButton'
-import ChatWindow from '../components/ChatWindow'
+import { useState } from 'react'
+import ChatWindow from '@/app/components/ChatWindow'
+import ConversationList from './components/ConversationList'
 
 export default function MessagesPage() {
+  const [activeTarget, setActiveTarget] = useState<{
+    id: string
+    username: string
+    fullname: string | null
+  } | null>(null)
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Tin nhắn</h1>
-      <ChatButton />
-      <ChatWindow targetUserId={''} onClose={function (): void {
-        throw new Error('Function not implemented.')
-      } } />
+    <div className="flex h-screen ml-64 bg-black text-white">
+      <ConversationList
+        onSelectConversation={user =>
+          setActiveTarget(user)
+        }
+      />
+
+      {activeTarget && (
+        <div className="flex-1">
+          <ChatWindow
+            targetUserId={activeTarget.id}
+            targetUsername={activeTarget.username}
+            targetFullname={activeTarget.fullname || ''}
+            onClose={() => setActiveTarget(null)}
+          />
+        </div>
+      )}
     </div>
   )
 }

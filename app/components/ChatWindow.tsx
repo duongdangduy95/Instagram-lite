@@ -1,24 +1,30 @@
 'use client'
 
-import { useEffect, useState, useRef, ChangeEvent } from 'react'
+import { useEffect, useState, useRef, ClipboardEvent } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useSession } from 'next-auth/react'
 import { supabase } from '@/lib/supabaseClientClient'
+import { formatTime, formatDate, isNewDay } from '@/lib/time'
 
 type Message = {
-  fileNames: any
   id: string
   senderId: string
   content: string
-  conversationId?: string
+  conversationId: string
+  createdAt: string
   fileUrls?: string[]
+  fileNames?: string[]
 }
 
 export default function ChatWindow({
   targetUserId,
+  targetUsername,
+  targetFullname,
   onClose
 }: {
   targetUserId: string
+  targetUsername: string
+  targetFullname: string
   onClose: () => void
 }) {
   const { data: session } = useSession()
@@ -29,174 +35,398 @@ export default function ChatWindow({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isTyping, setIsTyping] = useState(false)
 
-  const conversationIdRef = useRef<string | null>(null)
-  const supabaseChannelRef = useRef<any>(null)
-  const socketRef = useRef<Socket | null>(null)
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
 
-  // ----------------- INIT CONVERSATION & SUPABASE REALTIME -----------------
+  // 🔹 THÊM: tên người chat + người đang gõ
+  const targetUserName =
+  targetFullname || targetUsername || 'Người dùng'
+
+  const [typingUserName, setTypingUserName] = useState<string | null>(null)
+
+  const convIdRef = useRef<string | null>(null)
+  const socketRef = useRef<Socket | null>(null)
+  const channelRef = useRef<any>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  /* ================= AUTO SCROLL ================= */
   useEffect(() => {
-    if (!currentUserId) return
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth'
+    })
+  }, [messages, isTyping])
+
+  /* ================= FETCH TARGET USER NAME (THÊM) ================= */
+  // useEffect(() => {
+  //   if (!targetUserId) return
+
+  //   async function fetchUser() {
+  //     try {
+  //       const res = await fetch(`/api/users/${targetUserId}`)
+  //       if (!res.ok) return
+  //       const data = await res.json()
+  //       setTargetUserName(
+  //         data.fullname || data.username || 'Người dùng'
+  //       )
+  //     } catch {}
+  //   }
+
+  //   fetchUser()
+  // }, [targetUserId])
+
+  /* ================= INIT CHAT + REALTIME ================= */
+  useEffect(() => {
+    if (!currentUserId || !targetUserId) return
     let active = true
 
-    async function initConversation() {
-      // 1️⃣ Lấy tin nhắn hiện có
+    setMessages([])
+    setSelectedFiles([])
+    if (channelRef.current) supabase.removeChannel(channelRef.current)
+
+    async function initChat() {
       const res = await fetch(`/api/messages?userId=${targetUserId}`)
-      const data: Message[] = await res.json()
+      const data = await res.json()
       if (!active) return
 
-      setMessages(data)
-      let conversationId = data[0]?.conversationId
+      setMessages(data.messages || [])
 
-      // 2️⃣ Nếu chưa có conversation, tạo mới
-      if (!conversationId) {
-        const createRes = await fetch('/api/conversations', {
+      let cid = data.conversationId
+      if (!cid) {
+        const r = await fetch('/api/conversations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ targetUserId })
         })
-        if (!createRes.ok) {
-          console.error('Lỗi tạo conversation', await createRes.text())
-          return
-        }
-        const conv = await createRes.json()
-        conversationId = conv.id
+        cid = (await r.json()).id
       }
 
-      conversationIdRef.current = conversationId
+      convIdRef.current = cid
 
-      // 3️⃣ Hủy channel cũ nếu có
-      if (supabaseChannelRef.current) supabase.removeChannel(supabaseChannelRef.current)
-
-      // 4️⃣ Subscribe Supabase Realtime
       const channel = supabase
-        .channel(`chat:${conversationId}`)
+        .channel(`chat:${cid}`)
         .on(
           'postgres_changes',
           {
-            event: 'INSERT',
+            event: '*',
             schema: 'public',
             table: 'Message',
-            filter: `conversationId=eq.${conversationId}`
+            filter: `conversationId=eq.${cid}`
           },
-          (payload) => {
-            const newMsg = payload.new as Message
-            setMessages((prev) => {
-              if (prev.find((m) => m.id === newMsg.id)) return prev
-              return [...prev, newMsg]
-            })
+          payload => {
+            if (payload.eventType === 'INSERT') {
+              const raw = payload.new as Message
+
+              const msg: Message = {
+                ...raw,
+                createdAt: raw.createdAt.endsWith('Z')
+                  ? raw.createdAt
+                  : raw.createdAt + 'Z' // 🔹 FIX TIMEZONE
+              }
+
+              setMessages(prev =>
+                prev.some(m => m.id === msg.id)
+                  ? prev
+                  : [...prev, msg]
+              )
+            }
+
+            if (payload.eventType === 'UPDATE') {
+              const msg = payload.new as Message
+              setMessages(prev =>
+                prev.map(m => (m.id === msg.id ? msg : m))
+              )
+            }
+
+            if (payload.eventType === 'DELETE') {
+              const msg = payload.old as Message
+              setMessages(prev =>
+                prev.filter(m => m.id !== msg.id)
+              )
+            }
           }
         )
         .subscribe()
 
-      supabaseChannelRef.current = channel
+      channelRef.current = channel
     }
 
-    initConversation()
-    return () => { active = false }
+    initChat()
+    return () => {
+      active = false
+    }
   }, [targetUserId, currentUserId])
 
-  // ----------------- SOCKET.IO TYPING INDICATOR -----------------
+  /* ================= SOCKET TYPING ================= */
   useEffect(() => {
-    if (!currentUserId) return
-    socketRef.current = io("http://localhost:4000")
-    const socket = socketRef.current
+    socketRef.current = io('http://localhost:4000')
 
-    socket.on("connect", () => console.log("Socket connected:", socket.id))
+    socketRef.current.on(
+      'typing',
+      ({ senderId, senderName, conversationId }) => {
+        if (
+          senderId === targetUserId &&
+          conversationId === convIdRef.current
+        ) {
+          setTypingUserName(senderName || targetUserName)
+          setIsTyping(true)
 
-    socket.on("typing", ({ senderId, conversationId }: { senderId: string, conversationId: string }) => {
-      if (senderId === targetUserId && conversationId === conversationIdRef.current) {
-        setIsTyping(true)
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-        typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 1000)
+          setTimeout(() => {
+            setIsTyping(false)
+            setTypingUserName(null)
+          }, 3000)
+        }
       }
-    })
+    )
 
-    return () => socket.disconnect()
-  }, [targetUserId, currentUserId])
-   
-  // ----------------- INPUT & FILE CHANGE -----------------
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value)
-    if (conversationIdRef.current && currentUserId) {
-      socketRef.current?.emit("typing", { senderId: currentUserId, conversationId: conversationIdRef.current })
+    return () => {
+      socketRef.current?.disconnect()
+    }
+  }, [targetUserId, targetUserName])
+
+  /* ================= PASTE IMAGE ================= */
+  const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    for (const item of e.clipboardData.items) {
+      if (item.type.startsWith('image')) {
+        const file = item.getAsFile()
+        if (file) {
+          setSelectedFiles(prev => [
+            ...prev,
+            new File([file], `paste-${Date.now()}.png`, {
+              type: file.type
+            })
+          ])
+        }
+      }
     }
   }
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) setSelectedFiles(Array.from(e.target.files))
-  }
-
+  /* ================= SEND ================= */
   const sendMessage = async () => {
-    if (!conversationIdRef.current || !currentUserId) return
+    if (!convIdRef.current) return
     if (!input.trim() && selectedFiles.length === 0) return
 
-    const formData = new FormData()
-    formData.append('targetUserId', targetUserId)
-    formData.append('content', input)
-    selectedFiles.forEach(file => formData.append('files', file))
-
-   const res = await fetch('/api/messages', { method: 'POST', body: formData })
-if (!res.ok) return console.error('Failed to send message', await res.text())
-
-const { message } = await res.json()
-setMessages(prev => [...prev, message])
-
-setInput('')
-setSelectedFiles([])
+    const form = new FormData()
+    form.append('targetUserId', targetUserId)
+    form.append('content', input)
+    selectedFiles.forEach(f => form.append('files', f))
 
     setInput('')
     setSelectedFiles([])
+
+    await fetch('/api/messages', {
+      method: 'POST',
+      body: form
+    })
   }
 
-  // ----------------- RENDER -----------------
+  /* ================= EDIT / DELETE ================= */
+  const updateMessage = async (id: string) => {
+    await fetch('/api/messages', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageId: id, content: editValue })
+    })
+    setEditingId(null)
+    setEditValue('')
+  }
+
+  const deleteMessage = async (id: string) => {
+    await fetch('/api/messages', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageId: id })
+    })
+  }
+
+  const isImage = (url: string) =>
+    /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(url)
+
+  /* ================= UI ================= */
   return (
-    <div className="fixed bottom-4 right-4 w-80 h-96 bg-gray-900 text-white rounded shadow-lg flex flex-col">
-      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`p-1 rounded max-w-full ${
-              m.senderId === currentUserId ? 'bg-blue-600 self-end' : 'bg-gray-700 self-start'
-            }`}
-          >
-            {m.content && <div>{m.content}</div>}
-            {m.fileUrls?.map((url, idx) => (
-  <a
-    key={url}
-    href={url}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="block text-blue-400 underline mt-1"
-  >
-    {m.fileNames?.[idx] || `Download file (${url.split('.').pop()})`}
-  </a>
-))}
+    <div className="fixed bottom-4 right-4 w-80 h-[500px] bg-gray-900 text-white rounded-lg flex flex-col border border-gray-700">
+      {/* HEADER */}
+      <div className="p-3 bg-gray-800 flex justify-between">
+        <span className="font-bold text-sm">
+          {targetUserName}
+        </span>
+        <button onClick={onClose}>✕</button>
+      </div>
 
+      {/* MESSAGES */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-3 space-y-3"
+      >
+        {messages.map((m, index) => {
+          const prev = messages[index - 1]
 
+          return (
+            <div key={m.id}>
+              {isNewDay(m.createdAt, prev?.createdAt) && (
+                <div className="flex justify-center my-3">
+                  <span className="bg-gray-600 text-xs px-3 py-1 rounded-full text-gray-200">
+                    {formatDate(m.createdAt)}
+                  </span>
+                </div>
+              )}
+
+              <div
+                className={`group flex flex-col ${
+                  m.senderId === currentUserId
+                    ? 'items-end'
+                    : 'items-start'
+                }`}
+              >
+                {m.senderId === currentUserId && (
+                  <div className="hidden group-hover:flex gap-2 text-[10px] mb-1">
+                    {m.content && (
+                      <button
+                        onClick={() => {
+                          setEditingId(m.id)
+                          setEditValue(m.content)
+                        }}
+                        className="text-blue-400"
+                      >
+                        Sửa
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteMessage(m.id)}
+                      className="text-red-400"
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                )}
+
+                <div className="bg-gray-700 p-2 rounded max-w-[90%]">
+                  {editingId === m.id ? (
+                    <input
+                      value={editValue}
+                      onChange={e =>
+                        setEditValue(e.target.value)
+                      }
+                      onKeyDown={e =>
+                        e.key === 'Enter' &&
+                        updateMessage(m.id)
+                      }
+                      className="bg-transparent outline-none w-full"
+                    />
+                  ) : (
+                    m.content && <p>{m.content}</p>
+                  )}
+
+                  {m.fileUrls?.map((url, i) =>
+                    isImage(url) ? (
+                      <img
+                        key={i}
+                        src={url}
+                        className="mt-1 rounded"
+                      />
+                    ) : (
+                      <a
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        className="text-xs text-blue-300 block"
+                      >
+                        📎 {m.fileNames?.[i]}
+                      </a>
+                    )
+                  )}
+
+                  <div className="text-[10px] text-right mt-1 opacity-70">
+                    {formatTime(m.createdAt)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+        {isTyping && typingUserName && (
+          <div className="text-xs text-gray-400 italic">
+            {typingUserName} đang nhập…
           </div>
-        ))}
-        {isTyping && <div className="text-sm text-gray-300 italic">{targetUserId} is typing...</div>}
+        )}
       </div>
 
-      <div className="p-2 flex flex-col gap-1">
-        <input
-          type="text"
-          className="flex-1 px-2 py-1 rounded text-black"
-          value={input}
-          onChange={handleInputChange}
-          onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-          placeholder="Type a message..."
-        />
-        <input type="file" multiple onChange={handleFileChange} className="text-sm" />
-        <button className="bg-blue-500 px-3 py-1 rounded mt-1" onClick={sendMessage}>
-          Send
-        </button>
-      </div>
+      {/* INPUT */}
+      <div className="p-3 bg-gray-800">
+        {selectedFiles.length > 0 && (
+          <div className="flex gap-2 mb-2 overflow-x-auto">
+            {selectedFiles.map((f, i) => (
+              <div key={i} className="relative">
+                {f.type.startsWith('image') ? (
+                  <img
+                    src={URL.createObjectURL(f)}
+                    className="w-10 h-10 object-cover rounded"
+                  />
+                ) : (
+                  <div className="w-10 h-10 bg-gray-700 text-[8px] flex items-center justify-center rounded">
+                    {f.name}
+                  </div>
+                )}
+                <button
+                  onClick={() =>
+                    setSelectedFiles(prev =>
+                      prev.filter((_, idx) => idx !== i)
+                    )
+                  }
+                  className="absolute -top-1 -right-1 bg-red-500 w-3 h-3 rounded-full text-[8px]"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
-      <button onClick={onClose} className="absolute top-1 right-1 text-gray-400 hover:text-white">
-        X
-      </button>
+        <div className="flex gap-2 items-center">
+          <input
+            value={input}
+            onChange={e => {
+              setInput(e.target.value)
+              socketRef.current?.emit('typing', {
+                senderId: currentUserId,
+                senderName:
+  session?.user?.fullname ||
+  session?.user?.username ||
+  'Người dùng',
+
+                conversationId: convIdRef.current
+              })
+            }}
+            onPaste={handlePaste}
+            onKeyDown={e => e.key === 'Enter' && sendMessage()}
+            className="flex-1 bg-gray-700 rounded px-3 py-1"
+            placeholder="Aa..."
+          />
+
+          <label className="cursor-pointer text-gray-400">
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={e =>
+                e.target.files &&
+                setSelectedFiles(
+                  Array.from(e.target.files)
+                )
+              }
+            />
+            📎
+          </label>
+
+          <button
+            onClick={sendMessage}
+            className="bg-blue-600 px-3 rounded"
+          >
+            ➤
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
