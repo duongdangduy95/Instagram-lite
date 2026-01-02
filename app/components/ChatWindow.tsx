@@ -87,13 +87,22 @@ export default function ChatWindow({
           },
           payload => {
             if (payload.eventType === 'INSERT') {
-              const msg = payload.new as Message
-              setMessages(prev =>
-                prev.some(m => m.id === msg.id)
-                  ? prev
-                  : [...prev, msg]
-              )
-            }
+  const raw = payload.new as Message
+
+  const msg: Message = {
+    ...raw,
+    createdAt: raw.createdAt.endsWith('Z')
+      ? raw.createdAt
+      : raw.createdAt + 'Z' // ✅ ÉP UTC
+  }
+
+  setMessages(prev =>
+    prev.some(m => m.id === msg.id)
+      ? prev
+      : [...prev, msg]
+  )
+}
+
 
             if (payload.eventType === 'UPDATE') {
               const msg = payload.new as Message
