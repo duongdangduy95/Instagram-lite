@@ -60,8 +60,8 @@ function buildCommentTree(comments: Omit<Comment, 'replies'>[]): Comment[] {
   const roots: Comment[] = [];
 
   comments.forEach((comment) => {
-    map.set(comment.id, { 
-      ...comment, 
+    map.set(comment.id, {
+      ...comment,
       replies: [],
       likeCount: comment.likeCount || 0,
       liked: comment.liked || false
@@ -185,7 +185,7 @@ export default function CommentSection({
     window.addEventListener('user:profile-change', onProfileChange as EventListener)
     return () => window.removeEventListener('user:profile-change', onProfileChange as EventListener)
   }, []);
-  
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!newComment.trim()) return;
@@ -214,7 +214,7 @@ export default function CommentSection({
         const data = await res.json();
         setComments(buildCommentTree(data));
       }
-      
+
       // Gọi callback để cập nhật số lượng bình luận
       if (onCommentAdded) {
         onCommentAdded();
@@ -291,7 +291,7 @@ export default function CommentSection({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-black">
+      <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-[#0B0E11]">
         <h2 className="text-lg font-semibold text-white">Bình luận</h2>
         <button
           onClick={onClose}
@@ -302,7 +302,7 @@ export default function CommentSection({
       </div>
 
       {/* Comments List - Scrollable */}
-      <div className="flex-1 p-4 overflow-y-auto bg-black">
+      <div className="flex-1 p-4 overflow-y-auto bg-[#0B0E11]">
         <div className="space-y-3">
           {comments.map((comment) => (
             <CommentItem
@@ -317,7 +317,7 @@ export default function CommentSection({
 
       {/* Comment Form - Fixed at Bottom */}
       {currentUser && (
-        <div className="border-t border-gray-800 bg-black p-4">
+        <div className="border-t border-gray-800 bg-[#0B0E11] p-4">
           <form onSubmit={handleSubmit}>
             {replyTo && (
               <div className="text-sm text-purple-primary mb-2">
@@ -379,7 +379,7 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
     if (!currentUser) return
     if (loading) return
     setLoading(true)
-    
+
     const prevLiked = liked
     const prevCount = likeCount
 
@@ -391,9 +391,9 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
     // Animation
     setLikeAnimating(true)
     setTimeout(() => setLikeAnimating(false), 300)
-    
-    
-    
+
+
+
     try {
       const res = await fetch(
         `/api/blog/${comment.blogId}/comment/${comment.id}/like`,
@@ -434,7 +434,7 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
               </span>
             )}
           </div>
-          
+
           {/* Comment content */}
           <div className="flex-1">
             <div className="flex items-center space-x-2">
@@ -442,8 +442,8 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
                 {comment.author.fullname}
               </p>
               <span className="text-gray-500 text-xs font-normal">
-                {new Date(comment.createdAt).toLocaleString('vi-VN', { 
-                  day: 'numeric', 
+                {new Date(comment.createdAt).toLocaleString('vi-VN', {
+                  day: 'numeric',
                   month: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit'
@@ -456,14 +456,13 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
                 <>
                   <button
                     onClick={handleLike}
-                    className={`flex items-center space-x-1 text-gray-400 hover:text-gray-300 transition-all duration-300 ${
-                      likeAnimating ? 'scale-75' : 'scale-100'
-                    }`}
+                    className={`flex items-center space-x-1 text-gray-400 hover:text-gray-300 transition-all duration-300 ${likeAnimating ? 'scale-75' : 'scale-100'
+                      }`}
                   >
-                    <Image 
-                      src={liked ? '/icons/liked.svg' : '/icons/like.svg'} 
-                      alt="Thích" 
-                      width={16} 
+                    <Image
+                      src={liked ? '/icons/liked.svg' : '/icons/like.svg'}
+                      alt="Thích"
+                      width={16}
                       height={16}
                     />
                     <span className="text-xs">{likeCount}</span>

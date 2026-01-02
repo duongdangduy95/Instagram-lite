@@ -42,10 +42,12 @@ export async function GET() {
             },
         })
 
-        const result = savedPosts.map((sp: any) => ({
-            ...(sp.blog as any),
-            isSaved: true, // Chắc chắn là đã lưu vì lấy từ bảng SavedPost
-        }))
+        const result = savedPosts
+            .filter((sp: any) => sp.blog !== null)
+            .map((sp: any) => ({
+                ...(sp.blog as any),
+                isSaved: true,
+            }))
 
         return NextResponse.json(result)
     } catch (error) {

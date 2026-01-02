@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import BlogFeed from '@/app/components/BlogFeed'
 import UserSuggestionItem from '@/app/components/UserSuggestionItem'
 import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
@@ -9,8 +10,9 @@ export default function HomeClient(props: {
   blogs: BlogDTO[]
   users: SuggestUserDTO[]
   currentUser: CurrentUserSafe
+  children?: React.ReactNode
 }) {
-  const { currentUser } = props
+  const { currentUser, children } = props
 
   // Local state để có thể update realtime khi user đổi avatar/fullname/username
   const [blogs, setBlogs] = useState<BlogDTO[]>(props.blogs)
@@ -58,11 +60,11 @@ export default function HomeClient(props: {
         prev.map((u) =>
           u.id === detail.userId
             ? {
-                ...u,
-                fullname: (detail.fullname ?? u.fullname) as string,
-                username: (detail.username ?? u.username) as string,
-                image: typeof detail.image !== 'undefined' ? detail.image : u.image,
-              }
+              ...u,
+              fullname: (detail.fullname ?? u.fullname) as string,
+              username: (detail.username ?? u.username) as string,
+              image: typeof detail.image !== 'undefined' ? detail.image : u.image,
+            }
             : u
         )
       )
@@ -99,6 +101,36 @@ export default function HomeClient(props: {
     return () => window.removeEventListener('user:profile-change', onProfileChange as EventListener)
   }, [])
 
+  // Sync props -> state (khi router.refresh chạy xong)
+  useEffect(() => {
+    setBlogs(props.blogs)
+    setUsers(props.users)
+  }, [props.blogs, props.users])
+
+  const router = useRouter()
+
+  // Realtime delete/create events
+  useEffect(() => {
+    const onBlogDeleted = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { blogId: string } | undefined
+      if (detail?.blogId) {
+        setBlogs((prev) => prev.filter((b) => b.id !== detail.blogId))
+      }
+    }
+
+    const onBlogCreated = () => {
+      router.refresh()
+    }
+
+    window.addEventListener('blog:deleted', onBlogDeleted)
+    window.addEventListener('blog:created', onBlogCreated)
+
+    return () => {
+      window.removeEventListener('blog:deleted', onBlogDeleted)
+      window.removeEventListener('blog:created', onBlogCreated)
+    }
+  }, [router])
+
   const handleFollowChange = (targetUserId: string, isFollowing: boolean, followersCount?: number) => {
     setFollowMap((prev) => ({ ...prev, [targetUserId]: isFollowing }))
     if (typeof followersCount === 'number') {
@@ -111,6 +143,7 @@ export default function HomeClient(props: {
       {/* Main Content - Cột giữa */}
       <main className="flex justify-center px-4 py-4">
         <div className="w-full max-w-xl space-y-4">
+          {children}
           <BlogFeed
             blogs={blogs}
             currentUser={currentUser}
@@ -121,7 +154,7 @@ export default function HomeClient(props: {
       </main>
 
       {/* USER LIST SIDE BAR */}
-      <aside className="hidden lg:block px-6 py-4 space-y-3 border-l border-gray-800 bg-black sticky top-0 h-screen overflow-y-auto no-scrollbar">
+      <aside className="hidden lg:block px-6 py-4 space-y-3 border-l border-gray-800 bg-[#0B0E11] sticky top-0 h-screen overflow-y-auto no-scrollbar">
         <p className="text-gray-300 font-semibold mb-4 text-lg">Gợi ý theo dõi</p>
         <div className="space-y-4">
           {users.map((u) => (

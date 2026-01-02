@@ -8,6 +8,7 @@ import Navigation from '@/app/components/Navigation'
 import BlogImages from '@/app/components/BlogImages'
 import BlogActions from '@/app/components/BlogActions'
 import FollowButton from '@/app/components/FollowButton'
+import ExpandableCaption from '@/app/components/ExpandableCaption'
 import { formatTimeAgo } from '@/lib/formatTimeAgo'
 import { useCurrentUser } from '@/app/contexts/CurrentUserContext'
 
@@ -17,6 +18,7 @@ interface Blog {
   imageUrls: string[]
   hashtags: string[]
   createdAt: string
+  isSaved?: boolean
   author: {
     id: string
     fullname: string
@@ -26,6 +28,7 @@ interface Blog {
     id: string
     caption?: string
     imageUrls: string[]
+    hashtags: string[]
     createdAt: string
     author: {
       id: string
@@ -118,7 +121,7 @@ export default function BlogDetailPage() {
   const isLiked = (blog.likes?.length ?? 0) > 0
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#0B0E11]">
       <Navigation />
 
       <div className="ml-64 min-h-screen">
@@ -126,7 +129,7 @@ export default function BlogDetailPage() {
           {/* Back button */}
           <div className="mb-4">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/home')}
               className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,7 +139,7 @@ export default function BlogDetailPage() {
             </button>
           </div>
 
-          <div className="bg-black border border-gray-800 rounded-lg overflow-hidden">
+          <div className="bg-[#0B0E11] border border-gray-800 rounded-lg overflow-hidden">
             {/* Header */}
             <div className="px-4 py-3 flex justify-between items-center border-b border-gray-800">
               <Link
@@ -187,7 +190,7 @@ export default function BlogDetailPage() {
                     </button>
 
                     {showOptions && (
-                      <div className="absolute right-0 mt-2 w-40 bg-black border border-gray-800 rounded-lg shadow-lg z-50">
+                      <div className="absolute right-0 mt-2 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-50">
                         <button
                           onClick={() => {
                             setShowOptions(false)
@@ -205,7 +208,7 @@ export default function BlogDetailPage() {
                             if (!confirmDelete) return
 
                             await fetch(`/api/blog/${blog.id}`, { method: 'DELETE' })
-                            router.push('/profile')
+                            router.back()
                           }}
                           className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10"
                         >
@@ -228,14 +231,14 @@ export default function BlogDetailPage() {
             {/* Share caption */}
             {isShared && blog.caption && (
               <div className="px-4 pt-3 pb-2 text-gray-200 border-b border-gray-800">
-                {blog.caption}
+                <ExpandableCaption text={blog.caption} initialLines={3} />
               </div>
             )}
 
             {/* Original caption */}
             {displayBlog.caption && (
               <div className="px-4 pt-4 pb-2 text-gray-200">
-                {displayBlog.caption}
+                <ExpandableCaption text={displayBlog.caption} initialLines={10} />
               </div>
             )}
 
@@ -243,7 +246,7 @@ export default function BlogDetailPage() {
             {displayBlog.hashtags && displayBlog.hashtags.length > 0 && (
               <div className="px-4 pb-2 flex flex-wrap gap-2">
                 {displayBlog.hashtags.map((tag, index) => (
-                  <span key={index} className="text-blue-500 text-sm">
+                  <span key={index} className="text-[#7565E6] text-sm font-medium">
                     #{tag}
                   </span>
                 ))}
@@ -264,6 +267,7 @@ export default function BlogDetailPage() {
               initialLikeCount={blog._count.likes}
               initialCommentCount={blog._count.comments}
               initialLiked={isLiked}
+              initialSaved={!!blog.isSaved}
               currentUser={currentUser}
             />
           </div>

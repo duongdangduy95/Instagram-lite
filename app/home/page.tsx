@@ -64,7 +64,14 @@ export default async function HomePage() {
      USER SUGGESTION
   ====================== */
   const users = await prisma.user.findMany({
-    where: currentUserId ? { id: { not: currentUserId } } : undefined,
+    where: currentUserId
+      ? {
+        AND: [
+          { id: { not: currentUserId } },
+          { followers: { none: { followerId: currentUserId } } },
+        ],
+      }
+      : undefined,
     select: {
       id: true,
       fullname: true,
@@ -154,7 +161,7 @@ export default async function HomePage() {
   }))
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#0B0E11]">
       <Navigation />
       <HomeClient
         blogs={blogsDto}

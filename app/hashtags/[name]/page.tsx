@@ -99,33 +99,33 @@ export default async function HashtagPage({ params }: PageProps) {
     createdAt: b.createdAt.toISOString(),
     sharedFrom: b.sharedFrom
       ? {
-          ...b.sharedFrom,
-          createdAt: b.sharedFrom.createdAt.toISOString(),
-        }
+        ...b.sharedFrom,
+        createdAt: b.sharedFrom.createdAt.toISOString(),
+      }
       : null,
   }))
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-[#0B0E11] text-white">
       {/* NAVIGATION → LỐI THOÁT */}
       <Navigation />
-
-      {/* HEADER HASHTAG */}
-      <div className="max-w-xl mx-auto px-4 pt-6">
-        <h1 className="text-2xl font-bold text-sky-500">
-          #{hashtag}
-        </h1>
-        <p className="text-sm text-gray-400">
-          {blogsDto.length} bài viết
-        </p>
-      </div>
 
       {/* FEED GIỐNG HOME */}
       <HomeClient
         blogs={blogsDto}
         users={users as SuggestUserDTO[]}
         currentUser={currentUser as CurrentUserSafe}
-      />
+      >
+        {/* HEADER HASHTAG - MOVED INSIDE HOMECLIENT */}
+        <div className="px-4 pt-2 pb-4 border-b border-gray-800 mb-4">
+          <h1 className="text-3xl font-bold text-[#7565E6] mb-2">
+            #{hashtag}
+          </h1>
+          <p className="text-gray-400 font-medium">
+            {blogsDto.length} bài viết
+          </p>
+        </div>
+      </HomeClient>
     </div>
   )
 }

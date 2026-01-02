@@ -79,10 +79,26 @@ export default function ProfilePage() {
 
       setUser(data)
       setMyBlogs(data.blogs || [])
-      setLikedBlogs(data.likes?.map((like: Like) => like.blog) || [])
+      setLikedBlogs(data.likes?.map((like: Like) => like.blog).filter((b: Blog | null) => b !== null) || [])
     }
 
     fetchData()
+
+    const onBlogCreated = () => fetchData()
+    const onBlogDeleted = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { blogId: string } | undefined
+      if (detail?.blogId) {
+        setMyBlogs((prev) => prev.filter((b) => b.id !== detail.blogId))
+      }
+    }
+
+    window.addEventListener('blog:created', onBlogCreated)
+    window.addEventListener('blog:deleted', onBlogDeleted)
+
+    return () => {
+      window.removeEventListener('blog:created', onBlogCreated)
+      window.removeEventListener('blog:deleted', onBlogDeleted)
+    }
   }, [])
 
   useEffect(() => {
@@ -93,7 +109,7 @@ export default function ProfilePage() {
           const res = await fetch('/api/user/saved', { credentials: 'include' })
           const data = await res.json()
           if (Array.isArray(data)) {
-            setSavedBlogs(data)
+            setSavedBlogs(data.filter((b: Blog) => b && b.id))
           }
         } catch (error) {
           console.error('Error fetching saved blogs:', error)
@@ -114,7 +130,7 @@ export default function ProfilePage() {
           .then(res => res.json())
           .then(data => {
             if (Array.isArray(data)) {
-              setSavedBlogs(data)
+              setSavedBlogs(data.filter((b: Blog) => b && b.id))
             }
           })
           .catch(err => console.error('Error refetching saved blogs:', err))
@@ -174,7 +190,7 @@ export default function ProfilePage() {
   const sharedBlogs = myBlogs.filter((b) => !!b.sharedFrom)
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#0B0E11]">
       {/* NAVIGATION - Cố định bên trái */}
       <Navigation />
 
@@ -208,7 +224,7 @@ export default function ProfilePage() {
             <div className="flex-1 min-w-0">
               {/* Username và Settings */}
               <div className="flex items-center gap-4 mb-4">
-                <h1 className="text-xl sm:text-2xl font-light text-white">{user.username}</h1>
+                <h1 className="text-xl sm:text-2xl font-light text-white">{user.fullname}</h1>
                 <Link
                   href="/settings/profile"
                   className="px-4 py-1.5 text-sm font-medium bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -241,7 +257,7 @@ export default function ProfilePage() {
 
               {/* Full Name */}
               <div className="mb-2">
-                <h2 className="text-white font-semibold">{user.fullname}</h2>
+                <h2 className="text-white font-semibold">{user.username}</h2>
               </div>
             </div>
           </div>
@@ -373,7 +389,7 @@ export default function ProfilePage() {
                   </p>
                   <Link
                     href="/blog/create"
-                    className="text-blue-500 hover:text-blue-400 font-medium"
+                    className="text-[#877EFF] hover:opacity-80 font-medium"
                   >
                     Chia sẻ ảnh đầu tiên của bạn
                   </Link>

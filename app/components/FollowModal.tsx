@@ -44,7 +44,7 @@ export default function FollowModal({ isOpen, onClose, userId, type }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-800" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-[#212227] rounded-lg p-6 max-w-md w-full mx-4 border border-gray-800" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white">
             {type === 'followers' ? 'Người theo dõi' : 'Đang theo dõi'}
@@ -78,7 +78,7 @@ export default function FollowModal({ isOpen, onClose, userId, type }: Props) {
                 </Link>
                 <Link
                   href={`/profile/${u.id}`}
-                  className="px-4 py-1.5 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+                  className="px-4 py-1.5 bg-[#877EFF] text-white rounded-lg text-sm hover:opacity-90 transition-opacity"
                 >
                   Xem
                 </Link>

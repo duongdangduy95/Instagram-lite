@@ -24,6 +24,7 @@ export default function EditBlogPage() {
   const [loading, setLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [newFileTypes, setNewFileTypes] = useState<('image' | 'video')[]>([])
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false)
 
 
 
@@ -86,9 +87,13 @@ export default function EditBlogPage() {
   }
 
   // Save edit
-  const handleSave = async () => {
-    if (!confirm('Bạn có chắc muốn lưu chỉnh sửa?')) return
+  const handleSave = () => {
+    setShowSaveConfirm(true)
+  }
+
+  const confirmSave = async () => {
     setLoading(true)
+    setShowSaveConfirm(false)
 
     const formData = new FormData()
     formData.append('caption', caption)
@@ -104,14 +109,14 @@ export default function EditBlogPage() {
     setLoading(false)
 
     if (res.ok) {
-      router.push(`/blog/${id}`)
+      window.location.href = `/blog/${id}`
     } else {
       alert('Cập nhật thất bại')
     }
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-[#0B0E11] text-white">
       <Navigation />
 
       <div className="max-w-3xl mx-auto px-4 py-8">
@@ -122,7 +127,7 @@ export default function EditBlogPage() {
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
           rows={3}
-          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3"
+          className="w-full bg-[#212227] border border-gray-700 rounded-lg p-3 text-gray-100 focus:outline-none focus:border-[#7565E6]"
         />
 
         {/* Images grid */}
@@ -214,7 +219,7 @@ export default function EditBlogPage() {
           <button
             onClick={handleSave}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-[#7565E6] rounded-lg hover:bg-[#6455C2]"
           >
             {loading ? 'Đang lưu...' : 'Lưu'}
           </button>
@@ -227,6 +232,38 @@ export default function EditBlogPage() {
           </button>
         </div>
       </div>
-    </div>
+
+
+      {/* Confirmation Modal */}
+      {
+        showSaveConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="w-full max-w-sm bg-[#212227] border border-gray-700 rounded-lg p-6 shadow-xl">
+              <h2 className="text-lg font-semibold text-white mb-2">Lưu thay đổi?</h2>
+              <p className="text-gray-300 mb-6 text-sm">
+                Bạn có chắc chắn muốn lưu các thay đổi này không?
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowSaveConfirm(false)}
+                  disabled={loading}
+                  className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmSave}
+                  disabled={loading}
+                  className="px-4 py-2 rounded-lg bg-[#7565E6] hover:bg-[#6455C2] text-white text-sm font-medium transition-colors"
+                  autoFocus
+                >
+                  {loading ? 'Đang lưu...' : 'Lưu'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div >
   )
 }
