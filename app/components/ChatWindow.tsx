@@ -4,12 +4,14 @@ import { useEffect, useState, useRef, ClipboardEvent } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useSession } from 'next-auth/react'
 import { supabase } from '@/lib/supabaseClientClient'
+import { formatTime, formatDate, isNewDay } from '@/lib/time'
 
 type Message = {
   id: string
   senderId: string
   content: string
   conversationId: string
+  createdAt: string
   fileUrls?: string[]
   fileNames?: string[]
 }
@@ -213,75 +215,95 @@ export default function ChatWindow({
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-3 space-y-3"
       >
-        {messages.map(m => (
-          <div
-            key={m.id}
-            className={`group flex flex-col ${
-              m.senderId === currentUserId
-                ? 'items-end'
-                : 'items-start'
-            }`}
-          >
-            {m.senderId === currentUserId && (
-              <div className="hidden group-hover:flex gap-2 text-[10px] mb-1">
-                {m.content && (
-                  <button
-                    onClick={() => {
-                      setEditingId(m.id)
-                      setEditValue(m.content)
-                    }}
-                    className="text-blue-400"
-                  >
-                    Sửa
-                  </button>
+        {messages.map((m, index) => {
+          const prev = messages[index - 1]
+
+          return (
+            <div key={m.id}>
+              {/* ===== DATE DIVIDER (THÊM) ===== */}
+              {isNewDay(m.createdAt, prev?.createdAt) && (
+                <div className="flex justify-center my-3">
+                  <span className="bg-gray-600 text-xs px-3 py-1 rounded-full text-gray-200">
+                    {formatDate(m.createdAt)}
+                  </span>
+                </div>
+              )}
+
+              <div
+                className={`group flex flex-col ${
+                  m.senderId === currentUserId
+                    ? 'items-end'
+                    : 'items-start'
+                }`}
+              >
+                {m.senderId === currentUserId && (
+                  <div className="hidden group-hover:flex gap-2 text-[10px] mb-1">
+                    {m.content && (
+                      <button
+                        onClick={() => {
+                          setEditingId(m.id)
+                          setEditValue(m.content)
+                        }}
+                        className="text-blue-400"
+                      >
+                        Sửa
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteMessage(m.id)}
+                      className="text-red-400"
+                    >
+                      Xóa
+                    </button>
+                  </div>
                 )}
-                <button
-                  onClick={() => deleteMessage(m.id)}
-                  className="text-red-400"
-                >
-                  Xóa
-                </button>
+
+                <div className="bg-gray-700 p-2 rounded max-w-[90%]">
+                  {editingId === m.id ? (
+                    <input
+                      value={editValue}
+                      onChange={e =>
+                        setEditValue(e.target.value)
+                      }
+                      onKeyDown={e =>
+                        e.key === 'Enter' &&
+                        updateMessage(m.id)
+                      }
+                      className="bg-transparent outline-none w-full"
+                    />
+                  ) : (
+                    m.content && <p>{m.content}</p>
+                  )}
+
+                  {m.fileUrls?.map((url, i) =>
+                    isImage(url) ? (
+                      <img
+                        key={i}
+                        src={url}
+                        className="mt-1 rounded"
+                      />
+                    ) : (
+                      <a
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        className="text-xs text-blue-300 block"
+                      >
+                        📎 {m.fileNames?.[i]}
+                      </a>
+                    )
+                  )}
+
+                  {/* ===== TIME (THÊM) ===== */}
+                  <div className="text-[10px] text-right mt-1 opacity-70">
+                    {formatTime(m.createdAt)}
+                  </div>
+                </div>
               </div>
-            )}
-
-            <div className="bg-gray-700 p-2 rounded max-w-[90%]">
-              {editingId === m.id ? (
-                <input
-                  value={editValue}
-                  onChange={e =>
-                    setEditValue(e.target.value)
-                  }
-                  onKeyDown={e =>
-                    e.key === 'Enter' &&
-                    updateMessage(m.id)
-                  }
-                  className="bg-transparent outline-none w-full"
-                />
-              ) : (
-                m.content && <p>{m.content}</p>
-              )}
-
-              {m.fileUrls?.map((url, i) =>
-                isImage(url) ? (
-                  <img
-                    key={i}
-                    src={url}
-                    className="mt-1 rounded"
-                  />
-                ) : (
-                  <a
-                    key={i}
-                    href={url}
-                    target="_blank"
-                    className="text-xs text-blue-300 block"
-                  >
-                    📎 {m.fileNames?.[i]}
-                  </a>
-                )
-              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
+
         {isTyping && (
           <div className="text-xs text-gray-400 italic">
             Đối phương đang nhập...
@@ -337,7 +359,6 @@ export default function ChatWindow({
             placeholder="Aa..."
           />
 
-          {/* FILE INPUT */}
           <label className="cursor-pointer text-gray-400">
             <input
               type="file"
