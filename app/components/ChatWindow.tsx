@@ -18,9 +18,13 @@ type Message = {
 
 export default function ChatWindow({
   targetUserId,
+  targetUsername,
+  targetFullname,
   onClose
 }: {
   targetUserId: string
+  targetUsername: string
+  targetFullname: string
   onClose: () => void
 }) {
   const { data: session } = useSession()
@@ -34,6 +38,12 @@ export default function ChatWindow({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
 
+  // 🔹 THÊM: tên người chat + người đang gõ
+  const targetUserName =
+  targetFullname || targetUsername || 'Người dùng'
+
+  const [typingUserName, setTypingUserName] = useState<string | null>(null)
+
   const convIdRef = useRef<string | null>(null)
   const socketRef = useRef<Socket | null>(null)
   const channelRef = useRef<any>(null)
@@ -46,6 +56,24 @@ export default function ChatWindow({
       behavior: 'smooth'
     })
   }, [messages, isTyping])
+
+  /* ================= FETCH TARGET USER NAME (THÊM) ================= */
+  // useEffect(() => {
+  //   if (!targetUserId) return
+
+  //   async function fetchUser() {
+  //     try {
+  //       const res = await fetch(`/api/users/${targetUserId}`)
+  //       if (!res.ok) return
+  //       const data = await res.json()
+  //       setTargetUserName(
+  //         data.fullname || data.username || 'Người dùng'
+  //       )
+  //     } catch {}
+  //   }
+
+  //   fetchUser()
+  // }, [targetUserId])
 
   /* ================= INIT CHAT + REALTIME ================= */
   useEffect(() => {
@@ -87,22 +115,21 @@ export default function ChatWindow({
           },
           payload => {
             if (payload.eventType === 'INSERT') {
-  const raw = payload.new as Message
+              const raw = payload.new as Message
 
-  const msg: Message = {
-    ...raw,
-    createdAt: raw.createdAt.endsWith('Z')
-      ? raw.createdAt
-      : raw.createdAt + 'Z' // ✅ ÉP UTC
-  }
+              const msg: Message = {
+                ...raw,
+                createdAt: raw.createdAt.endsWith('Z')
+                  ? raw.createdAt
+                  : raw.createdAt + 'Z' // 🔹 FIX TIMEZONE
+              }
 
-  setMessages(prev =>
-    prev.some(m => m.id === msg.id)
-      ? prev
-      : [...prev, msg]
-  )
-}
-
+              setMessages(prev =>
+                prev.some(m => m.id === msg.id)
+                  ? prev
+                  : [...prev, msg]
+              )
+            }
 
             if (payload.eventType === 'UPDATE') {
               const msg = payload.new as Message
@@ -133,22 +160,29 @@ export default function ChatWindow({
   /* ================= SOCKET TYPING ================= */
   useEffect(() => {
     socketRef.current = io('http://localhost:4000')
+
     socketRef.current.on(
       'typing',
-      ({ senderId, conversationId }) => {
+      ({ senderId, senderName, conversationId }) => {
         if (
           senderId === targetUserId &&
           conversationId === convIdRef.current
         ) {
+          setTypingUserName(senderName || targetUserName)
           setIsTyping(true)
-          setTimeout(() => setIsTyping(false), 3000)
+
+          setTimeout(() => {
+            setIsTyping(false)
+            setTypingUserName(null)
+          }, 3000)
         }
       }
     )
+
     return () => {
       socketRef.current?.disconnect()
     }
-  }, [targetUserId])
+  }, [targetUserId, targetUserName])
 
   /* ================= PASTE IMAGE ================= */
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
@@ -214,7 +248,7 @@ export default function ChatWindow({
       {/* HEADER */}
       <div className="p-3 bg-gray-800 flex justify-between">
         <span className="font-bold text-sm">
-          Chat {targetUserId.slice(-6)}
+          {targetUserName}
         </span>
         <button onClick={onClose}>✕</button>
       </div>
@@ -229,7 +263,6 @@ export default function ChatWindow({
 
           return (
             <div key={m.id}>
-              {/* ===== DATE DIVIDER (THÊM) ===== */}
               {isNewDay(m.createdAt, prev?.createdAt) && (
                 <div className="flex justify-center my-3">
                   <span className="bg-gray-600 text-xs px-3 py-1 rounded-full text-gray-200">
@@ -303,7 +336,6 @@ export default function ChatWindow({
                     )
                   )}
 
-                  {/* ===== TIME (THÊM) ===== */}
                   <div className="text-[10px] text-right mt-1 opacity-70">
                     {formatTime(m.createdAt)}
                   </div>
@@ -313,16 +345,15 @@ export default function ChatWindow({
           )
         })}
 
-        {isTyping && (
+        {isTyping && typingUserName && (
           <div className="text-xs text-gray-400 italic">
-            Đối phương đang nhập...
+            {typingUserName} đang nhập…
           </div>
         )}
       </div>
 
       {/* INPUT */}
       <div className="p-3 bg-gray-800">
-        {/* PREVIEW FILE */}
         {selectedFiles.length > 0 && (
           <div className="flex gap-2 mb-2 overflow-x-auto">
             {selectedFiles.map((f, i) => (
@@ -359,6 +390,11 @@ export default function ChatWindow({
               setInput(e.target.value)
               socketRef.current?.emit('typing', {
                 senderId: currentUserId,
+                senderName:
+  session?.user?.fullname ||
+  session?.user?.username ||
+  'Người dùng',
+
                 conversationId: convIdRef.current
               })
             }}

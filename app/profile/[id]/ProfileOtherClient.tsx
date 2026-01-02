@@ -400,6 +400,8 @@ const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
       {isChatOpen && chatTargetUserId && (
   <ChatWindow
     targetUserId={chatTargetUserId}
+    targetUsername={user.username}
+    targetFullname={user.fullname}
     onClose={() => setIsChatOpen(false)}
   />
 )}
