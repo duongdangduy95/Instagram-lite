@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import BlogFeed from '@/app/components/BlogFeed'
 import UserSuggestionItem from '@/app/components/UserSuggestionItem'
 import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
@@ -17,6 +16,10 @@ export default function HomeClient(props: {
   // Local state để có thể update realtime khi user đổi avatar/fullname/username
   const [blogs, setBlogs] = useState<BlogDTO[]>(props.blogs)
   const [users, setUsers] = useState<SuggestUserDTO[]>(props.users)
+  const [isLoading, setIsLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
   const initialFollowMap = useMemo(() => {
     const map: Record<string, boolean> = {}
@@ -101,35 +104,63 @@ export default function HomeClient(props: {
     return () => window.removeEventListener('user:profile-change', onProfileChange as EventListener)
   }, [])
 
-  // Sync props -> state (khi router.refresh chạy xong)
-  useEffect(() => {
-    setBlogs(props.blogs)
-    setUsers(props.users)
-  }, [props.blogs, props.users])
+  const loadMoreBlogs = useCallback(async () => {
+    if (isLoading || !hasMore) return
 
-  const router = useRouter()
+    setIsLoading(true)
+    try {
+      const lastBlogId = blogs[blogs.length - 1]?.id
+      const response = await fetch(`/api/home?cursor=${lastBlogId}`, {
+        credentials: 'include',
+      })
 
-  // Realtime delete/create events
-  useEffect(() => {
-    const onBlogDeleted = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { blogId: string } | undefined
-      if (detail?.blogId) {
-        setBlogs((prev) => prev.filter((b) => b.id !== detail.blogId))
+      if (!response.ok) {
+        console.error('Failed to load more blogs')
+        return
       }
-    }
 
-    const onBlogCreated = () => {
-      router.refresh()
-    }
+      const newBlogs = await response.json()
+      
+      if (!Array.isArray(newBlogs) || newBlogs.length === 0) {
+        setHasMore(false)
+        return
+      }
 
-    window.addEventListener('blog:deleted', onBlogDeleted)
-    window.addEventListener('blog:created', onBlogCreated)
+      setBlogs((prev) => [...prev, ...newBlogs])
+      
+      // If we got less than expected, we might be at the end
+      if (newBlogs.length < 10) {
+        setHasMore(false)
+      }
+    } catch (error) {
+      console.error('Error loading more blogs:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [blogs, isLoading, hasMore])
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (!loadMoreRef.current) return
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries
+        if (entry.isIntersecting && !isLoading && hasMore) {
+          loadMoreBlogs()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observerRef.current.observe(loadMoreRef.current)
 
     return () => {
-      window.removeEventListener('blog:deleted', onBlogDeleted)
-      window.removeEventListener('blog:created', onBlogCreated)
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+      }
     }
-  }, [router])
+  }, [loadMoreBlogs, isLoading, hasMore])
 
   const handleFollowChange = (targetUserId: string, isFollowing: boolean, followersCount?: number) => {
     setFollowMap((prev) => ({ ...prev, [targetUserId]: isFollowing }))
@@ -150,6 +181,16 @@ export default function HomeClient(props: {
             followMap={followMap}
             onFollowChange={handleFollowChange}
           />
+          
+          {/* Infinite Scroll Trigger */}
+          <div ref={loadMoreRef} className="flex justify-center py-8">
+            {isLoading && (
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            )}
+            {!hasMore && blogs.length > 0 && (
+              <p className="text-gray-400 text-sm">Đã hết bài viết</p>
+            )}
+          </div>
         </div>
       </main>
 
