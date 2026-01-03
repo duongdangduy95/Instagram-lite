@@ -29,7 +29,7 @@ export function CommentItem({ comment, onReply, currentUser }: Props) {
     <div className="ml-2 border-l pl-2 mb-2">
       <div className="p-2 bg-gray-100 rounded-lg border border-gray-200">
         <p className="text-sm font-medium text-gray-800">
-          {comment.author.fullname}{' '}
+          {comment.author.username}{' '}
           <span className="text-gray-500 text-xs">
             {new Date(comment.createdAt).toLocaleString()}
           </span>

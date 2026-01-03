@@ -213,7 +213,7 @@ export default function ProfilePage() {
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold">
-                    {user.fullname?.charAt(0).toUpperCase()}
+                    {user.username?.charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>
@@ -224,7 +224,7 @@ export default function ProfilePage() {
             <div className="flex-1 min-w-0">
               {/* Username và Settings */}
               <div className="flex items-center gap-4 mb-4">
-                <h1 className="text-xl sm:text-2xl font-light text-white">{user.fullname}</h1>
+                <h1 className="text-xl sm:text-2xl font-light text-white">{user.username}</h1>
                 <Link
                   href="/settings/profile"
                   className="px-4 py-1.5 text-sm font-medium bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -257,7 +257,7 @@ export default function ProfilePage() {
 
               {/* Full Name */}
               <div className="mb-2">
-                <h2 className="text-white font-semibold">{user.username}</h2>
+                <h2 className="text-white font-semibold">{user.fullname}</h2>
               </div>
             </div>
           </div>

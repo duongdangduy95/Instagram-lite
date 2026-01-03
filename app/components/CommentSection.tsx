@@ -427,10 +427,10 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
           {/* Avatar */}
           <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
             {comment.author.image ? (
-              <Image src={comment.author.image} alt={comment.author.fullname} width={32} height={32} className="object-cover w-full h-full" />
+              <Image src={comment.author.image} alt={comment.author.username} width={32} height={32} className="object-cover w-full h-full" />
             ) : (
               <span className="text-white font-bold text-xs">
-                {comment.author.fullname.charAt(0).toUpperCase()}
+                {comment.author.username.charAt(0).toUpperCase()}
               </span>
             )}
           </div>
@@ -439,7 +439,7 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
           <div className="flex-1">
             <div className="flex items-center space-x-2">
               <p className="text-sm font-medium text-gray-200">
-                {comment.author.fullname}
+                {comment.author.username}
               </p>
               <span className="text-gray-500 text-xs font-normal">
                 {new Date(comment.createdAt).toLocaleString('vi-VN', {
@@ -502,7 +502,7 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
     <div className="ml-2 mt-2">
       <div className="p-3 bg-gray-900/60 rounded-lg border border-gray-800">
         <p className="text-sm font-medium text-gray-100">
-          {comment.author.fullname}{' '}
+          {comment.author.username}{' '}
           <span className="text-gray-500 text-xs font-normal">
             {new Date(comment.createdAt).toLocaleString()}
           </span>
