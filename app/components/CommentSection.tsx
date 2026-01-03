@@ -35,6 +35,40 @@ interface Props {
   onRequestReply?: (args: { parentId: string; username: string; fullname: string }) => void;
 }
 
+function updateCommentInTree(
+  items: Comment[],
+  commentId: string,
+  newContent: string
+): Comment[] {
+  return items.map((c) => {
+    if (c.id === commentId) {
+      return { ...c, content: newContent }
+    }
+
+    if (c.replies?.length) {
+      return {
+        ...c,
+        replies: updateCommentInTree(c.replies, commentId, newContent),
+      }
+    }
+
+    return c
+  })
+}
+
+function removeCommentFromTree(
+  items: Comment[],
+  commentId: string
+): Comment[] {
+  return items
+    .filter((c) => c.id !== commentId)
+    .map((c) => ({
+      ...c,
+      replies: removeCommentFromTree(c.replies || [], commentId),
+    }))
+}
+
+
 function renderContentWithMentions(content: string) {
   // Split giữ lại token @xxx để render link nổi bật
   const parts = content.split(/(@[a-zA-Z0-9._]{1,30})/g);
@@ -239,6 +273,16 @@ export default function CommentSection({
                 comment={comment}
                 currentUser={currentUser}
                 onReply={handleReply}
+                onUpdate={(id, content) => {
+                  setComments((prev) =>
+                    updateCommentInTree(prev, id, content)
+                  )
+                }}
+                onDelete={(id) => {
+                  setComments((prev) =>
+                    removeCommentFromTree(prev, id)
+                  )
+                }}
                 inline={true}
               />
             ))
@@ -310,6 +354,16 @@ export default function CommentSection({
               comment={comment}
               currentUser={currentUser}
               onReply={handleReply}
+              onUpdate={(id, content) => {
+                setComments((prev) =>
+                  updateCommentInTree(prev, id, content)
+                )
+              }}
+              onDelete={(id) => {
+                setComments((prev) =>
+                  removeCommentFromTree(prev, id)
+                )
+              }}
             />
           ))}
         </div>
@@ -360,14 +414,42 @@ interface CommentItemProps {
   comment: Comment;
   currentUser: Props['currentUser'];
   onReply: (comment: Comment) => void;
+  onUpdate: (id: string, content: string) => void;
+  onDelete: (id: string) => void;
   inline?: boolean;
 }
 
-function CommentItem({ comment, currentUser, onReply, inline = false }: CommentItemProps) {
+function CommentItem({ comment, currentUser, onReply, onUpdate, onDelete, inline = false }: CommentItemProps) {
   const [liked, setLiked] = useState(comment.liked || false)
   const [likeCount, setLikeCount] = useState(comment.likeCount || 0)
   const [likeAnimating, setLikeAnimating] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  const [showOptions, setShowOptions] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editContent, setEditContent] = useState(comment.content)
+
+  const isCommentOwner = currentUser?.username === comment.author.username
+  const isBlogOwner = currentUser?.id === comment.blogAuthorId
+
+  const canEdit = isCommentOwner
+  const canDelete = isCommentOwner || isBlogOwner
+
+
+
+  const optionsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (optionsRef.current && !optionsRef.current.contains(e.target as Node)) {
+        setShowOptions(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+
 
   useEffect(() => {
     setLiked(comment.liked || false)
@@ -423,7 +505,7 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
   if (inline) {
     return (
       <div className="ml-2 mt-2">
-        <div className="flex items-start space-x-2">
+        <div className="flex items-start justify-between space-x-2">
           {/* Avatar */}
           <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
             {comment.author.image ? (
@@ -437,20 +519,136 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
 
           {/* Comment content */}
           <div className="flex-1">
-            <div className="flex items-center space-x-2">
-              <p className="text-sm font-medium text-gray-200">
-                {comment.author.fullname}
-              </p>
-              <span className="text-gray-500 text-xs font-normal">
-                {new Date(comment.createdAt).toLocaleString('vi-VN', {
-                  day: 'numeric',
-                  month: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center space-x-2">
+                <p className="text-sm font-medium text-gray-200">
+                  {comment.author.fullname}
+                </p>
+                <span className="text-gray-500 text-xs font-normal">
+                  {new Date(comment.createdAt).toLocaleString('vi-VN', {
+                    day: 'numeric',
+                    month: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+
+              {(canEdit || canDelete) && (
+                <div className="relative" ref={optionsRef}>
+                  <button
+                    onClick={() => setShowOptions(!showOptions)}
+                    className="p-1 rounded-full hover:bg-gray-800"
+                  >
+                    <span className="text-gray-400 text-lg">⋯</span>
+                  </button>
+
+                  {showOptions && (
+                    <div className="absolute right-0 mt-1 w-36 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-50">
+                      {canEdit && (
+                        <button
+                          onClick={() => {
+                            setEditing(true)
+                            setShowOptions(false)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800"
+                        >
+                          Chỉnh sửa
+                        </button>
+                      )}
+
+                      {canDelete && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm('Xóa bình luận này?')) return
+
+                            try {
+                              const res = await fetch(`/api/blog/${comment.blogId}/comment`, {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({
+                                  commentId: comment.id,
+                                }),
+                              })
+
+
+                              onDelete(comment.id)
+                              if (!res.ok) throw new Error('Delete failed')
+
+                              
+                            } catch (err) {
+                              console.error(err)
+                              alert('Không thể xóa bình luận')
+                            } finally {
+                              setShowOptions(false)
+                            }
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-800"
+                        >
+                          Xóa bình luận
+                        </button>
+
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
-            <p className="text-sm text-gray-300 mt-1">{renderContentWithMentions(comment.content)}</p>
+
+
+            {editing ? (
+              <>
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="w-full bg-transparent border border-gray-700 rounded p-2 text-gray-200 text-sm"
+                />
+                <div className="flex gap-2 mt-1">
+                  <button
+                    onClick={async () => {
+                      if (!editContent.trim()) return
+
+                      try {
+                        const res = await fetch(`/api/blog/${comment.blogId}/comment`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          credentials: 'include',
+                          body: JSON.stringify({
+                            commentId: comment.id,
+                            content: editContent,
+                          }),
+                        })
+
+                        onUpdate(comment.id, editContent)
+                        setEditing(false)
+                        
+                        if (!res.ok) throw new Error('Update failed')
+                        
+                      } catch (err) {
+                        console.error(err)
+                        alert('Không thể sửa bình luận')
+                      }
+                    }}
+                    className="text-xs text-purple-primary"
+                  >
+                    Lưu
+                  </button>
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="text-xs text-gray-400"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-gray-300 mt-1">
+                {renderContentWithMentions(comment.content)}
+              </p>
+            )}
+
             <div className="flex items-center space-x-4 mt-1">
               {currentUser && (
                 <>
@@ -489,6 +687,8 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
                 comment={reply}
                 currentUser={currentUser}
                 onReply={onReply}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
                 inline={true}
               />
             ))}
@@ -528,6 +728,8 @@ function CommentItem({ comment, currentUser, onReply, inline = false }: CommentI
               comment={reply}
               currentUser={currentUser}
               onReply={onReply}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
             />
           ))}
         </div>
