@@ -23,10 +23,10 @@ export async function createNotification(notification: {
     data: notification
   })
 
-  // 2️⃣ Push vào Supabase Realtime
-  await supabase
-    .from('notification')
-    .insert([saved])
+  // Push vào Supabase Realtime
+  // await supabase
+  //   .from('Notification')
+  //   .insert([saved])
 
   return saved
 }

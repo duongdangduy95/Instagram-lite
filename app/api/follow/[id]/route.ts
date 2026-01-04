@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { createNotification } from '@/lib/notification'
+import { NotificationType } from '@prisma/client'
 
 // POST - Follow user
 export async function POST(
@@ -49,6 +51,12 @@ export async function POST(
         where: { followingId: targetUserId },
       }),
     ])
+
+    await createNotification({
+      userId: targetUserId, 
+      actorId: userId,      
+      type: NotificationType.FOLLOW,
+    })
 
     return NextResponse.json({ 
       message: 'Follow thành công',

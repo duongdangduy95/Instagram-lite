@@ -77,7 +77,7 @@ export default function Navigation() {
     }
   }, [notifOpen, settingsOpen])
 
-  // Realtime subscription to Supabase notifications
+  //Realtime subscription to Supabase notifications
   useEffect(() => {
     if (!user?.id) return
     fetchNotifications()
@@ -86,17 +86,21 @@ export default function Navigation() {
       .channel(`notifications-${user.id}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notification', filter: `userId=eq.${user.id}` },
-        (payload) => {
-          setNotifications(prev => [payload.new, ...prev])
+        { event: 'INSERT', schema: 'public', table: 'Notification', filter: `userId=eq.${user.id}` },
+        async () => {
+          await fetchNotifications()
         }
+      
       )
       .subscribe()
+    
 
     return () => {
       supabase.removeChannel(channel)
     }
   }, [user?.id])
+
+
 
   // Map notification type -> link + text
   const getNotifLinkAndText = (n: any) => {

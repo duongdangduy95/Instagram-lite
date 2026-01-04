@@ -115,6 +115,8 @@ export default async function HashtagPage({ params }: PageProps) {
         blogs={blogsDto}
         users={users as SuggestUserDTO[]}
         currentUser={currentUser as CurrentUserSafe}
+        mode="hashtag"
+        hashtagName={hashtag}
       >
         {/* HEADER HASHTAG - MOVED INSIDE HOMECLIENT */}
         <div className="px-4 pt-2 pb-4 border-b border-gray-800 mb-4">

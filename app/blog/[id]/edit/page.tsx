@@ -109,7 +109,7 @@ export default function EditBlogPage() {
     setLoading(false)
 
     if (res.ok) {
-      window.location.href = `/blog/${id}`
+      window.location.href = `/home`
     } else {
       alert('Cập nhật thất bại')
     }

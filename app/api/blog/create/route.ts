@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const files: File[] = []
 
     form.forEach((value, key) => {
-      if (value instanceof File && (key === 'image' || key === 'images')) {
+      if (value instanceof File && (key === 'image' || key === 'images' || key === 'video' || key === 'videos')) {
         files.push(value)
       }
     })

@@ -38,11 +38,11 @@ model User {
   followers          Follow[]       @relation("UserFollowing")
   likes              Like[]
   sentMessages       Message[]      @relation("MessageSender")
+  actorNotifications Notification[] @relation("ActorNotifications")
+  notifications      Notification[] @relation("UserNotifications")
   participations     Participant[]
   savedPosts         SavedPost[]
   Session            Session[]
-  notifications      Notification[] @relation("UserNotifications")
-  actorNotifications Notification[] @relation("ActorNotifications")
 }
 
 model Blog {
@@ -61,9 +61,9 @@ model Blog {
   shares           Blog[]                   @relation("BlogShare")
   comments         Comment[]
   likes            Like[]
+  notifications    Notification[]           @relation("BlogNotifications")
   savedBy          SavedPost[]
   blogHashtags     BlogHashtag[]
-  notifications    Notification[]           @relation("BlogNotifications")
 
   @@index([caption_unaccent(ops: raw("gin_trgm_ops"))], map: "blog_caption_trgm_idx", type: Gin)
   @@index([search_vector], map: "blog_search_vector_idx", type: Gin)
@@ -198,8 +198,8 @@ model Conversation {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   messages      Message[]
-  participants  Participant[]
   notifications Notification[] @relation("ConversationNotifications")
+  participants  Participant[]
 }
 
 model Participant {
@@ -223,20 +223,14 @@ model Message {
   createdAt      DateTime       @default(now())
   fileUrls       String[]       @default([])
   fileNames      String[]       @default([])
+  status         MessageStatus  @default(SENT)
   conversation   Conversation   @relation(fields: [conversationId], references: [id])
   sender         User           @relation("MessageSender", fields: [senderId], references: [id])
-  readBy         Participant[]  @relation("MessageReadBy")
-  status         MessageStatus  @default(SENT)
   notifications  Notification[] @relation("MessageNotifications")
+  readBy         Participant[]  @relation("MessageReadBy")
 
   @@index([conversationId, createdAt(sort: Desc)], map: "message_conversation_createdat_idx")
   @@index([senderId, createdAt(sort: Desc)], map: "message_sender_createdat_idx")
-}
-
-enum MessageStatus {
-  SENT
-  DELIVERED
-  SEEN
 }
 
 model EmailOTP {
@@ -263,8 +257,8 @@ model SavedPost {
 
 model Notification {
   id             String           @id @default(cuid())
-  userId         String // người nhận thông báo
-  actorId        String // người gây ra hành động
+  userId         String
+  actorId        String
   type           NotificationType
   blogId         String?
   commentId      String?
@@ -272,17 +266,21 @@ model Notification {
   conversationId String?
   isRead         Boolean          @default(false)
   createdAt      DateTime         @default(now())
-
-  user  User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  actor User @relation("ActorNotifications", fields: [actorId], references: [id])
-
-  blog         Blog?         @relation("BlogNotifications", fields: [blogId], references: [id])
-  comment      Comment?      @relation("CommentNotifications", fields: [commentId], references: [id])
-  message      Message?      @relation("MessageNotifications", fields: [messageId], references: [id])
-  conversation Conversation? @relation("ConversationNotifications", fields: [conversationId], references: [id])
+  actor          User             @relation("ActorNotifications", fields: [actorId], references: [id])
+  blog           Blog?            @relation("BlogNotifications", fields: [blogId], references: [id])
+  comment        Comment?         @relation("CommentNotifications", fields: [commentId], references: [id])
+  conversation   Conversation?    @relation("ConversationNotifications", fields: [conversationId], references: [id])
+  message        Message?         @relation("MessageNotifications", fields: [messageId], references: [id])
+  user           User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, isRead])
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  SEEN
 }
 
 enum NotificationType {
