@@ -22,25 +22,27 @@ model login_web {
 }
 
 model User {
-  id             String        @id @default(cuid())
-  username       String
-  fullname       String
-  email          String        @unique
-  phone          String?
-  password       String?
-  createdAt      DateTime      @default(now())
-  emailVerified  DateTime?
-  image          String?
-  Account        Account[]
-  blogs          Blog[]
-  comments       Comment[]
-  following      Follow[]      @relation("UserFollowers")
-  followers      Follow[]      @relation("UserFollowing")
-  likes          Like[]
-  sentMessages   Message[]     @relation("MessageSender")
-  participations Participant[]
-  savedPosts     SavedPost[]
-  Session        Session[]
+  id                 String         @id @default(cuid())
+  username           String
+  fullname           String
+  email              String         @unique
+  phone              String?
+  password           String?
+  createdAt          DateTime       @default(now())
+  emailVerified      DateTime?
+  image              String?
+  Account            Account[]
+  blogs              Blog[]
+  comments           Comment[]
+  following          Follow[]       @relation("UserFollowers")
+  followers          Follow[]       @relation("UserFollowing")
+  likes              Like[]
+  sentMessages       Message[]      @relation("MessageSender")
+  participations     Participant[]
+  savedPosts         SavedPost[]
+  Session            Session[]
+  notifications      Notification[] @relation("UserNotifications")
+  actorNotifications Notification[] @relation("ActorNotifications")
 }
 
 model Blog {
@@ -61,6 +63,7 @@ model Blog {
   likes            Like[]
   savedBy          SavedPost[]
   blogHashtags     BlogHashtag[]
+  notifications    Notification[]           @relation("BlogNotifications")
 
   @@index([caption_unaccent(ops: raw("gin_trgm_ops"))], map: "blog_caption_trgm_idx", type: Gin)
   @@index([search_vector], map: "blog_search_vector_idx", type: Gin)
@@ -99,17 +102,18 @@ model BlogHashtag {
 }
 
 model Comment {
-  id        String    @id @default(cuid())
-  content   String
-  createdAt DateTime  @default(now())
-  authorId  String
-  blogId    String
-  parentId  String?
-  author    User      @relation(fields: [authorId], references: [id])
-  blog      Blog      @relation(fields: [blogId], references: [id])
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
-  replies   Comment[] @relation("CommentReplies")
-  likes     Like[]
+  id            String         @id @default(cuid())
+  content       String
+  createdAt     DateTime       @default(now())
+  authorId      String
+  blogId        String
+  parentId      String?
+  author        User           @relation(fields: [authorId], references: [id])
+  blog          Blog           @relation(fields: [blogId], references: [id])
+  parent        Comment?       @relation("CommentReplies", fields: [parentId], references: [id])
+  replies       Comment[]      @relation("CommentReplies")
+  likes         Like[]
+  notifications Notification[] @relation("CommentNotifications")
 
   @@index([authorId, createdAt(sort: Desc)], map: "comment_author_createdat_idx")
   @@index([blogId, createdAt(sort: Desc)], map: "comment_blog_createdat_idx")
@@ -188,13 +192,14 @@ model VerificationToken {
 }
 
 model Conversation {
-  id           String        @id @default(cuid())
-  name         String?
-  isGroup      Boolean       @default(false)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  messages     Message[]
-  participants Participant[]
+  id            String         @id @default(cuid())
+  name          String?
+  isGroup       Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  messages      Message[]
+  participants  Participant[]
+  notifications Notification[] @relation("ConversationNotifications")
 }
 
 model Participant {
@@ -211,25 +216,29 @@ model Participant {
 }
 
 model Message {
-  id             String        @id @default(cuid())
+  id             String         @id @default(cuid())
   conversationId String
   senderId       String
   content        String
-  createdAt      DateTime      @default(now())
-  fileUrls       String[]      @default([])
-  fileNames      String[]      @default([])
-  conversation   Conversation  @relation(fields: [conversationId], references: [id])
-  sender         User          @relation("MessageSender", fields: [senderId], references: [id])
-  readBy         Participant[] @relation("MessageReadBy")
-   status         MessageStatus @default(SENT)
+  createdAt      DateTime       @default(now())
+  fileUrls       String[]       @default([])
+  fileNames      String[]       @default([])
+  conversation   Conversation   @relation(fields: [conversationId], references: [id])
+  sender         User           @relation("MessageSender", fields: [senderId], references: [id])
+  readBy         Participant[]  @relation("MessageReadBy")
+  status         MessageStatus  @default(SENT)
+  notifications  Notification[] @relation("MessageNotifications")
+
   @@index([conversationId, createdAt(sort: Desc)], map: "message_conversation_createdat_idx")
   @@index([senderId, createdAt(sort: Desc)], map: "message_sender_createdat_idx")
 }
+
 enum MessageStatus {
   SENT
   DELIVERED
   SEEN
 }
+
 model EmailOTP {
   id        String   @id
   email     String
@@ -250,4 +259,37 @@ model SavedPost {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, blogId])
+}
+
+model Notification {
+  id             String           @id @default(cuid())
+  userId         String // người nhận thông báo
+  actorId        String // người gây ra hành động
+  type           NotificationType
+  blogId         String?
+  commentId      String?
+  messageId      String?
+  conversationId String?
+  isRead         Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+
+  user  User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor User @relation("ActorNotifications", fields: [actorId], references: [id])
+
+  blog         Blog?         @relation("BlogNotifications", fields: [blogId], references: [id])
+  comment      Comment?      @relation("CommentNotifications", fields: [commentId], references: [id])
+  message      Message?      @relation("MessageNotifications", fields: [messageId], references: [id])
+  conversation Conversation? @relation("ConversationNotifications", fields: [conversationId], references: [id])
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, isRead])
+}
+
+enum NotificationType {
+  FOLLOW
+  NEW_POST
+  LIKE_POST
+  COMMENT_POST
+  SHARE_POST
+  MESSAGE
 }
