@@ -221,11 +221,15 @@ model Message {
   conversation   Conversation  @relation(fields: [conversationId], references: [id])
   sender         User          @relation("MessageSender", fields: [senderId], references: [id])
   readBy         Participant[] @relation("MessageReadBy")
-
+   status         MessageStatus @default(SENT)
   @@index([conversationId, createdAt(sort: Desc)], map: "message_conversation_createdat_idx")
   @@index([senderId, createdAt(sort: Desc)], map: "message_sender_createdat_idx")
 }
-
+enum MessageStatus {
+  SENT
+  DELIVERED
+  SEEN
+}
 model EmailOTP {
   id        String   @id
   email     String

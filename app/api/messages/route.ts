@@ -36,6 +36,16 @@ export async function GET(req: Request) {
     },
     include: { messages: { orderBy: { createdAt: 'asc' } } }
   })
+   if (conversation) {
+  await prisma.message.updateMany({
+    where: {
+      conversationId: conversation.id,
+      senderId: { not: currentUserId },
+      status: 'SENT'
+    },
+    data: { status: 'DELIVERED' }
+  })
+}
 
   return NextResponse.json({
     conversationId: conversation?.id || null,
@@ -118,7 +128,8 @@ export async function POST(req: Request) {
       senderId: currentUserId,
       content,
       fileUrls,
-      fileNames
+      fileNames,
+      status: 'SENT'
     }
   })
 
@@ -175,3 +186,22 @@ export async function DELETE(req: Request) {
 
   return new Response(null, { status: 204 })
 }
+export async function PUT(req: Request) {
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id
+  if (!userId) return new Response('Unauthorized', { status: 401 })
+
+  const { conversationId } = await req.json()
+
+  await prisma.message.updateMany({
+    where: {
+      conversationId,
+      senderId: { not: userId },
+      status: { in: ['SENT', 'DELIVERED'] }
+    },
+    data: { status: 'SEEN' }
+  })
+
+  return NextResponse.json({ success: true })
+}
+

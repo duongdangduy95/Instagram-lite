@@ -6,14 +6,25 @@ import { useSession } from 'next-auth/react'
 import { supabase } from '@/lib/supabaseClientClient'
 import { formatTime, formatDate, isNewDay } from '@/lib/time'
 
+type MessageStatus = 'SENT' | 'DELIVERED' | 'SEEN'
+
 type Message = {
   id: string
   senderId: string
   content: string
   conversationId: string
   createdAt: string
+  status: MessageStatus
   fileUrls?: string[]
   fileNames?: string[]
+}
+
+function normalizeCreatedAt(dateStr: string) {
+  if (dateStr.endsWith('Z') || dateStr.includes('+')) return dateStr
+  const local = new Date(dateStr)
+  return new Date(
+    local.getTime() - local.getTimezoneOffset() * 60000
+  ).toISOString()
 }
 
 export default function ChatWindow({
@@ -34,46 +45,83 @@ export default function ChatWindow({
   const [input, setInput] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isTyping, setIsTyping] = useState(false)
+  const [isTabActive, setIsTabActive] = useState(true)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
 
-  // 🔹 THÊM: tên người chat + người đang gõ
   const targetUserName =
-  targetFullname || targetUsername || 'Người dùng'
+    targetFullname || targetUsername || 'Người dùng'
 
-  const [typingUserName, setTypingUserName] = useState<string | null>(null)
+  const [typingUserName, setTypingUserName] =
+    useState<string | null>(null)
+  const [isChatOpen, setIsChatOpen] = useState(true)
 
   const convIdRef = useRef<string | null>(null)
   const socketRef = useRef<Socket | null>(null)
   const channelRef = useRef<any>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  /* ================= TAB ACTIVE ================= */
+  useEffect(() => {
+    const handleVisibility = () =>
+      setIsTabActive(!document.hidden)
+
+    document.addEventListener(
+      'visibilitychange',
+      handleVisibility
+    )
+    return () =>
+      document.removeEventListener(
+        'visibilitychange',
+        handleVisibility
+      )
+  }, [])
+
+  /* ================= MARK SEEN ================= */
+  const markSeen = async () => {
+    if (!convIdRef.current) return
+    if (!isChatOpen || !isTabActive) return
+
+    await fetch('/api/messages', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: convIdRef.current
+      })
+    })
+  }
+
+  /* ================= AUTO SEEN WHEN MESSAGE ARRIVES ================= */
+  useEffect(() => {
+    if (!isChatOpen || !isTabActive) return
+
+    const hasUnread = messages.some(
+      m =>
+        m.senderId !== currentUserId &&
+        m.status !== 'SEEN'
+    )
+
+    if (hasUnread) {
+      markSeen()
+    }
+  }, [messages, isChatOpen, isTabActive])
+
   /* ================= AUTO SCROLL ================= */
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: 'smooth'
+    const el = scrollRef.current
+    if (!el || messages.length === 0) return
+
+    const last = messages[messages.length - 1]
+
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior:
+        last.senderId === currentUserId
+          ? 'smooth'
+          : 'auto'
     })
   }, [messages, isTyping])
-
-  /* ================= FETCH TARGET USER NAME (THÊM) ================= */
-  // useEffect(() => {
-  //   if (!targetUserId) return
-
-  //   async function fetchUser() {
-  //     try {
-  //       const res = await fetch(`/api/users/${targetUserId}`)
-  //       if (!res.ok) return
-  //       const data = await res.json()
-  //       setTargetUserName(
-  //         data.fullname || data.username || 'Người dùng'
-  //       )
-  //     } catch {}
-  //   }
-
-  //   fetchUser()
-  // }, [targetUserId])
 
   /* ================= INIT CHAT + REALTIME ================= */
   useEffect(() => {
@@ -82,14 +130,22 @@ export default function ChatWindow({
 
     setMessages([])
     setSelectedFiles([])
-    if (channelRef.current) supabase.removeChannel(channelRef.current)
+    if (channelRef.current)
+      supabase.removeChannel(channelRef.current)
 
     async function initChat() {
-      const res = await fetch(`/api/messages?userId=${targetUserId}`)
+      const res = await fetch(
+        `/api/messages?userId=${targetUserId}`
+      )
       const data = await res.json()
       if (!active) return
 
-      setMessages(data.messages || [])
+      setMessages(
+        (data.messages || []).map((m: Message) => ({
+          ...m,
+          createdAt: normalizeCreatedAt(m.createdAt)
+        }))
+      )
 
       let cid = data.conversationId
       if (!cid) {
@@ -116,12 +172,11 @@ export default function ChatWindow({
           payload => {
             if (payload.eventType === 'INSERT') {
               const raw = payload.new as Message
-
-              const msg: Message = {
+              const msg = {
                 ...raw,
-                createdAt: raw.createdAt.endsWith('Z')
-                  ? raw.createdAt
-                  : raw.createdAt + 'Z' // 🔹 FIX TIMEZONE
+                createdAt: normalizeCreatedAt(
+                  raw.createdAt
+                )
               }
 
               setMessages(prev =>
@@ -132,9 +187,18 @@ export default function ChatWindow({
             }
 
             if (payload.eventType === 'UPDATE') {
-              const msg = payload.new as Message
+              const raw = payload.new as Message
               setMessages(prev =>
-                prev.map(m => (m.id === msg.id ? msg : m))
+                prev.map(m =>
+                  m.id === raw.id
+                    ? {
+                        ...raw,
+                        createdAt: normalizeCreatedAt(
+                          raw.createdAt
+                        )
+                      }
+                    : m
+                )
               )
             }
 
@@ -192,9 +256,11 @@ export default function ChatWindow({
         if (file) {
           setSelectedFiles(prev => [
             ...prev,
-            new File([file], `paste-${Date.now()}.png`, {
-              type: file.type
-            })
+            new File(
+              [file],
+              `paste-${Date.now()}.png`,
+              { type: file.type }
+            )
           ])
         }
       }
@@ -204,7 +270,8 @@ export default function ChatWindow({
   /* ================= SEND ================= */
   const sendMessage = async () => {
     if (!convIdRef.current) return
-    if (!input.trim() && selectedFiles.length === 0) return
+    if (!input.trim() && selectedFiles.length === 0)
+      return
 
     const form = new FormData()
     form.append('targetUserId', targetUserId)
@@ -225,7 +292,10 @@ export default function ChatWindow({
     await fetch('/api/messages', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messageId: id, content: editValue })
+      body: JSON.stringify({
+        messageId: id,
+        content: editValue
+      })
     })
     setEditingId(null)
     setEditValue('')
@@ -250,7 +320,14 @@ export default function ChatWindow({
         <span className="font-bold text-sm">
           {targetUserName}
         </span>
-        <button onClick={onClose}>✕</button>
+        <button
+          onClick={() => {
+            setIsChatOpen(false)
+            onClose()
+          }}
+        >
+          ✕
+        </button>
       </div>
 
       {/* MESSAGES */}
@@ -263,7 +340,10 @@ export default function ChatWindow({
 
           return (
             <div key={m.id}>
-              {isNewDay(m.createdAt, prev?.createdAt) && (
+              {isNewDay(
+                m.createdAt,
+                prev?.createdAt
+              ) && (
                 <div className="flex justify-center my-3">
                   <span className="bg-gray-600 text-xs px-3 py-1 rounded-full text-gray-200">
                     {formatDate(m.createdAt)}
@@ -292,7 +372,9 @@ export default function ChatWindow({
                       </button>
                     )}
                     <button
-                      onClick={() => deleteMessage(m.id)}
+                      onClick={() =>
+                        deleteMessage(m.id)
+                      }
                       className="text-red-400"
                     >
                       Xóa
@@ -336,8 +418,23 @@ export default function ChatWindow({
                     )
                   )}
 
-                  <div className="text-[10px] text-right mt-1 opacity-70">
-                    {formatTime(m.createdAt)}
+                  <div className="text-[10px] text-right mt-1 opacity-70 flex gap-1 justify-end items-center">
+                    <span>
+                      {formatTime(m.createdAt)}
+                    </span>
+
+                    {m.senderId === currentUserId && (
+                      <span>
+                        {m.status === 'SENT' && '✔'}
+                        {m.status ===
+                          'DELIVERED' && '✔✔'}
+                        {m.status === 'SEEN' && (
+                          <span className="text-blue-400">
+                            ✔✔
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -371,7 +468,9 @@ export default function ChatWindow({
                 <button
                   onClick={() =>
                     setSelectedFiles(prev =>
-                      prev.filter((_, idx) => idx !== i)
+                      prev.filter(
+                        (_, idx) => idx !== i
+                      )
                     )
                   }
                   className="absolute -top-1 -right-1 bg-red-500 w-3 h-3 rounded-full text-[8px]"
@@ -388,18 +487,23 @@ export default function ChatWindow({
             value={input}
             onChange={e => {
               setInput(e.target.value)
-              socketRef.current?.emit('typing', {
-                senderId: currentUserId,
-                senderName:
-  session?.user?.fullname ||
-  session?.user?.username ||
-  'Người dùng',
-
-                conversationId: convIdRef.current
-              })
+              socketRef.current?.emit(
+                'typing',
+                {
+                  senderId: currentUserId,
+                  senderName:
+                    session?.user?.fullname ||
+                    session?.user?.username ||
+                    'Người dùng',
+                  conversationId:
+                    convIdRef.current
+                }
+              )
             }}
             onPaste={handlePaste}
-            onKeyDown={e => e.key === 'Enter' && sendMessage()}
+            onKeyDown={e =>
+              e.key === 'Enter' && sendMessage()
+            }
             className="flex-1 bg-gray-700 rounded px-3 py-1"
             placeholder="Aa..."
           />
