@@ -51,7 +51,7 @@ export default function ChatWindow({
   const [editValue, setEditValue] = useState('')
 
   const targetUserName =
-    targetFullname || targetUsername || 'Người dùng'
+    targetUsername || targetFullname || 'Người dùng'
 
   const [typingUserName, setTypingUserName] =
     useState<string | null>(null)
@@ -352,11 +352,10 @@ export default function ChatWindow({
               )}
 
               <div
-                className={`group flex flex-col ${
-                  m.senderId === currentUserId
+                className={`group flex flex-col ${m.senderId === currentUserId
                     ? 'items-end'
                     : 'items-start'
-                }`}
+                  }`}
               >
                 {m.senderId === currentUserId && (
                   <div className="hidden group-hover:flex gap-2 text-[10px] mb-1">
@@ -487,18 +486,15 @@ export default function ChatWindow({
             value={input}
             onChange={e => {
               setInput(e.target.value)
-              socketRef.current?.emit(
-                'typing',
-                {
-                  senderId: currentUserId,
-                  senderName:
-                    session?.user?.fullname ||
-                    session?.user?.username ||
-                    'Người dùng',
-                  conversationId:
-                    convIdRef.current
-                }
-              )
+              socketRef.current?.emit('typing', {
+                senderId: currentUserId,
+                senderName:
+                  session?.user?.username ||
+                  session?.user?.fullname ||
+                  'Người dùng',
+
+                conversationId: convIdRef.current
+              })
             }}
             onPaste={handlePaste}
             onKeyDown={e =>

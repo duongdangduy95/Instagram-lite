@@ -45,13 +45,13 @@ export default function UserSuggestionItem({
       >
         <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-white font-semibold flex-shrink-0 overflow-hidden">
           {user.image ? (
-            <Image src={user.image} alt={user.fullname} width={48} height={48} className="object-cover w-full h-full" />
+            <Image src={user.image} alt={user.username} width={48} height={48} className="object-cover w-full h-full" />
           ) : (
-            user.fullname.charAt(0).toUpperCase()
+            user.username.charAt(0).toUpperCase()
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-gray-100 font-semibold break-words">{user.fullname}</p>
+          <p className="text-gray-100 font-semibold break-words">{user.username}</p>
           <p className="text-gray-400 text-sm">
             {followersCount} {followersCount === 1 ? 'người theo dõi' : 'người theo dõi'}
           </p>

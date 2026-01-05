@@ -28,7 +28,7 @@ const supabase = createClient(
 export default function Navigation() {
   const pathname = usePathname()
   const { user } = useCurrentUser()
-  const displayName = user?.fullname || user?.username || 'User'
+  const displayName = user?.username || user?.fullname || 'User'
   const userInitial = displayName.charAt(0).toUpperCase()
   const userImage = user?.image ?? null
 

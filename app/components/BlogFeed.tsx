@@ -58,14 +58,14 @@ export default function BlogFeed({
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
                         {blog.author.image ? (
-                          <Image src={blog.author.image} alt={blog.author.fullname} width={40} height={40} className="object-cover w-full h-full" />
+                          <Image src={blog.author.image} alt={blog.author.username} width={40} height={40} className="object-cover w-full h-full" />
                         ) : (
-                          <span className="font-bold">{blog.author.fullname.charAt(0)}</span>
+                          <span className="font-bold">{blog.author.username.charAt(0).toUpperCase()}</span>
                         )}
                       </div>
                       <div>
                         <p className="font-semibold">
-                          {blog.author.fullname}{' '}
+                          {blog.author.username}{' '}
                           <span className="font-normal text-gray-400">đã chia sẻ</span>
                         </p>
                         <p className="text-xs text-gray-400">{formatTimeAgo(blog.createdAt)}</p>
@@ -109,13 +109,13 @@ export default function BlogFeed({
                           <div className="flex items-center space-x-3">
                             <div className="w-9 h-9 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
                               {displayBlog.author.image ? (
-                                <Image src={displayBlog.author.image} alt={displayBlog.author.fullname} width={36} height={36} className="object-cover w-full h-full" />
+                                <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={36} height={36} className="object-cover w-full h-full" />
                               ) : (
-                                <span className="font-bold">{displayBlog.author.fullname.charAt(0)}</span>
+                                <span className="font-bold">{displayBlog.author.username.charAt(0).toUpperCase()}</span>
                               )}
                             </div>
                             <div>
-                              <p className="font-semibold">{displayBlog.author.fullname}</p>
+                              <p className="font-semibold">{displayBlog.author.username}</p>
                               <p className="text-xs text-gray-400">{formatTimeAgo(displayBlog.createdAt)}</p>
                             </div>
                           </div>
@@ -145,13 +145,13 @@ export default function BlogFeed({
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
                         {displayBlog.author.image ? (
-                          <Image src={displayBlog.author.image} alt={displayBlog.author.fullname} width={40} height={40} className="object-cover w-full h-full" />
+                          <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={40} height={40} className="object-cover w-full h-full" />
                         ) : (
-                          <span className="font-bold">{displayBlog.author.fullname.charAt(0)}</span>
+                          <span className="font-bold">{displayBlog.author.username.charAt(0).toUpperCase()}</span>
                         )}
                       </div>
                       <div>
-                        <p className="font-semibold">{displayBlog.author.fullname}</p>
+                        <p className="font-semibold">{displayBlog.author.username}</p>
                         <p className="text-xs text-gray-400">{formatTimeAgo(displayBlog.createdAt)}</p>
                       </div>
                     </div>
