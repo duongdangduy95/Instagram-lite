@@ -28,7 +28,7 @@ const supabase = createClient(
 export default function Navigation() {
   const pathname = usePathname()
   const { user } = useCurrentUser()
-  const displayName = user?.username || user?.fullname || 'User'
+  const displayName = user?.fullname || user?.username || 'User'
   const userInitial = displayName.charAt(0).toUpperCase()
   const userImage = user?.image ?? null
 
@@ -212,8 +212,11 @@ export default function Navigation() {
                   className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-12"
                 />
               </div>
-              <span>
-                Thông báo {notifications.filter(n => !n.isRead).length > 0 ? `(${notifications.filter(n => !n.isRead).length})` : ''}
+              <span className="relative inline-block">
+                Thông báo {notifications.filter(n => !n.isRead).length > 0 && `(${notifications.filter(n => !n.isRead).length})`}
+                {notifications.some(n => !n.isRead) && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                )}
               </span>
             </button>
 
@@ -229,14 +232,46 @@ export default function Navigation() {
                     <Link
                       key={n.id}
                       href={href}
-                      onClick={() => setNotifOpen(false)}
-                      className="block px-4 py-3 text-sm border-b border-gray-800 hover:bg-gray-900 hover:text-white transition-colors flex justify-between"
+                      onClick={async () => {
+                        setNotifOpen(false);
+
+                        // Nếu xem -> cập nhật isRead = true
+                        if (!n.isRead) {
+                          try {
+                            await fetch(`/api/notifications/${n.id}`, {
+                              method: 'PATCH',
+                            });
+                            // Cập nhật local state
+                            setNotifications(prev =>
+                              prev.map(x => (x.id === n.id ? { ...x, isRead: true } : x))
+                            );
+                          } catch (err) {
+                            console.error('Error marking notification read', err);
+                          }
+                        }
+                      }}
+                      className={`block px-4 py-3 text-sm border-b border-gray-800 hover:bg-gray-900 hover:text-white transition-colors flex justify-between ${
+                        !n.isRead ? 'bg-gray-900' : ''
+                      }`}
                     >
-                      <span>{text}</span>
-                      <span className="text-gray-400 text-xs">
-                        {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                      <span>
+                        <span className={`${!n.isRead ? 'font-bold' : ''}`}>
+                          {n.actor.fullname || n.actor.username}
+                        </span>{' '}
+                        <span className="font-normal">{text.replace(n.actor.fullname || n.actor.username, '')}</span>
                       </span>
+                      
+                      <span className="flex items-center justify-end space-x-2">
+                        <span className="text-gray-400 text-xs">
+                          {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                        </span>
+                        {!n.isRead && (
+                          <span className="w-3 h-3 bg-blue-500 rounded-full flex-shrink-0"></span>
+                        )}
+                      </span>
+
                     </Link>
+
                   )
                 })}
               </div>

@@ -29,3 +29,19 @@ export async function GET(
 
   return NextResponse.json(notif)
 }
+
+export async function PATCH(req: Request, context: { params: { id: string } }) {
+  const { id } = await context.params  
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json(null, { status: 401 })
+
+  const notif = await prisma.notification.findUnique({ where: { id } })
+  if (!notif || notif.userId !== session.user.id) return NextResponse.json(null, { status: 404 })
+
+  const updated = await prisma.notification.update({
+    where: { id },
+    data: { isRead: true },
+  })
+
+  return NextResponse.json(updated)
+}
