@@ -220,7 +220,7 @@ export async function DELETE(req: Request) {
 }
 
 // ==============================
-// PUT - MARK AS SEEN
+// PUT - MARK AS SEEN (CORRECT)
 // ==============================
 export async function PUT(req: Request) {
   const session = await getServerSession(authOptions)
@@ -228,15 +228,33 @@ export async function PUT(req: Request) {
   if (!userId) return new Response('Unauthorized', { status: 401 })
 
   const { conversationId } = await req.json()
+  if (!conversationId)
+    return new Response('Missing conversationId', { status: 400 })
 
+  // 1️⃣ ĐẾM CHỈ những tin CHƯA SEEN
+  const seenCount = await prisma.message.count({
+    where: {
+      conversationId,
+      senderId: { not: userId },
+      status: 'DELIVERED'
+    }
+  })
+
+  // Không có gì mới → không làm gì cả
+  if (seenCount === 0) {
+    return NextResponse.json({ seenCount: 0 })
+  }
+
+  // 2️⃣ UPDATE CHỈ những tin này
   await prisma.message.updateMany({
     where: {
       conversationId,
       senderId: { not: userId },
-      status: { in: ['SENT', 'DELIVERED'] }
+      status: 'DELIVERED'
     },
     data: { status: 'SEEN' }
   })
 
-  return NextResponse.json({ success: true })
+  // 3️⃣ TRẢ VỀ SỐ TIN VỪA SEEN
+  return NextResponse.json({ seenCount })
 }

@@ -31,6 +31,7 @@ export default function Navigation() {
   const displayName = user?.fullname || user?.username || 'User'
   const userInitial = displayName.charAt(0).toUpperCase()
   const userImage = user?.image ?? null
+   const [messageBadge, setMessageBadge] = useState(0)
 
   // 🔵 Settings dropdown
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -56,6 +57,38 @@ export default function Navigation() {
       setLoadingNotif(false)
     }
   }
+  useEffect(() => {
+  if (!user?.id) return
+
+  const channel = supabase
+    .channel(`message-badge-${user.id}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'Message'
+      },
+      payload => {
+        const msg = payload.new as any
+
+        // ❗ chỉ cộng khi:
+        // - người nhận là mình
+        // - chưa SEEN
+        if (
+          msg.senderId !== user.id &&
+          msg.status === 'SENT'
+        ) {
+          setMessageBadge(prev => prev + 1)
+        }
+      }
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}, [user?.id])
 
   // Toggle dropdown outside click / escape
   useEffect(() => {
@@ -168,29 +201,42 @@ export default function Navigation() {
         {/* Menu */}
         <div className="flex flex-col space-y-2">
           {navItems.map(item => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`group flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${isActive
-                  ? 'text-white font-semibold bg-gray-900'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  }`}
-              >
-                <div className="w-[22px] h-[22px] flex items-center justify-center flex-shrink-0">
-                  <Image
-                    src={item.icon}
-                    alt={item.label}
-                    width={iconSize}
-                    height={iconSize}
-                    className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-12"
-                  />
-                </div>
-                <span>{item.label}</span>
-              </Link>
-            )
-          })}
+  const isActive = pathname === item.href
+  const isMessage = item.href === '/messages'
+
+  return (
+    <Link
+      key={item.href}
+      href={item.href}
+      className={`group relative flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+        isActive
+          ? 'text-white font-semibold bg-gray-900'
+          : 'text-gray-400 hover:text-white hover:bg-gray-800'
+      }`}
+    >
+      <div className="relative w-[22px] h-[22px] flex items-center justify-center flex-shrink-0">
+        <Image
+          src={item.icon}
+          alt={item.label}
+          width={iconSize}
+          height={iconSize}
+        />
+
+        {/* 🔴 BADGE TIN NHẮN */}
+        {isMessage && messageBadge > 0 && (
+          <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1
+            text-[11px] font-bold text-white bg-red-500
+            rounded-full flex items-center justify-center">
+            {messageBadge}
+          </span>
+        )}
+      </div>
+
+      <span>{item.label}</span>
+    </Link>
+  )
+})}
+
         </div>
 
         {/* Notifications & Settings */}

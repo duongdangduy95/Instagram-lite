@@ -31,12 +31,14 @@ export default function ChatWindow({
   targetUserId,
   targetUsername,
   targetFullname,
-  onClose
+  onClose,
+  onSeen
 }: {
   targetUserId: string
   targetUsername: string
   targetFullname: string
   onClose: () => void
+ onSeen?: (count: number) => void 
 }) {
   const { data: session } = useSession()
   const currentUserId = session?.user?.id
@@ -80,27 +82,36 @@ export default function ChatWindow({
 
   /* ================= MARK SEEN ================= */
   const markSeen = async () => {
-    if (!convIdRef.current) return
-    if (!isChatOpen || !isTabActive) return
+  if (!convIdRef.current) return
+  if (!isChatOpen || !isTabActive) return
 
-    await fetch('/api/messages', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        conversationId: convIdRef.current
-      })
+  const res = await fetch('/api/messages', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      conversationId: convIdRef.current
     })
+  })
+
+  const data = await res.json()
+
+  // 🔥 TRỪ BADGE ĐÚNG SỐ TIN VỪA SEEN
+  if (data.seenCount > 0) {
+    onSeen?.(data.seenCount)
   }
+}
+
 
   /* ================= AUTO SEEN WHEN MESSAGE ARRIVES ================= */
   useEffect(() => {
     if (!isChatOpen || !isTabActive) return
 
     const hasUnread = messages.some(
-      m =>
-        m.senderId !== currentUserId &&
-        m.status !== 'SEEN'
-    )
+  m =>
+    m.senderId !== currentUserId &&
+    m.status === 'DELIVERED'
+)
+
 
     if (hasUnread) {
       markSeen()
