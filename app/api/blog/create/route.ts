@@ -1,6 +1,6 @@
 // app/api/blog/create/route.ts
-import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
 import { createClient } from '@supabase/supabase-js'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -17,20 +17,21 @@ const HASHTAG_REGEX = /#[\p{L}\p{N}_]+/gu
 
 export async function POST(req: Request) {
   try {
-    // Lấy session từ NextAuth
+    // 🔐 Check session
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
     const userId = session.user.id
 
-    // Lấy dữ liệu FormData
+    // 📦 Lấy form data
     const form = await req.formData()
     const caption = form.get('caption') as string
     const files: File[] = []
 
     form.forEach((value, key) => {
-      if (value instanceof File && (key === 'image' || key === 'images')) {
+      if (value instanceof File && (key === 'image' || key === 'images' || key === 'video' || key === 'videos')) {
         files.push(value)
       }
     })
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
       )
     }
 
+    // #️⃣ Extract hashtag
     const hashtags = Array.from(
       new Set(
         (caption.match(HASHTAG_REGEX) || []).map((h) =>
@@ -50,26 +52,22 @@ export async function POST(req: Request) {
       )
     )
 
-    const uploadedUrls: string[] = []
+    // ☁️ Upload ảnh lên Supabase
+    const imageUrls: string[] = []
 
-    // Upload từng ảnh lên Supabase
-    // Supabase không cho lưu tên ảnh có dấu <duyen>
     for (const file of files) {
       const buffer = Buffer.from(await file.arrayBuffer())
-
       const ext = file.type.split('/')[1] || 'jpg'
-
-      const fileName = `posts/${userId}/${Date.now()}.${ext}`
+      const fileName = `posts/${userId}/${Date.now()}-${Math.random()}.${ext}`
 
       const { error } = await supabase.storage
         .from('instagram')
         .upload(fileName, buffer, {
           contentType: file.type,
-          upsert: false,
         })
 
       if (error) {
-        console.error('Supabase upload error:', error)
+        console.error('Upload error:', error)
         return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
       }
 
@@ -77,19 +75,19 @@ export async function POST(req: Request) {
         .from('instagram')
         .getPublicUrl(fileName)
 
-      uploadedUrls.push(data.publicUrl)
+      imageUrls.push(data.publicUrl)
     }
 
-
-    // Tạo blog trong DB
+    // 🆕 Tạo blog
     const blog = await prisma.blog.create({
       data: {
         caption,
-        imageUrls: uploadedUrls,
+        imageUrls,
         authorId: userId,
       },
     })
 
+    // 🔗 Hashtag
     for (const tag of hashtags) {
       const hashtag = await prisma.hashtag.upsert({
         where: { name: tag },
@@ -110,9 +108,37 @@ export async function POST(req: Request) {
       })
     }
 
-    return NextResponse.json({ message: 'Blog created', blog })
+    // 🔔 ===== TẠO NOTIFICATION CHO FOLLOWERS =====
+    const followers = await prisma.follow.findMany({
+      where: {
+        followingId: userId,
+      },
+      select: {
+        followerId: true,
+      },
+    })
+
+    if (followers.length > 0) {
+      await prisma.notification.createMany({
+        data: followers.map((f) => ({
+          userId: f.followerId, // người nhận
+          actorId: userId,       // người đăng bài
+          type: 'NEW_POST',
+          blogId: blog.id,
+        })),
+      })
+    }
+
+    // ✅ Done
+    return NextResponse.json({
+      success: true,
+      blog,
+    })
   } catch (error) {
-    console.error('Error creating blog:', error)
-    return NextResponse.json({ error: 'Failed to create blog' }, { status: 500 })
+    console.error('Create blog error:', error)
+    return NextResponse.json(
+      { error: 'Failed to create blog' },
+      { status: 500 }
+    )
   }
 }

@@ -10,6 +10,8 @@ export default function HomeClient(props: {
   users: SuggestUserDTO[]
   currentUser: CurrentUserSafe
   children?: React.ReactNode
+  mode?: 'home' | 'hashtag'
+  hashtagName?: string
 }) {
   const { currentUser, children } = props
 
@@ -107,6 +109,8 @@ export default function HomeClient(props: {
   const loadMoreBlogs = useCallback(async () => {
     if (isLoading || !hasMore) return
 
+    if (props.mode === 'hashtag') return
+
     setIsLoading(true)
     try {
       const lastBlogId = blogs[blogs.length - 1]?.id
@@ -183,14 +187,16 @@ export default function HomeClient(props: {
           />
           
           {/* Infinite Scroll Trigger */}
-          <div ref={loadMoreRef} className="flex justify-center py-8">
-            {isLoading && (
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-            )}
-            {!hasMore && blogs.length > 0 && (
-              <p className="text-gray-400 text-sm">Đã hết bài viết</p>
-            )}
-          </div>
+          {props.mode !== 'hashtag' && (
+            <div ref={loadMoreRef} className="flex justify-center py-8">
+              {isLoading && (
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+              )}
+              {!hasMore && blogs.length > 0 && (
+                <p className="text-gray-400 text-sm">Đã hết bài viết</p>
+              )}
+            </div>
+          )}
         </div>
       </main>
 

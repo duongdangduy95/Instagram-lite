@@ -66,14 +66,14 @@ export default function FollowModal({ isOpen, onClose, userId, type }: Props) {
                 <Link href={`/profile/${u.id}`} className="flex-1 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold overflow-hidden">
                     {u.image ? (
-                      <Image src={u.image} alt={u.fullname} width={40} height={40} className="object-cover w-full h-full" />
+                      <Image src={u.image} alt={u.username} width={40} height={40} className="object-cover w-full h-full" />
                     ) : (
-                      u.fullname.charAt(0).toUpperCase()
+                      u.username.charAt(0).toUpperCase()
                     )}
                   </div>
                   <div>
-                    <p className="font-medium text-white">{u.fullname}</p>
-                    <p className="text-xs text-gray-400">@{u.username}</p>
+                    <p className="font-medium text-white">{u.username}</p>
+                    <p className="text-xs text-gray-400">{u.fullname}</p>
                   </div>
                 </Link>
                 <Link

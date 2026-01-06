@@ -71,7 +71,7 @@ export default function ProfileOtherClient(props: {
             {/* Avatar */}
             <div className="flex-shrink-0">
               <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-2 border-gray-700">
-                {user.fullname?.charAt(0).toUpperCase()}
+                {user.username?.charAt(0).toUpperCase()}
               </div>
             </div>
 
@@ -79,7 +79,7 @@ export default function ProfileOtherClient(props: {
             <div className="flex-1 min-w-0">
               {/* Fullname + Follow button */}
               <div className="flex items-center gap-4 mb-4">
-                <h1 className="text-xl sm:text-2xl font-light text-white">{user.fullname}</h1>
+                <h1 className="text-xl sm:text-2xl font-light text-white">{user.username}</h1>
 
                 {currentUserId && (
                   <>
@@ -130,7 +130,7 @@ export default function ProfileOtherClient(props: {
 
               {/* Username */}
               <div className="mb-2">
-                <h2 className="text-white font-semibold">{user.username}</h2>
+                <h2 className="text-white font-semibold">{user.fullname}</h2>
               </div>
             </div>
           </div>
@@ -388,13 +388,13 @@ export default function ProfileOtherClient(props: {
         />
       )}
       {isChatOpen && chatTargetUserId && (
-  <ChatWindow
-    targetUserId={chatTargetUserId}
-    targetUsername={user.username}
-    targetFullname={user.fullname}
-    onClose={() => setIsChatOpen(false)}
-  />
-)}
+        <ChatWindow
+          targetUserId={chatTargetUserId}
+          targetUsername={user.username}
+          targetFullname={user.fullname}
+          onClose={() => setIsChatOpen(false)}
+        />
+      )}
 
     </div>
   )

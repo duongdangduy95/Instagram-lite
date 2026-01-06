@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { createNotification } from '@/lib/notification'
+import { NotificationType } from '@prisma/client'
 
 export async function POST(req: Request) {
   console.log('📥 SHARE API CALLED')
@@ -51,7 +53,7 @@ export async function POST(req: Request) {
   const sharedBlog = await prisma.blog.create({
     data: {
       caption: caption || '',
-      imageUrls: originalBlog.imageUrls, // Lưu ảnh của bài gốc
+      imageUrls: originalBlog.imageUrls,
       hashtags: originalBlog.hashtags || [],
       authorId: userId,
       sharedFromId: originalBlog.id,
@@ -59,6 +61,16 @@ export async function POST(req: Request) {
   })
 
   console.log('✅ sharedBlog CREATED:', sharedBlog)
+
+  // 🔔 TẠO NOTIFICATION CHO CHỦ BÀI GỐC
+  if (originalBlog.author.id !== userId) {
+    await createNotification({
+      userId: originalBlog.author.id, // người nhận
+      actorId: userId,                 // người share
+      type: NotificationType.SHARE_POST,
+      blogId: originalBlog.id,         // bài gốc
+    })
+  }
 
   return NextResponse.json({
     success: true,
