@@ -1,114 +1,94 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const q = searchParams.get('q')?.trim() || ''
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    const currentUserId = session?.user?.id
 
-  if (!q) {
-    return NextResponse.json([])
+    const { searchParams } = new URL(req.url)
+    const query = searchParams.get('q') || ''
+    const cursor = searchParams.get('cursor')
+    const limit = parseInt(searchParams.get('limit') || '6', 10)
+
+    let whereClause: any = {}
+
+    // If there's a search query, filter by username or fullname
+    if (query.trim()) {
+      whereClause.OR = [
+        { username: { contains: query, mode: 'insensitive' } },
+        { fullname: { contains: query, mode: 'insensitive' } }
+      ]
+    }
+
+    // Exclude current user from results
+    if (currentUserId) {
+      whereClause.NOT = { id: currentUserId }
+    }
+
+    // Build cursor condition
+    const cursorCondition = cursor ? { id: { lt: cursor } } : {}
+
+    const users = await prisma.user.findMany({
+      where: {
+        ...whereClause,
+        ...cursorCondition
+      },
+      select: {
+        id: true,
+        username: true,
+        fullname: true,
+        image: true,
+        _count: {
+          select: {
+            followers: true,
+            following: true
+          }
+        }
+      },
+      orderBy: { id: 'desc' },
+      take: limit + 1 // Take one extra to check if there's more
+    })
+
+    const hasMore = users.length > limit
+    const data = hasMore ? users.slice(0, limit) : users
+    const nextCursor = hasMore ? data[data.length - 1].id : null
+
+    // Get follow status for each user if logged in
+    let usersWithFollowStatus = data
+
+    if (currentUserId) {
+      const userIds = data.map(u => u.id)
+      const followStatuses = await prisma.follow.findMany({
+        where: {
+          followerId: currentUserId,
+          followingId: { in: userIds }
+        },
+        select: { followingId: true }
+      })
+
+      const followingSet = new Set(followStatuses.map(f => f.followingId))
+
+      usersWithFollowStatus = data.map(user => ({
+        ...user,
+        isFollowing: followingSet.has(user.id)
+      }))
+    } else {
+      usersWithFollowStatus = data.map(user => ({
+        ...user,
+        isFollowing: false
+      }))
+    }
+
+    return NextResponse.json({
+      data: usersWithFollowStatus,
+      nextCursor
+    })
+
+  } catch (error) {
+    console.error('User search error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-
-  const session = await getServerSession(authOptions)
-  const userId = session?.user?.id
-
-  const matched = await prisma.$queryRaw<
-    { id: string; rank: number }[]
-  >`
-    SELECT
-      b.id,
-      (
-        ts_rank(
-          b.search_vector,
-          plainto_tsquery('simple', unaccent(${q}))
-        )
-        +
-        similarity(b.caption_unaccent, unaccent(${q})) * 0.3
-      ) AS rank
-    FROM "Blog" b
-    JOIN "User" u ON u.id = b."authorId"
-    WHERE
-      b.search_vector @@ plainto_tsquery('simple', unaccent(${q}))
-      OR similarity(b.caption_unaccent, unaccent(${q})) > 0.2
-    ORDER BY rank DESC
-    LIMIT 50;
-  `
-
-  if (matched.length === 0) {
-    return NextResponse.json([])
-  }
-
-  const matchedIds = matched.map(b => b.id)
-
-  const blogs = await prisma.blog.findMany({
-    where: {
-      id: { in: matchedIds },
-    },
-    select: {
-      id: true,
-      caption: true,
-      imageUrls: true,
-      createdAt: true,
-
-      author: {
-        select: {
-          id: true,
-          fullname: true,
-          username: true,
-          followers: userId
-            ? { where: { followerId: userId } }
-            : false,
-        },
-      },
-
-      likes: userId
-        ? { where: { userId } }
-        : false,
-      savedBy: userId
-        ? { where: { userId } }
-        : false,
-
-      sharedFrom: {
-        select: {
-          id: true,
-          caption: true,
-          imageUrls: true,
-          createdAt: true,
-          author: {
-            select: {
-              id: true,
-              fullname: true,
-              username: true,
-            },
-          },
-          _count: {
-            select: {
-              likes: true,
-              comments: true,
-            },
-          },
-        },
-      },
-
-      _count: {
-        select: {
-          likes: true,
-          comments: true,
-        },
-      },
-    } as any,
-    orderBy: {
-      createdAt: 'desc',
-    },
-  })
-
-  return NextResponse.json(blogs.map((b: any) => ({
-    ...b,
-    liked: !!(userId && (b.likes as any[])?.length),
-    isSaved: !!(userId && (b.savedBy as any[])?.length),
-    likes: undefined,
-    savedBy: undefined,
-  })))
 }
