@@ -35,6 +35,7 @@ type UserDTO = {
   id: string
   fullname: string
   username: string
+  image: string | null
   createdAt: string
   blogs: BlogDTO[]
   _count: {
@@ -70,9 +71,21 @@ export default function ProfileOtherClient(props: {
           <div className="flex flex-col sm:flex-row items-start gap-8 sm:gap-12">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-2 border-gray-700">
-                {user.username?.charAt(0).toUpperCase()}
-              </div>
+              {user.image ? (
+                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-gray-700">
+                  <Image
+                    src={user.image}
+                    alt={user.username}
+                    width={128}
+                    height={128}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-2 border-gray-700">
+                  {user.username?.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
 
             {/* Profile Info */}

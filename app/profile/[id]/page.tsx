@@ -13,19 +13,20 @@ export default async function ProfilePage({
   const { id } = await params
   const session = await getServerSession(authOptions)
   const currentUserId = session?.user?.id
-  
+
   // Nếu là chính mình, redirect về /profile
   if (currentUserId === id) {
     const { redirect } = await import('next/navigation')
     redirect('/profile')
   }
-  
+
   const user = await prisma.user.findUnique({
     where: { id },
     select: {
       id: true,
       fullname: true,
       username: true,
+      image: true,
       createdAt: true,
       blogs: {
         select: {
@@ -57,7 +58,7 @@ export default async function ProfilePage({
   })
 
   if (!user) return notFound()
-  
+
   // Check follow status nếu có currentUserId
   let isFollowing = false
   if (currentUserId) {
@@ -80,9 +81,9 @@ export default async function ProfilePage({
       createdAt: b.createdAt.toISOString(),
       sharedFrom: b.sharedFrom
         ? {
-            ...b.sharedFrom,
-            createdAt: b.sharedFrom.createdAt.toISOString(),
-          }
+          ...b.sharedFrom,
+          createdAt: b.sharedFrom.createdAt.toISOString(),
+        }
         : null,
     })),
   }
