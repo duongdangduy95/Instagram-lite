@@ -27,9 +27,12 @@ body {
 
 /* Hide scrollbar but keep scroll */
 .no-scrollbar {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge legacy */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge legacy */
 }
+
 .no-scrollbar::-webkit-scrollbar {
   width: 0;
   height: 0;
@@ -42,11 +45,13 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
 /* Modal Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -57,6 +62,7 @@ body {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -69,4 +75,58 @@ body {
 
 .animate-slideUp {
   animation: slideUp 0.3s ease-out;
+}
+
+/* Instagram-style thin scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgb(75, 85, 99);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(107, 114, 128);
+}
+
+/* Windows-like scrollbar (subtle, rounded, fits dark UI) */
+.scrollbar-win {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent; /* thumb track */
+}
+
+.scrollbar-win::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scrollbar-win::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-win::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  border: 3px solid transparent; /* tạo khoảng đệm như scrollbar Windows */
+  background-clip: content-box;
+}
+
+.scrollbar-win:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.28);
+  background-clip: content-box;
+}
+
+.scrollbar-win::-webkit-scrollbar-thumb:active {
+  background-color: rgba(255, 255, 255, 0.38);
+  background-clip: content-box;
 }

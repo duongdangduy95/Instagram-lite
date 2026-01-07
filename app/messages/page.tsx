@@ -13,12 +13,14 @@ type ConversationUser = {
   fullname: string
   image: string | null
   conversationId?: string
+  isFollowing?: boolean
   lastMessage?: {
     content: string
     createdAt: string
     senderId: string
   }
   unreadCount?: number
+  hasReplied?: boolean
 }
 
 export default function MessagesPage() {
@@ -27,6 +29,7 @@ export default function MessagesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState<ConversationUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'primary' | 'pending'>('primary')
 
   const { data: session } = useSession()
   const currentUserId = session?.user?.id
@@ -47,7 +50,9 @@ export default function MessagesPage() {
         fullname: conv.otherUser.fullname,
         image: conv.otherUser.image,
         lastMessage: conv.lastMessage,
-        conversationId: conv.id
+        conversationId: conv.id,
+        isFollowing: conv.isFollowing,
+        hasReplied: conv.hasReplied
       }))
 
       setConversations(convUsers)
@@ -126,19 +131,29 @@ export default function MessagesPage() {
     }
   }, [currentUserId, fetchConversations])
 
-  // Filter conversations based on search
+  // Filter conversations based on activeTab and search
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredConversations(conversations)
-      return
+    let filtered = conversations
+
+    // Filter by tab
+    if (activeTab === 'primary') {
+      // Primary: Show if following OR if current user has replied
+      filtered = filtered.filter(conv => conv.isFollowing !== false || conv.hasReplied)
+    } else {
+      // Pending: Only show if NOT following AND current user has NOT replied AND there is a message
+      filtered = filtered.filter(conv => conv.isFollowing === false && !conv.hasReplied && conv.lastMessage)
     }
 
-    const filtered = conversations.filter(conv =>
-      conv.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.fullname.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    // Filter by search query (chỉ áp dụng cho tab "Đoạn chat", không lấy ở danh sách chờ)
+    if (activeTab === 'primary' && searchQuery.trim()) {
+      filtered = filtered.filter(conv =>
+        conv.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        conv.fullname.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+
     setFilteredConversations(filtered)
-  }, [searchQuery, conversations])
+  }, [searchQuery, conversations, activeTab])
 
   // Handle sending message - move conversation to top and update lastMessage
   const handleMessageSent = useCallback((userId: string) => {
@@ -169,12 +184,12 @@ export default function MessagesPage() {
   }, [currentUserId])
 
   return (
-    <div className="min-h-screen bg-[#0B0E11] flex">
+    <div className="h-screen bg-[#0B0E11] flex overflow-hidden">
       {/* Left: Navigation */}
       <Navigation />
 
       {/* Middle: Conversation List */}
-      <div className="ml-64 w-96 border-r border-gray-800 bg-[#0B0E11] flex flex-col">
+      <div className="ml-64 w-96 border-r border-gray-800 bg-[#0B0E11] flex flex-col min-h-0">
         {/* Header */}
         <div className="p-6 border-b border-gray-800">
           <h1 className="text-2xl font-bold text-white mb-4">Tin nhắn</h1>
@@ -189,8 +204,9 @@ export default function MessagesPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm kiếm..."
-                className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500"
+                placeholder={activeTab === 'pending' ? 'Tìm kiếm' : 'Tìm kiếm...'}
+                disabled={activeTab === 'pending'}
+                className={`flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 ${activeTab === 'pending' ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
               {searchQuery && (
                 <button
@@ -204,10 +220,41 @@ export default function MessagesPage() {
               )}
             </div>
           </div>
+
+          {/* Tabs - Underline Style */}
+          <div className="flex gap-0 mt-4 border-b border-gray-800">
+            <button
+              onClick={() => setActiveTab('primary')}
+              className={`flex-1 py-3 font-medium transition-colors relative ${activeTab === 'primary'
+                ? 'text-[#7565E6]'
+                : 'text-gray-400 hover:text-white'
+                }`}
+            >
+              Đoạn chat
+              {activeTab === 'primary' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#7565E6]"></div>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('pending')
+                setSearchQuery('') // không search trong danh sách chờ
+              }}
+              className={`flex-1 py-3 font-medium transition-colors relative ${activeTab === 'pending'
+                ? 'text-[#7565E6]'
+                : 'text-gray-400 hover:text-white'
+                }`}
+            >
+              Tin nhắn chờ
+              {activeTab === 'pending' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#7565E6]"></div>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-win">
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7565E6]"></div>
@@ -284,12 +331,13 @@ export default function MessagesPage() {
       </div>
 
       {/* Right: Chat Window */}
-      <div className="flex-1 bg-[#0B0E11]">
+      <div className="flex-1 bg-[#0B0E11] min-h-0 overflow-hidden">
         {selectedUser ? (
           <ChatWindow
             targetUserId={selectedUser.id}
             targetUsername={selectedUser.username}
             targetFullname={selectedUser.fullname}
+            targetImage={selectedUser.image}
             onClose={() => setSelectedUser(null)}
             isStandalone={true}
             onMessageSent={() => handleMessageSent(selectedUser.id)}

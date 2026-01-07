@@ -405,6 +405,7 @@ export default function ProfileOtherClient(props: {
           targetUserId={chatTargetUserId}
           targetUsername={user.username}
           targetFullname={user.fullname}
+          targetImage={user.image}
           onClose={() => setIsChatOpen(false)}
         />
       )}

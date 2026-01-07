@@ -63,6 +63,25 @@ export async function GET() {
       }
     })
 
+    // Check if current user is following the other user
+    const isFollowing = await prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: userId,
+          followingId: other.userId
+        }
+      }
+    })
+
+    // Check if current user has replied (sent any message)
+    const hasReplied = await prisma.message.findFirst({
+      where: {
+        conversationId: c.id,
+        senderId: userId
+      },
+      select: { id: true }
+    })
+
     return {
       id: c.id,
       otherUser: other.user,
@@ -73,7 +92,9 @@ export async function GET() {
           senderId: c.messages[0].senderId
         }
         : null,
-      unreadCount
+      unreadCount,
+      isFollowing: !!isFollowing,
+      hasReplied: !!hasReplied
     }
   }))
 
