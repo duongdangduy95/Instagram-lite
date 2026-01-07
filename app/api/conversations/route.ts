@@ -33,7 +33,12 @@ export async function GET() {
       },
       messages: {
         orderBy: { createdAt: 'desc' },
-        take: 1
+        take: 1,
+        select: {
+          content: true,
+          createdAt: true,
+          senderId: true
+        }
       }
     },
     orderBy: {
@@ -41,27 +46,71 @@ export async function GET() {
     }
   })
 
-  const result = conversations
-    .map(c => {
-      const other = c.participants.find(
-        p => p.userId !== userId
-      )
+  const result = await Promise.all(conversations.map(async c => {
+    const other = c.participants.find(p => p.userId !== userId)
 
-      // ⛔ conversation lỗi – bỏ luôn
-      if (!other?.user) return null
+    // ⛔ conversation lỗi – bỏ luôn
+    if (!other?.user) return null
 
-      return {
-        id: c.id,
-        otherUser: other.user,
-        lastMessage: c.messages[0]
-          ? {
-              content: c.messages[0].content,
-              createdAt: c.messages[0].createdAt
-            }
-          : null
+    // Count unread messages (messages sent by other user that are not SEEN)
+    const unreadCount = await prisma.message.count({
+      where: {
+        conversationId: c.id,
+        senderId: other.userId,
+        status: {
+          in: ['SENT', 'DELIVERED']
+        }
       }
     })
-    .filter(Boolean) // ⬅️ QUAN TRỌNG
 
-  return NextResponse.json(result)
+    return {
+      id: c.id,
+      otherUser: other.user,
+      lastMessage: c.messages[0]
+        ? {
+          content: c.messages[0].content,
+          createdAt: c.messages[0].createdAt,
+          senderId: c.messages[0].senderId
+        }
+        : null,
+      unreadCount
+    }
+  }))
+
+  return NextResponse.json(result.filter(Boolean))
+}
+
+// POST - Create new conversation
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id
+  if (!userId) return new Response('Unauthorized', { status: 401 })
+
+  const { targetUserId } = await req.json()
+  if (!targetUserId) return new Response('Missing targetUserId', { status: 400 })
+
+  // Check if conversation already exists
+  let conversation = await prisma.conversation.findFirst({
+    where: {
+      isGroup: false,
+      AND: [
+        { participants: { some: { userId } } },
+        { participants: { some: { userId: targetUserId } } }
+      ]
+    }
+  })
+
+  // Create if doesn't exist
+  if (!conversation) {
+    conversation = await prisma.conversation.create({
+      data: {
+        isGroup: false,
+        participants: {
+          create: [{ userId }, { userId: targetUserId }]
+        }
+      }
+    })
+  }
+
+  return NextResponse.json(conversation)
 }

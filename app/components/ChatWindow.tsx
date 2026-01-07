@@ -32,13 +32,17 @@ export default function ChatWindow({
   targetUsername,
   targetFullname,
   onClose,
-  onSeen
+  onSeen,
+  isStandalone = false,
+  onMessageSent
 }: {
   targetUserId: string
   targetUsername: string
   targetFullname: string
   onClose: () => void
- onSeen?: (count: number) => void 
+  onSeen?: (count: number) => void
+  isStandalone?: boolean
+  onMessageSent?: () => void
 }) {
   const { data: session } = useSession()
   const currentUserId = session?.user?.id
@@ -82,24 +86,24 @@ export default function ChatWindow({
 
   /* ================= MARK SEEN ================= */
   const markSeen = async () => {
-  if (!convIdRef.current) return
-  if (!isChatOpen || !isTabActive) return
+    if (!convIdRef.current) return
+    if (!isChatOpen || !isTabActive) return
 
-  const res = await fetch('/api/messages', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      conversationId: convIdRef.current
+    const res = await fetch('/api/messages', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: convIdRef.current
+      })
     })
-  })
 
-  const data = await res.json()
+    const data = await res.json()
 
-  // 🔥 TRỪ BADGE ĐÚNG SỐ TIN VỪA SEEN
-  if (data.seenCount > 0) {
-    onSeen?.(data.seenCount)
+    // 🔥 TRỪ BADGE ĐÚNG SỐ TIN VỪA SEEN
+    if (data.seenCount > 0) {
+      onSeen?.(data.seenCount)
+    }
   }
-}
 
 
   /* ================= AUTO SEEN WHEN MESSAGE ARRIVES ================= */
@@ -107,10 +111,10 @@ export default function ChatWindow({
     if (!isChatOpen || !isTabActive) return
 
     const hasUnread = messages.some(
-  m =>
-    m.senderId !== currentUserId &&
-    m.status === 'DELIVERED'
-)
+      m =>
+        m.senderId !== currentUserId &&
+        m.status === 'DELIVERED'
+    )
 
 
     if (hasUnread) {
@@ -203,11 +207,11 @@ export default function ChatWindow({
                 prev.map(m =>
                   m.id === raw.id
                     ? {
-                        ...raw,
-                        createdAt: normalizeCreatedAt(
-                          raw.createdAt
-                        )
-                      }
+                      ...raw,
+                      createdAt: normalizeCreatedAt(
+                        raw.createdAt
+                      )
+                    }
                     : m
                 )
               )
@@ -280,7 +284,6 @@ export default function ChatWindow({
 
   /* ================= SEND ================= */
   const sendMessage = async () => {
-    if (!convIdRef.current) return
     if (!input.trim() && selectedFiles.length === 0)
       return
 
@@ -292,10 +295,69 @@ export default function ChatWindow({
     setInput('')
     setSelectedFiles([])
 
-    await fetch('/api/messages', {
+    const res = await fetch('/api/messages', {
       method: 'POST',
       body: form
     })
+
+
+    // Update convIdRef and setup channel if conversation was just created
+    if (!convIdRef.current) {
+      const data = await res.json()
+      if (data.message?.conversationId) {
+        const cid = data.message.conversationId
+        convIdRef.current = cid
+
+        // Setup realtime channel for the new conversation
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current)
+        }
+
+        const channel = supabase
+          .channel(`chat:${cid}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'Message',
+              filter: `conversationId=eq.${cid}`
+            },
+            payload => {
+              if (payload.eventType === 'INSERT') {
+                const raw = payload.new as Message
+                const msg = {
+                  ...raw,
+                  createdAt: normalizeCreatedAt(raw.createdAt)
+                }
+                setMessages(prev =>
+                  prev.some(m => m.id === msg.id) ? prev : [...prev, msg]
+                )
+              }
+              if (payload.eventType === 'UPDATE') {
+                const raw = payload.new as Message
+                setMessages(prev =>
+                  prev.map(m =>
+                    m.id === raw.id
+                      ? { ...raw, createdAt: normalizeCreatedAt(raw.createdAt) }
+                      : m
+                  )
+                )
+              }
+              if (payload.eventType === 'DELETE') {
+                const msg = payload.old as Message
+                setMessages(prev => prev.filter(m => m.id !== msg.id))
+              }
+            }
+          )
+          .subscribe()
+
+        channelRef.current = channel
+      }
+    }
+
+    // Notify parent component that message was sent
+    onMessageSent?.()
   }
 
   /* ================= EDIT / DELETE ================= */
@@ -325,20 +387,29 @@ export default function ChatWindow({
 
   /* ================= UI ================= */
   return (
-    <div className="fixed bottom-4 right-4 w-80 h-[500px] bg-gray-900 text-white rounded-lg flex flex-col border border-gray-700">
+    <div className={isStandalone
+      ? "h-full bg-[#0B0E11] text-white flex flex-col border-l border-gray-800"
+      : "fixed bottom-4 right-4 w-80 h-[500px] bg-gray-900 text-white rounded-lg flex flex-col border border-gray-700"
+    }>
       {/* HEADER */}
-      <div className="p-3 bg-gray-800 flex justify-between">
-        <span className="font-bold text-sm">
+      <div className={isStandalone
+        ? "p-4 bg-[#1A1D21] border-b border-gray-800 flex justify-between items-center"
+        : "p-3 bg-gray-800 flex justify-between"
+      }>
+        <span className={isStandalone ? "font-bold text-lg" : "font-bold text-sm"}>
           {targetUserName}
         </span>
-        <button
-          onClick={() => {
-            setIsChatOpen(false)
-            onClose()
-          }}
-        >
-          ✕
-        </button>
+        {!isStandalone && (
+          <button
+            onClick={() => {
+              setIsChatOpen(false)
+              onClose()
+            }}
+            className="text-gray-400 hover:text-white"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* MESSAGES */}
@@ -355,17 +426,17 @@ export default function ChatWindow({
                 m.createdAt,
                 prev?.createdAt
               ) && (
-                <div className="flex justify-center my-3">
-                  <span className="bg-gray-600 text-xs px-3 py-1 rounded-full text-gray-200">
-                    {formatDate(m.createdAt)}
-                  </span>
-                </div>
-              )}
+                  <div className="flex justify-center my-3">
+                    <span className="bg-gray-600 text-xs px-3 py-1 rounded-full text-gray-200">
+                      {formatDate(m.createdAt)}
+                    </span>
+                  </div>
+                )}
 
               <div
                 className={`group flex flex-col ${m.senderId === currentUserId
-                    ? 'items-end'
-                    : 'items-start'
+                  ? 'items-end'
+                  : 'items-start'
                   }`}
               >
                 {m.senderId === currentUserId && (
@@ -392,7 +463,10 @@ export default function ChatWindow({
                   </div>
                 )}
 
-                <div className="bg-gray-700 p-2 rounded max-w-[90%]">
+                <div className={m.senderId === currentUserId
+                  ? "bg-[#7565E6] p-2 rounded max-w-[90%]"
+                  : "bg-gray-700 p-2 rounded max-w-[90%]"
+                }>
                   {editingId === m.id ? (
                     <input
                       value={editValue}
@@ -439,7 +513,7 @@ export default function ChatWindow({
                         {m.status ===
                           'DELIVERED' && '✔✔'}
                         {m.status === 'SEEN' && (
-                          <span className="text-blue-400">
+                          <span className="text-white">
                             ✔✔
                           </span>
                         )}
@@ -460,7 +534,10 @@ export default function ChatWindow({
       </div>
 
       {/* INPUT */}
-      <div className="p-3 bg-gray-800">
+      <div className={isStandalone
+        ? "p-4 bg-[#1A1D21] border-t border-gray-800"
+        : "p-3 bg-gray-800"
+      }>
         {selectedFiles.length > 0 && (
           <div className="flex gap-2 mb-2 overflow-x-auto">
             {selectedFiles.map((f, i) => (
@@ -511,11 +588,14 @@ export default function ChatWindow({
             onKeyDown={e =>
               e.key === 'Enter' && sendMessage()
             }
-            className="flex-1 bg-gray-700 rounded px-3 py-1"
+            className={isStandalone
+              ? "flex-1 bg-[#262A2E] border border-gray-700 rounded-lg px-4 py-3 outline-none focus:border-[#7565E6]"
+              : "flex-1 bg-gray-700 rounded px-3 py-1"
+            }
             placeholder="Aa..."
           />
 
-          <label className="cursor-pointer text-gray-400">
+          <label className="cursor-pointer text-gray-400 hover:text-white">
             <input
               type="file"
               multiple
@@ -532,7 +612,10 @@ export default function ChatWindow({
 
           <button
             onClick={sendMessage}
-            className="bg-blue-600 px-3 rounded"
+            className={isStandalone
+              ? "bg-[#7565E6] hover:bg-[#6455C2] px-4 py-3 rounded-lg transition-colors"
+              : "bg-blue-600 px-3 rounded"
+            }
           >
             ➤
           </button>
