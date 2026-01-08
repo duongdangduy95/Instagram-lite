@@ -2,9 +2,20 @@
 
 import { useState, useEffect } from 'react'
 
-export default function CreateGroupModal({ onClose, currentUser }: any) {
+type CreateGroupModalProps = {
+  onClose: () => void
+  currentUser: { id: string }
+}
+
+type FollowerDTO = {
+  id: string
+  fullname?: string | null
+  username?: string | null
+}
+
+export default function CreateGroupModal({ onClose, currentUser }: CreateGroupModalProps) {
   const [groupName, setGroupName] = useState('')
-  const [followers, setFollowers] = useState<any[]>([])
+  const [followers, setFollowers] = useState<FollowerDTO[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
 
   // Lấy danh sách người theo dõi để add vào nhóm
@@ -13,8 +24,8 @@ export default function CreateGroupModal({ onClose, currentUser }: any) {
     try {
       const res = await fetch(`/api/user/${currentUser.id}/following`)
       if (!res.ok) throw new Error('Lỗi khi lấy danh sách followers')
-      const data = await res.json()
-      setFollowers(data)
+      const data = (await res.json()) as FollowerDTO[]
+      setFollowers(data ?? [])
     } catch (err) {
       console.error(err)
     }

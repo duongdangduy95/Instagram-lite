@@ -23,6 +23,26 @@ type ConversationUser = {
   hasReplied?: boolean
 }
 
+type ConversationsApiItem = {
+  id: string
+  otherUser: {
+    id: string
+    username: string
+    fullname: string
+    image: string | null
+  }
+  lastMessage: { content: string; createdAt: string; senderId: string } | null
+  isFollowing?: boolean
+  hasReplied?: boolean
+}
+
+type RealtimeMessageRow = {
+  conversationId: string
+  content: string
+  createdAt: string
+  senderId: string
+}
+
 export default function MessagesPage() {
   const [conversations, setConversations] = useState<ConversationUser[]>([])
   const [filteredConversations, setFilteredConversations] = useState<ConversationUser[]>([])
@@ -41,10 +61,10 @@ export default function MessagesPage() {
     setLoading(true)
     try {
       const res = await fetch('/api/conversations')
-      const data = await res.json()
+      const data = (await res.json()) as ConversationsApiItem[]
 
       // Transform to ConversationUser format
-      const convUsers: ConversationUser[] = data.map((conv: any) => ({
+      const convUsers: ConversationUser[] = (data ?? []).map((conv) => ({
         id: conv.otherUser.id,
         username: conv.otherUser.username,
         fullname: conv.otherUser.fullname,
@@ -85,7 +105,7 @@ export default function MessagesPage() {
           table: 'Message'
         },
         (payload) => {
-          const message = payload.new as any
+          const message = payload.new as unknown as RealtimeMessageRow
 
           // Update conversations without full refetch for smoother UX
           setConversations(prev => {

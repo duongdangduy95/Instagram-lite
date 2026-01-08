@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import BlogImages from '@/app/components/BlogImages'
 import CommentSection from '@/app/components/CommentSection'
@@ -60,17 +60,24 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
   const composerRef = useRef<HTMLInputElement>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
-  const optionsRef = useRef<HTMLDivElement>(null)
+  // Lưu ý: mobile + desktop đều render đồng thời (chỉ khác CSS md:hidden/hidden md:*),
+  // nên không được dùng chung 1 ref cho dropdown options.
+  const optionsRefMobile = useRef<HTMLDivElement>(null)
+  const optionsRefDesktop = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (optionsRef.current && !optionsRef.current.contains(e.target as Node)) {
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null
+      if (!target) return
+
+      const inMobile = optionsRefMobile.current?.contains(target) ?? false
+      const inDesktop = optionsRefDesktop.current?.contains(target) ?? false
+      if (inMobile || inDesktop) return
         setShowOptions(false)
-      }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [])
 
   const close = useCallback(() => router.back(), [router])
@@ -324,9 +331,14 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                       </div>
                     </div>
                     {currentUser?.id === blog.author.id && (
-                      <div className="relative" ref={optionsRef}>
+                      <div className="relative" ref={optionsRefMobile}>
                         <button
-                          onClick={() => setShowOptions(!showOptions)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            setShowOptions(!showOptions)
+                          }}
+                          onPointerDown={(e) => e.stopPropagation()}
                           className="p-2 rounded-full hover:bg-gray-800 transition-colors"
                         >
                           <div
@@ -345,11 +357,27 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                         </button>
 
                         {showOptions && (
-                          <div className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[100]">
+                          <div 
+                            className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[200]" 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              e.preventDefault()
+                            }}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => {
+                              e.stopPropagation()
+                            }}
+                          >
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                e.preventDefault()
                                 setShowOptions(false)
                                 router.push(`/blog/${blog.id}/edit`)
+                              }}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => {
+                                e.stopPropagation()
                               }}
                               className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-t-lg"
                             >
@@ -357,9 +385,15 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                             </button>
 
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                e.preventDefault()
                                 setShowOptions(false)
                                 setShowDeleteConfirm(true)
+                              }}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => {
+                                e.stopPropagation()
                               }}
                               className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-b-lg"
                             >
@@ -564,52 +598,79 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                           </p>
                         </div>
                       </div>
-                      {currentUser?.id === blog.author.id && (
-                        <div className="relative" ref={optionsRef}>
-                          <button
-                            onClick={() => setShowOptions(!showOptions)}
-                            className="p-2 rounded-full hover:bg-gray-800 transition-colors"
-                          >
-                            <div
-                              className="w-5 h-5 bg-[#7565E6]"
-                              style={{
-                                maskImage: 'url(/icons/edit.svg)',
-                                maskRepeat: 'no-repeat',
-                                maskPosition: 'center',
-                                maskSize: 'contain',
-                                WebkitMaskImage: 'url(/icons/edit.svg)',
-                                WebkitMaskRepeat: 'no-repeat',
-                                WebkitMaskPosition: 'center',
-                                WebkitMaskSize: 'contain'
-                              }}
-                            />
-                          </button>
+                       {currentUser?.id === blog.author.id && (
+                         <div className="relative" ref={optionsRefDesktop}>
+                           <button
+                             onClick={(e) => {
+                               e.stopPropagation()
+                               e.preventDefault()
+                               setShowOptions(!showOptions)
+                             }}
+                             onPointerDown={(e) => e.stopPropagation()}
+                             className="p-2 rounded-full hover:bg-gray-800 transition-colors"
+                           >
+                             <div
+                               className="w-5 h-5 bg-[#7565E6]"
+                               style={{
+                                 maskImage: 'url(/icons/edit.svg)',
+                                 maskRepeat: 'no-repeat',
+                                 maskPosition: 'center',
+                                 maskSize: 'contain',
+                                 WebkitMaskImage: 'url(/icons/edit.svg)',
+                                 WebkitMaskRepeat: 'no-repeat',
+                                 WebkitMaskPosition: 'center',
+                                 WebkitMaskSize: 'contain'
+                               }}
+                             />
+                           </button>
 
-                          {showOptions && (
-                            <div className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[100]">
-                              <button
-                                onClick={() => {
-                                  setShowOptions(false)
-                                  router.push(`/blog/${blog.id}/edit`)
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-t-lg"
-                              >
-                                Chỉnh sửa
-                              </button>
+                           {showOptions && (
+                             <div 
+                               className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[200]" 
+                               onClick={(e) => {
+                                 e.stopPropagation()
+                                 e.preventDefault()
+                               }}
+                               onPointerDown={(e) => e.stopPropagation()}
+                               onMouseDown={(e) => {
+                                 e.stopPropagation()
+                               }}
+                             >
+                               <button
+                                 onClick={(e) => {
+                                   e.stopPropagation()
+                                   e.preventDefault()
+                                   setShowOptions(false)
+                                   router.push(`/blog/${blog.id}/edit`)
+                                 }}
+                                 onPointerDown={(e) => e.stopPropagation()}
+                                 onMouseDown={(e) => {
+                                   e.stopPropagation()
+                                 }}
+                                 className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-t-lg"
+                               >
+                                 Chỉnh sửa
+                               </button>
 
-                              <button
-                                onClick={() => {
-                                  setShowOptions(false)
-                                  setShowDeleteConfirm(true)
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-b-lg"
-                              >
-                                Xóa bài viết
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                               <button
+                                 onClick={(e) => {
+                                   e.stopPropagation()
+                                   e.preventDefault()
+                                   setShowOptions(false)
+                                   setShowDeleteConfirm(true)
+                                 }}
+                                 onPointerDown={(e) => e.stopPropagation()}
+                                 onMouseDown={(e) => {
+                                   e.stopPropagation()
+                                 }}
+                                 className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-b-lg"
+                               >
+                                 Xóa bài viết
+                               </button>
+                             </div>
+                           )}
+                         </div>
+                       )}
                     </div>
 
                     {blog.caption && (
@@ -784,7 +845,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
               <button
                 onClick={async () => {
                   if (blog?.id) {
-                    await fetch(`/api/blog/${blog.id}`, { method: 'DELETE' })
+                    await fetch(`/api/blog/${blog.id}`, { method: 'DELETE', credentials: 'include' })
                     window.dispatchEvent(new CustomEvent('blog:deleted', { detail: { blogId: blog.id } }))
                     close()
                     router.refresh()

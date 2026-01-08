@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 
 let wss: WebSocketServer;
 
-export const GET = async (req: Request) => {
+export const GET = async (_req: Request) => {
   // Tạo server chỉ 1 lần
   if (!wss) {
     wss = new WebSocketServer({ noServer: true });

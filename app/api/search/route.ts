@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { Prisma } from '@prisma/client'
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     const cursor = searchParams.get('cursor')
     const limit = parseInt(searchParams.get('limit') || '6', 10)
 
-    let whereClause: any = {}
+    const whereClause: Prisma.UserWhereInput = {}
 
     // If there's a search query, filter by username or fullname
     if (query.trim()) {

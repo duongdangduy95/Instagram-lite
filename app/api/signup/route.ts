@@ -1,15 +1,8 @@
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcrypt'
 
 const prisma = new PrismaClient()
-
-// Supabase server client (GIỐNG blog/create)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +13,6 @@ export async function POST(req: Request) {
     const email = form.get('email') as string
     const password = form.get('password') as string
     const phone = (form.get('phone') as string) || null
-    const avatar = form.get('avatar')
 
     if (!username || !email || !password) {
       return NextResponse.json(
@@ -42,7 +34,7 @@ export async function POST(req: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    let imageUrl: string | null = null
+    const imageUrl: string | null = null
 
     // ===== Upload avatar (GIỐNG blog/create) =====
     // if (avatar instanceof File && avatar.size > 0) {

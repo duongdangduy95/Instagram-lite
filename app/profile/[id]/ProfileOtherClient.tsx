@@ -6,7 +6,6 @@ import Image from 'next/image'
 import Navigation from '@/app/components/Navigation'
 import FollowButton from '@/app/components/FollowButton'
 import FollowModal from '@/app/components/FollowModal'
-import ChatButton from '@/app/components/ChatButton'
 import ChatWindow from '@/app/components/ChatWindow'
 
 type BlogCounts = { likes: number; comments: number }

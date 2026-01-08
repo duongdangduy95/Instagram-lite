@@ -2,12 +2,6 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // dùng service key để push realtime
-)
 
 // 🔥 Helper tạo notification và gửi realtime
 export async function createNotification(notification: {
@@ -22,11 +16,6 @@ export async function createNotification(notification: {
   const saved = await prisma.notification.create({
     data: notification
   })
-
-  // Push vào Supabase Realtime
-  // await supabase
-  //   .from('Notification')
-  //   .insert([saved])
 
   return saved
 }

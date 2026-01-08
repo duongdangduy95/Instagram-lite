@@ -264,7 +264,7 @@ export default function CommentSection({
     return (
       <div className="flex flex-col">
         {/* Comments List */}
-        <div className={`space-y-3 mb-4 ${inlineScrollable ? 'max-h-96 overflow-y-auto' : ''}`}>
+        <div className={`space-y-3 mb-4 ${inlineScrollable ? 'max-h-96 overflow-y-auto scrollbar-win' : ''}`}>
           {comments.length === 0 ? (
             <p className="text-gray-400 text-sm text-center py-4">Chưa có bình luận nào</p>
           ) : (
@@ -347,7 +347,7 @@ export default function CommentSection({
       </div>
 
       {/* Comments List - Scrollable */}
-      <div className="flex-1 p-4 overflow-y-auto bg-[#0B0E11]">
+      <div className="flex-1 p-4 overflow-y-auto scrollbar-win bg-[#0B0E11]">
         <div className="space-y-3">
           {comments.map((comment) => (
             <CommentItem

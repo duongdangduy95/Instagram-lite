@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
   }
 
   // Lấy conversation với 1 người cụ thể
-  let conversation = await prisma.conversation.findFirst({
+  const conversation = await prisma.conversation.findFirst({
     where: {
       isGroup: false,
       AND: [

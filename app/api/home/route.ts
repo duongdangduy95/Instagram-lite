@@ -84,16 +84,21 @@ export async function GET(req: Request) {
         select: { id: true },
         take: 1,
       },
-    } as any,
+    },
   })
 
   return NextResponse.json(
-    blogs.map((b: any) => ({
-      ...b,
-      liked: (b.likes as any[]).length > 0,
-      isSaved: (b.savedBy as any[]).length > 0,
-      likes: undefined,
-      savedBy: undefined,
-    }))
+    blogs.map((b) => {
+      const { likes, savedBy, ...rest } = b
+      return {
+        ...rest,
+        createdAt: b.createdAt.toISOString(),
+        sharedFrom: b.sharedFrom
+          ? { ...b.sharedFrom, createdAt: b.sharedFrom.createdAt.toISOString() }
+          : null,
+        liked: likes.length > 0,
+        isSaved: savedBy.length > 0,
+      }
+    })
   )
 }

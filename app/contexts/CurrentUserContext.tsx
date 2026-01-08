@@ -22,7 +22,7 @@ let inFlight: Promise<CurrentUserSafe> | null = null
 async function fetchMeBasic(): Promise<CurrentUserSafe> {
   const res = await fetch('/api/me/basic', { credentials: 'include' })
   if (!res.ok) return null
-  const data = await res.json()
+  const data = (await res.json()) as { id?: string; fullname?: string | null; username?: string | null; image?: string | null }
   if (!data?.id) return null
   return {
     id: data.id,
@@ -58,12 +58,9 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
     }
 
     // Ưu tiên session, nhưng nếu session chưa có image thì vẫn fetch /api/me/basic để lấy avatar
-    const cachedImage =
-      cachedUserId === sessionUserId && cachedUser && typeof (cachedUser as any).image !== 'undefined'
-        ? ((cachedUser as any).image as string | null | undefined)
-        : null
+    const cachedImage = cachedUserId === sessionUserId ? cachedUser?.image : null
 
-    const fromSession: CurrentUserSafe = {
+    const fromSession: NonNullable<CurrentUserSafe> = {
       id: sessionUserId,
       fullname: sessionFullname,
       username: sessionUsername,
@@ -89,7 +86,7 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
             id: u.id,
             fullname: fromSession.fullname ?? u.fullname ?? null,
             username: fromSession.username ?? u.username ?? null,
-            image: (u as any).image ?? (fromSession as any).image ?? null,
+            image: u.image ?? fromSession.image ?? null,
           }
         : fromSession
       cachedUserId = sessionUserId
@@ -107,7 +104,7 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
           id: u.id,
           fullname: fromSession.fullname ?? u.fullname ?? null,
           username: fromSession.username ?? u.username ?? null,
-          image: (u as any).image ?? (fromSession as any).image ?? null,
+          image: u.image ?? fromSession.image ?? null,
         }
       : fromSession
 
@@ -152,7 +149,7 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
           ...base,
           fullname: typeof detail.fullname !== 'undefined' ? detail.fullname : base.fullname ?? null,
           username: typeof detail.username !== 'undefined' ? detail.username : base.username ?? null,
-          image: typeof detail.image !== 'undefined' ? detail.image : (base as any).image ?? null,
+          image: typeof detail.image !== 'undefined' ? detail.image : base.image ?? null,
         }
         cachedUserId = sessionUserId
         cachedUser = next
