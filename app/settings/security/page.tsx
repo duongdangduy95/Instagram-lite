@@ -1,6 +1,5 @@
 'use client'
 
-import Navigation from '@/app/components/Navigation'
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -71,11 +70,7 @@ export default function SettingsSecurityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      <Navigation />
-
-      <div className="ml-64 min-h-screen">
-        <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-semibold text-white">Bảo mật</h1>
@@ -175,8 +170,6 @@ export default function SettingsSecurityPage() {
             </form>
           </div>
         </div>
-      </div>
-    </div>
   )
 }
 

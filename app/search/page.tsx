@@ -178,10 +178,10 @@ export default function SearchPage() {
   )
 
   return (
-    <div className="min-h-screen bg-[#0B0E11] text-gray-100">
+    <div className="min-h-screen bg-[#0B0E11] text-gray-100 pt-14 md:pt-0 pb-20 md:pb-0">
       <Navigation />
 
-      <div className="ml-64 min-h-screen">
+      <div className="ml-0 md:ml-20 lg:ml-64 min-h-screen">
         <main className="flex flex-col items-center px-4 pt-8 pb-10">
           <div className="w-full max-w-5xl space-y-8">
 

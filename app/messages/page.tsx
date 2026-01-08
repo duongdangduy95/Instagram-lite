@@ -184,12 +184,12 @@ export default function MessagesPage() {
   }, [currentUserId])
 
   return (
-    <div className="h-screen bg-[#0B0E11] flex overflow-hidden">
+    <div className="h-screen bg-[#0B0E11] flex overflow-hidden pt-14 md:pt-0 pb-20 md:pb-0">
       {/* Left: Navigation */}
       <Navigation />
 
       {/* Middle: Conversation List */}
-      <div className="ml-64 w-96 border-r border-gray-800 bg-[#0B0E11] flex flex-col min-h-0">
+      <div className="ml-0 md:ml-20 lg:ml-64 w-96 border-r border-gray-800 bg-[#0B0E11] flex flex-col min-h-0 hidden md:flex">
         {/* Header */}
         <div className="p-6 border-b border-gray-800">
           <h1 className="text-2xl font-bold text-white mb-4">Tin nhắn</h1>
@@ -331,7 +331,7 @@ export default function MessagesPage() {
       </div>
 
       {/* Right: Chat Window */}
-      <div className="flex-1 bg-[#0B0E11] min-h-0 overflow-hidden">
+      <div className="flex-1 bg-[#0B0E11] min-h-0 overflow-hidden md:block">
         {selectedUser ? (
           <ChatWindow
             targetUserId={selectedUser.id}
@@ -343,7 +343,7 @@ export default function MessagesPage() {
             onMessageSent={() => handleMessageSent(selectedUser.id)}
           />
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-gray-500">
+          <div className="h-full flex flex-col items-center justify-center text-gray-500 px-6">
             <svg className="w-24 h-24 mb-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
             </svg>
