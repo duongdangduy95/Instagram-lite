@@ -67,7 +67,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             </div>
           </div>
           
-          {children}
+          {/* Đẩy nội dung xuống một chút để tránh bị sticky tabs đè lên tiêu đề */}
+          <div className="pt-6 lg:pt-0">
+            {children}
+          </div>
         </main>
       </div>
     </div>

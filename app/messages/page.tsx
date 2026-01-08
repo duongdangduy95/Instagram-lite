@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Navigation from '@/app/components/Navigation'
@@ -50,6 +50,7 @@ export default function MessagesPage() {
   const [selectedUser, setSelectedUser] = useState<ConversationUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'primary' | 'pending'>('primary')
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const { data: session } = useSession()
   const currentUserId = session?.user?.id
@@ -60,8 +61,22 @@ export default function MessagesPage() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/conversations')
-      const data = (await res.json()) as ConversationsApiItem[]
+      const res = await fetch('/api/conversations', {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      })
+
+      if (!res.ok) {
+        // Tránh crash khi API trả HTML/empty body (ví dụ 401/500)
+        const errText = await res.text().catch(() => '')
+        console.error('Error fetching conversations:', res.status, errText)
+        setConversations([])
+        return
+      }
+
+      // res.json() có thể throw nếu body rỗng => parse an toàn
+      const rawText = await res.text()
+      const data = (rawText ? (JSON.parse(rawText) as ConversationsApiItem[]) : []) ?? []
 
       // Transform to ConversationUser format
       const convUsers: ConversationUser[] = (data ?? []).map((conv) => ({
@@ -75,8 +90,17 @@ export default function MessagesPage() {
         hasReplied: conv.hasReplied
       }))
 
-      setConversations(convUsers)
-      setFilteredConversations(convUsers)
+      // Deduplicate bằng conversationId để tránh duplicate
+      const uniqueConversations = convUsers.reduce((acc, conv) => {
+        // Kiểm tra xem đã có conversation với cùng conversationId chưa
+        if (!acc.find(c => c.conversationId === conv.conversationId)) {
+          acc.push(conv)
+        }
+        return acc
+      }, [] as ConversationUser[])
+
+      setConversations(uniqueConversations)
+      // Không set filteredConversations ở đây, để filter effect xử lý
     } catch (error) {
       console.error('Error fetching conversations:', error)
     } finally {
@@ -95,8 +119,16 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!currentUserId) return
 
+    let isRefetching = false // Flag để tránh gọi fetchConversations nhiều lần liên tiếp
+
+    // ⚠️ Tránh attach listener nhiều lần (đặc biệt khi dev/StrictMode hoặc remount nhẹ)
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current)
+      realtimeChannelRef.current = null
+    }
+
     const channel = supabase
-      .channel('messages-page')
+      .channel(`messages-page:${currentUserId}`)
       .on(
         'postgres_changes',
         {
@@ -119,6 +151,7 @@ export default function MessagesPage() {
             if (convIndex >= 0) {
               // Update existing conversation
               const conv = updated[convIndex]
+              const isFromCurrentUser = message.senderId === currentUserId
               updated[convIndex] = {
                 ...conv,
                 lastMessage: {
@@ -127,9 +160,9 @@ export default function MessagesPage() {
                   senderId: message.senderId
                 },
                 // Increment unread if message is from other user
-                unreadCount: message.senderId !== currentUserId
-                  ? (conv.unreadCount || 0) + 1
-                  : 0
+                unreadCount: isFromCurrentUser ? 0 : (conv.unreadCount || 0) + 1,
+                // Nếu message từ chính mình, đánh dấu đã reply để chuyển sang "Đoạn chat"
+                hasReplied: isFromCurrentUser ? true : (conv.hasReplied || false)
               }
 
               // Move to top
@@ -137,23 +170,73 @@ export default function MessagesPage() {
               updated.unshift(movedConv)
             } else {
               // New conversation - refetch to get full data
-              fetchConversations()
+              // Chỉ refetch nếu chưa đang refetch (tránh duplicate calls)
+              if (!isRefetching) {
+                isRefetching = true
+                fetchConversations().finally(() => {
+                  // Reset flag sau 1 giây để cho phép refetch lại nếu cần
+                  setTimeout(() => {
+                    isRefetching = false
+                  }, 1000)
+                })
+              }
             }
 
-            return updated
+            // Dedupe cứng theo conversationId/userId để tránh state phình nếu listener bị gọi lặp
+            const map = new Map<string, ConversationUser>()
+            for (const conv of updated) {
+              const key = conv.conversationId || conv.id
+              const existing = map.get(key)
+              if (
+                !existing ||
+                (conv.lastMessage &&
+                  (!existing.lastMessage ||
+                    new Date(conv.lastMessage.createdAt) >
+                      new Date(existing.lastMessage.createdAt)))
+              ) {
+                map.set(key, conv)
+              }
+            }
+            return Array.from(map.values())
           })
         }
       )
       .subscribe()
 
+    realtimeChannelRef.current = channel
+
     return () => {
-      supabase.removeChannel(channel)
+      // Cleanup chắc chắn
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current)
+        realtimeChannelRef.current = null
+      } else {
+        supabase.removeChannel(channel)
+      }
     }
   }, [currentUserId, fetchConversations])
 
   // Filter conversations based on activeTab and search
   useEffect(() => {
-    let filtered = conversations
+    // Deduplicate conversations trước khi filter (bảo vệ kép)
+    // Sử dụng Map để đảm bảo unique theo conversationId hoặc userId
+    const conversationMap = new Map<string, ConversationUser>()
+    
+    conversations.forEach(conv => {
+      // Key: conversationId nếu có, nếu không thì dùng userId
+      const key = conv.conversationId || conv.id
+      // Chỉ thêm nếu chưa có, hoặc nếu có thì giữ conversation mới hơn (có lastMessage mới hơn)
+      const existing = conversationMap.get(key)
+      if (!existing || 
+          (conv.lastMessage && (!existing.lastMessage || 
+           new Date(conv.lastMessage.createdAt) > new Date(existing.lastMessage.createdAt)))) {
+        conversationMap.set(key, conv)
+      }
+    })
+    
+    const uniqueConversations = Array.from(conversationMap.values())
+
+    let filtered = uniqueConversations
 
     // Filter by tab
     if (activeTab === 'primary') {
@@ -183,6 +266,7 @@ export default function MessagesPage() {
       if (index >= 0) {
         const conv = updated[index]
         // Update last message timestamp to now (will be replaced by realtime update with actual message)
+        // QUAN TRỌNG: Set hasReplied = true để chuyển conversation từ "Tin nhắn chờ" sang "Đoạn chat"
         updated[index] = {
           ...conv,
           lastMessage: {
@@ -190,7 +274,8 @@ export default function MessagesPage() {
             createdAt: new Date().toISOString(),
             senderId: currentUserId || ''
           },
-          unreadCount: 0 // Reset unread when sending
+          unreadCount: 0, // Reset unread when sending
+          hasReplied: true // Đánh dấu đã trả lời để chuyển sang tab "Đoạn chat"
         }
 
         // Move to top if not already there
@@ -286,7 +371,7 @@ export default function MessagesPage() {
 
               return (
                 <button
-                  key={conv.id}
+                  key={conv.conversationId || conv.id}
                   onClick={() => setSelectedUser(conv)}
                   className={`w-full flex items-center gap-3 px-6 py-4 transition-colors relative ${isSelected
                     ? 'bg-[#1A1D21] border-l-4 border-[#7565E6]'

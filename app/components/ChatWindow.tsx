@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, ClipboardEvent } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useSession } from 'next-auth/react'
 import { supabase } from '@/lib/supabaseClientClient'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { formatTime, formatDate, isNewDay } from '@/lib/time'
 
 type MessageStatus = 'SENT' | 'DELIVERED' | 'SEEN'
@@ -56,6 +57,9 @@ export default function ChatWindow({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isTyping, setIsTyping] = useState(false)
   const [isTabActive, setIsTabActive] = useState(true)
+  const [isSending, setIsSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -80,8 +84,11 @@ export default function ChatWindow({
 
   const convIdRef = useRef<string | null>(null)
   const socketRef = useRef<Socket | null>(null)
-  const channelRef = useRef<any>(null)
+  const channelRef = useRef<RealtimeChannel | null>(null)
+  const channelConvIdRef = useRef<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const messagesCacheRef = useRef<Map<string, Message[]>>(new Map())
+  const fetchAbortRef = useRef<AbortController | null>(null)
 
   /* ================= TAB ACTIVE ================= */
   useEffect(() => {
@@ -158,36 +165,75 @@ export default function ChatWindow({
     if (!currentUserId || !targetUserId) return
     let active = true
 
-    setMessages([])
+    // Cache: hiển thị ngay tin nhắn đã tải lần trước để chuyển qua lại không bị "trống"
+    const cached = messagesCacheRef.current.get(targetUserId)
+    setMessages(cached ?? [])
     setSelectedFiles([])
-    if (channelRef.current)
+
+    // Huỷ request cũ nếu đổi user nhanh
+    fetchAbortRef.current?.abort()
+    const abortController = new AbortController()
+    fetchAbortRef.current = abortController
+
+    // Reset convId + remove channel cũ chắc chắn để luôn resubscribe đúng
+    convIdRef.current = null
+    if (channelRef.current) {
       supabase.removeChannel(channelRef.current)
+      channelRef.current = null
+      channelConvIdRef.current = null
+    }
 
     async function initChat() {
-      const res = await fetch(
-        `/api/messages?userId=${targetUserId}`
-      )
-      const data = await res.json()
-      if (!active) return
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        const res = await fetch(
+          `/api/messages?userId=${targetUserId}`,
+          { signal: abortController.signal }
+        )
+        
+        if (!res.ok) {
+          throw new Error(`Failed to load messages: ${res.statusText}`)
+        }
+        
+        const data = await res.json()
+        if (!active) return
 
-      setMessages(
-        (data.messages || []).map((m: Message) => ({
-          ...m,
-          createdAt: normalizeCreatedAt(m.createdAt)
-        }))
-      )
+        const nextMessages = (data.messages || []).map((m: Message) => ({
+            ...m,
+            createdAt: normalizeCreatedAt(m.createdAt)
+          }))
 
-      let cid = data.conversationId
-      if (!cid) {
-        const r = await fetch('/api/conversations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetUserId })
-        })
-        cid = (await r.json()).id
+        setMessages(nextMessages)
+        messagesCacheRef.current.set(targetUserId, nextMessages)
+
+        let cid = data.conversationId
+        if (!cid) {
+          const r = await fetch('/api/conversations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetUserId })
+          })
+          
+          if (!r.ok) {
+            throw new Error(`Failed to create conversation: ${r.statusText}`)
+          }
+          
+          cid = (await r.json()).id
+        }
+
+        convIdRef.current = cid
+
+      // Đảm bảo remove channel cũ trước khi tạo mới (tránh duplicate)
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+        channelConvIdRef.current = null
       }
 
-      convIdRef.current = cid
+      // Nếu đã có channel đúng conversationId rồi thì thôi (tránh subscribe lặp)
+      if (channelConvIdRef.current === cid && channelRef.current) return
 
       const channel = supabase
         .channel(`chat:${cid}`)
@@ -200,6 +246,8 @@ export default function ChatWindow({
             filter: `conversationId=eq.${cid}`
           },
           payload => {
+            if (!active) return // Bỏ qua nếu component đã unmount
+            
             if (payload.eventType === 'INSERT') {
               const raw = payload.new as Message
               const msg = {
@@ -209,33 +257,42 @@ export default function ChatWindow({
                 )
               }
 
+              // Kiểm tra duplicate trước khi thêm (bảo vệ kép)
               setMessages(prev =>
-                prev.some(m => m.id === msg.id)
-                  ? prev
-                  : [...prev, msg]
+                prev.some(m => m.id === msg.id) ? prev : (() => {
+                  const merged = [...prev, msg]
+                  messagesCacheRef.current.set(targetUserId, merged)
+                  return merged
+                })()
               )
             }
 
             if (payload.eventType === 'UPDATE') {
               const raw = payload.new as Message
               setMessages(prev =>
-                prev.map(m =>
-                  m.id === raw.id
-                    ? {
-                      ...raw,
-                      createdAt: normalizeCreatedAt(
-                        raw.createdAt
-                      )
-                    }
-                    : m
-                )
+                (() => {
+                  const merged = prev.map(m =>
+                    m.id === raw.id
+                      ? {
+                        ...raw,
+                        createdAt: normalizeCreatedAt(raw.createdAt)
+                      }
+                      : m
+                  )
+                  messagesCacheRef.current.set(targetUserId, merged)
+                  return merged
+                })()
               )
             }
 
             if (payload.eventType === 'DELETE') {
               const msg = payload.old as Message
               setMessages(prev =>
-                prev.filter(m => m.id !== msg.id)
+                (() => {
+                  const merged = prev.filter(m => m.id !== msg.id)
+                  messagesCacheRef.current.set(targetUserId, merged)
+                  return merged
+                })()
               )
             }
           }
@@ -243,11 +300,42 @@ export default function ChatWindow({
         .subscribe()
 
       channelRef.current = channel
+      channelConvIdRef.current = cid
+      } catch (err) {
+        // Khi đổi chat nhanh, request cũ bị abort là bình thường → không log/không setError
+        const isAbort =
+          (err instanceof DOMException && err.name === 'AbortError') ||
+          abortController.signal.aborted
+        if (isAbort) return
+
+        console.error('Error initializing chat:', err)
+        if (active) {
+          setError(err instanceof Error ? err.message : 'Không thể tải tin nhắn')
+        }
+      } finally {
+        if (active) setIsLoading(false)
+      }
     }
 
     initChat()
     return () => {
       active = false
+      const controller = fetchAbortRef.current
+      fetchAbortRef.current = null
+      // Abort request cũ để tránh race, nhưng đừng tạo console error
+      if (controller && !controller.signal.aborted) {
+        try {
+          controller.abort()
+        } catch {
+          // ignore
+        }
+      }
+      // Cleanup: remove channel khi component unmount hoặc dependencies thay đổi
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+        channelConvIdRef.current = null
+      }
     }
   }, [targetUserId, currentUserId])
 
@@ -302,41 +390,83 @@ export default function ChatWindow({
     if (!input.trim() && selectedFiles.length === 0)
       return
 
+    // Lưu input và files để restore nếu fail
+    const savedInput = input
+    const savedFiles = [...selectedFiles]
+
     const form = new FormData()
     form.append('targetUserId', targetUserId)
     form.append('content', input)
     selectedFiles.forEach(f => form.append('files', f))
 
+    // Clear input ngay để UX tốt hơn (optimistic)
     setInput('')
     setSelectedFiles([])
+    setIsSending(true)
+    setError(null)
 
-    const res = await fetch('/api/messages', {
-      method: 'POST',
-      body: form
-    })
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        body: form
+      })
 
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => '')
+        // Server có thể trả JSON { error }, hoặc plain text
+        let msg = errorText || `Gửi tin nhắn thất bại: ${res.statusText}`
+        try {
+          const parsed = errorText ? JSON.parse(errorText) : null
+          if (parsed?.error) msg = parsed.error
+        } catch {
+          // ignore
+        }
+        throw new Error(msg)
+      }
 
-    // Update convIdRef and setup channel if conversation was just created
-    if (!convIdRef.current) {
       const data = await res.json()
-      if (data.message?.conversationId) {
-        const cid = data.message.conversationId
-        convIdRef.current = cid
+      const sentMessage = data.message
+      const serverConversationId: string | undefined =
+        sentMessage?.conversationId
 
-        // Setup realtime channel for the new conversation
+      // Thêm message vào state ngay để hiển thị tức thì (optimistic update)
+      if (sentMessage) {
+        const msg: Message = {
+          ...sentMessage,
+          createdAt: normalizeCreatedAt(sentMessage.createdAt)
+        }
+        setMessages(prev =>
+          prev.some(m => m.id === msg.id) ? prev : (() => {
+            const merged = [...prev, msg]
+            messagesCacheRef.current.set(targetUserId, merged)
+            return merged
+          })()
+        )
+      }
+
+      // ✅ LUÔN đồng bộ conversationId theo server (tránh case DB có duplicate conversation)
+      // Nếu convIdRef đang khác với serverConversationId, phải resubscribe theo cid mới,
+      // nếu không sẽ miss realtime ở lần reply đầu tiên.
+      if (serverConversationId && convIdRef.current !== serverConversationId) {
+        convIdRef.current = serverConversationId
+
+        // Đảm bảo remove channel cũ trước khi tạo mới (tránh duplicate)
         if (channelRef.current) {
           supabase.removeChannel(channelRef.current)
+          channelRef.current = null
+          channelConvIdRef.current = null
         }
 
+        // Setup realtime channel cho conversation đúng theo server
         const channel = supabase
-          .channel(`chat:${cid}`)
+          .channel(`chat:${serverConversationId}`)
           .on(
             'postgres_changes',
             {
               event: '*',
               schema: 'public',
               table: 'Message',
-              filter: `conversationId=eq.${cid}`
+              filter: `conversationId=eq.${serverConversationId}`
             },
             payload => {
               if (payload.eventType === 'INSERT') {
@@ -345,6 +475,7 @@ export default function ChatWindow({
                   ...raw,
                   createdAt: normalizeCreatedAt(raw.createdAt)
                 }
+                // Kiểm tra duplicate trước khi thêm
                 setMessages(prev =>
                   prev.some(m => m.id === msg.id) ? prev : [...prev, msg]
                 )
@@ -368,7 +499,21 @@ export default function ChatWindow({
           .subscribe()
 
         channelRef.current = channel
+        channelConvIdRef.current = serverConversationId
+
+        // ⛔ Không reload lại toàn bộ messages sau khi gửi:
+        // - Rất chậm
+        // - Dễ ghi đè state gây "hụt" tin nhắn
+        // Supabase realtime + optimistic update là đủ.
       }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      // Restore input và files nếu gửi thất bại
+      setInput(savedInput)
+      setSelectedFiles(savedFiles)
+      setError(error instanceof Error ? error.message : 'Không thể gửi tin nhắn')
+    } finally {
+      setIsSending(false)
     }
 
     // Notify parent component that message was sent
@@ -455,6 +600,28 @@ export default function ChatWindow({
           ref={scrollRef}
           className={`flex-1 min-h-0 overflow-y-auto p-3 space-y-3 scrollbar-win`}
         >
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-3">
+              <div className="flex items-center justify-between">
+                <p className="text-red-400 text-sm">{error}</p>
+                <button
+                  onClick={() => setError(null)}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && messages.length === 0 && (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7565E6]"></div>
+            </div>
+          )}
+
           {messages.map((m, index) => {
             const prev = messages[index - 1]
 
@@ -528,7 +695,17 @@ export default function ChatWindow({
                         <img
                           key={i}
                           src={url}
+                          alt=""
                           className="mt-1 rounded"
+                          loading="lazy"
+                          onError={(e) => {
+                            // Retry 1 lần: đôi khi Supabase public URL vừa upload cần vài nhịp mới sẵn sàng
+                            const img = e.currentTarget
+                            if (img.dataset.retried) return
+                            img.dataset.retried = '1'
+                            const sep = url.includes('?') ? '&' : '?'
+                            img.src = `${url}${sep}t=${Date.now()}`
+                          }}
                         />
                       ) : (
                         <a
@@ -697,11 +874,16 @@ export default function ChatWindow({
             {/* Send Button */}
             <button
               onClick={sendMessage}
-              className="transition-opacity hover:opacity-70 flex-shrink-0"
+              disabled={isSending || (!input.trim() && selectedFiles.length === 0)}
+              className={`transition-opacity flex-shrink-0 ${isSending || (!input.trim() && selectedFiles.length === 0) ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-70'}`}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20.33 3.66996C20.1408 3.48213 19.9035 3.35008 19.6442 3.28833C19.3849 3.22659 19.1135 3.23753 18.86 3.31996L4.23 8.19996C3.95867 8.28593 3.71891 8.45039 3.54099 8.67255C3.36307 8.89471 3.25498 9.16462 3.23037 9.44818C3.20576 9.73174 3.26573 10.0162 3.40271 10.2657C3.5397 10.5152 3.74754 10.7185 4 10.85L10.07 13.85L13.07 19.94C13.1906 20.1783 13.3751 20.3785 13.6029 20.518C13.8307 20.6575 14.0929 20.7309 14.36 20.73H14.46C14.7461 20.7089 15.0192 20.6023 15.2439 20.4239C15.4686 20.2456 15.6345 20.0038 15.72 19.73L20.67 5.13996C20.7584 4.88789 20.7734 4.6159 20.7132 4.35565C20.653 4.09541 20.5201 3.85762 20.33 3.66996ZM4.85 9.57996L17.62 5.31996L10.53 12.41L4.85 9.57996ZM14.43 19.15L11.59 13.47L18.68 6.37996L14.43 19.15Z" fill="#877EFF" />
-              </svg>
+              {isSending ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#877EFF]"></div>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20.33 3.66996C20.1408 3.48213 19.9035 3.35008 19.6442 3.28833C19.3849 3.22659 19.1135 3.23753 18.86 3.31996L4.23 8.19996C3.95867 8.28593 3.71891 8.45039 3.54099 8.67255C3.36307 8.89471 3.25498 9.16462 3.23037 9.44818C3.20576 9.73174 3.26573 10.0162 3.40271 10.2657C3.5397 10.5152 3.74754 10.7185 4 10.85L10.07 13.85L13.07 19.94C13.1906 20.1783 13.3751 20.3785 13.6029 20.518C13.8307 20.6575 14.0929 20.7309 14.36 20.73H14.46C14.7461 20.7089 15.0192 20.6023 15.2439 20.4239C15.4686 20.2456 15.6345 20.0038 15.72 19.73L20.67 5.13996C20.7584 4.88789 20.7734 4.6159 20.7132 4.35565C20.653 4.09541 20.5201 3.85762 20.33 3.66996ZM4.85 9.57996L17.62 5.31996L10.53 12.41L4.85 9.57996ZM14.43 19.15L11.59 13.47L18.68 6.37996L14.43 19.15Z" fill="#877EFF" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
