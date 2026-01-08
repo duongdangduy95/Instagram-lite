@@ -282,7 +282,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
       <div
         ref={dialogRef}
-        className="w-full max-w-5xl bg-[#0B0E11] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl md:h-[82vh] md:max-h-[760px]"
+        className="w-full max-w-5xl bg-[#0B0E11] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl h-[90vh] max-h-[90vh] md:h-[82vh] md:max-h-[760px]"
         onClick={(e) => e.stopPropagation()}
       >
         {loading && (
@@ -290,17 +290,13 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
         )}
 
         {!loading && blog && (
-          <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] md:h-full">
-            {/* Left: media */}
-            <div className="bg-[#0B0E11] md:h-full">
-              <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="fill" />
-            </div>
-
-            {/* Right: content */}
-            <div className="border-l border-gray-800 bg-[#212227] flex flex-col md:h-full min-h-0">
-              {/* Scroll area chứa caption + comments */}
-              <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
-                <div className="p-4 border-b border-gray-800">
+          <>
+            {/* Mobile Layout: Caption → Image → Comments (dọc từ trên xuống) */}
+            <div className="flex flex-col h-full md:hidden">
+              {/* 1. Caption Header */}
+              <div className="border-b border-gray-800 bg-[#212227] flex-shrink-0 flex flex-col max-h-[30vh]">
+                {/* Header Info - Fixed */}
+                <div className="p-4 pb-3 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
@@ -374,15 +370,88 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                       </div>
                     )}
                   </div>
-
-                  {blog.caption && (
-                    <div className="mt-3 text-gray-200 whitespace-pre-wrap">
-                      <RenderCaption text={blog.caption} />
-                    </div>
-                  )}
-
                 </div>
 
+                {/* Caption - Scrollable */}
+                {blog.caption && (
+                  <div className="px-4 pb-4 overflow-y-auto scrollbar-win flex-1 min-h-0">
+                    <div className="text-gray-200 whitespace-pre-wrap">
+                      <RenderCaption text={blog.caption} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Image/Video */}
+              <div className="bg-[#0B0E11] flex-shrink-0">
+                <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="aspect" />
+              </div>
+
+              {/* 3. Actions (Like, Share, Save) */}
+              <div className="px-4 py-3 border-t border-gray-800 bg-[#212227] flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={handleLike}
+                    className="flex items-center gap-2 text-gray-200 hover:text-white"
+                    aria-label="Thích"
+                  >
+                    <Image
+                      src={liked ? '/icons/liked.svg' : '/icons/like.svg'}
+                      alt="Thích"
+                      width={22}
+                      height={22}
+                    />
+                    <span className="text-sm">{likeCount}</span>
+                  </button>
+
+                  <button
+                    onClick={handleShare}
+                    className="text-gray-200 hover:text-white"
+                    aria-label="Chia sẻ"
+                  >
+                    <Image src="/icons/share.svg" alt="Chia sẻ" width={22} height={22} />
+                  </button>
+                </div>
+
+                <button
+                  onClick={async () => {
+                    if (!currentUser) {
+                      router.push('/login')
+                      return
+                    }
+                    const prevSaved = saved
+                    setSaved(!prevSaved)
+                    try {
+                      const res = await fetch(`/api/blog/${blog.id}/save`, {
+                        method: 'POST',
+                        credentials: 'include',
+                      })
+                      if (!res.ok) {
+                        setSaved(prevSaved)
+                        return
+                      }
+                      const data = await res.json()
+                      if (typeof data?.saved === 'boolean') {
+                        setSaved(data.saved)
+                      }
+                    } catch {
+                      setSaved(prevSaved)
+                    }
+                  }}
+                  className="text-gray-200 hover:text-white"
+                  aria-label="Lưu"
+                >
+                  <Image
+                    src={saved ? '/icons/saved.svg' : '/icons/bookmark.svg'}
+                    alt="Lưu"
+                    width={22}
+                    height={22}
+                  />
+                </button>
+              </div>
+
+              {/* 4. Comments Section */}
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-win bg-[#212227] border-t border-gray-800 max-h-[40vh]">
                 <div className="p-4">
                   <CommentSection
                     blogId={blog.id}
@@ -411,8 +480,8 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="mt-auto border-t border-gray-800">
+              {/* 5. Comment Composer (pinned bottom) */}
+              <div className="border-t border-gray-800 bg-[#212227] flex-shrink-0">
                 {replyTo && (
                   <div className="px-4 pt-3 text-xs text-purple-primary flex items-center justify-between gap-3">
                     <div className="truncate">
@@ -431,71 +500,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                   </div>
                 )}
 
-                {/* Row: like + share + save */}
-                <div className="px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={handleLike}
-                      className="flex items-center gap-2 text-gray-200 hover:text-white"
-                      aria-label="Thích"
-                    >
-                      <Image
-                        src={liked ? '/icons/liked.svg' : '/icons/like.svg'}
-                        alt="Thích"
-                        width={22}
-                        height={22}
-                      />
-                      <span className="text-sm">{likeCount}</span>
-                    </button>
-
-                    <button
-                      onClick={handleShare}
-                      className="text-gray-200 hover:text-white"
-                      aria-label="Chia sẻ"
-                    >
-                      <Image src="/icons/share.svg" alt="Chia sẻ" width={22} height={22} />
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={async () => {
-                      if (!currentUser) {
-                        router.push('/login')
-                        return
-                      }
-                      const prevSaved = saved
-                      setSaved(!prevSaved)
-                      try {
-                        const res = await fetch(`/api/blog/${blog.id}/save`, {
-                          method: 'POST',
-                          credentials: 'include',
-                        })
-                        if (!res.ok) {
-                          setSaved(prevSaved)
-                          return
-                        }
-                        const data = await res.json()
-                        if (typeof data?.saved === 'boolean') {
-                          setSaved(data.saved)
-                        }
-                      } catch {
-                        setSaved(prevSaved)
-                      }
-                    }}
-                    className="text-gray-200 hover:text-white"
-                    aria-label="Lưu"
-                  >
-                    <Image
-                      src={saved ? '/icons/saved.svg' : '/icons/bookmark.svg'}
-                      alt="Lưu"
-                      width={22}
-                      height={22}
-                    />
-                  </button>
-                </div>
-
-                {/* Composer pinned bottom */}
-                <div className="px-4 py-3 border-t border-gray-800 flex items-center gap-3">
+                <div className="px-4 py-3 flex items-center gap-3">
                   <input
                     ref={composerRef}
                     value={composer}
@@ -520,7 +525,240 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                 </div>
               </div>
             </div>
-          </div>
+
+            {/* Desktop Layout: Image Left | Caption + Comments Right (giữ nguyên) */}
+            <div className="hidden md:grid md:grid-cols-[1.2fr_0.8fr] md:h-full">
+              {/* Left: media */}
+              <div className="bg-[#0B0E11] md:h-full">
+                <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="fill" />
+              </div>
+
+              {/* Right: content */}
+              <div className="border-l border-gray-800 bg-[#212227] flex flex-col md:h-full min-h-0">
+                {/* Scroll area chứa caption + comments */}
+                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-win">
+                  <div className="p-4 border-b border-gray-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                          {blog.author.image ? (
+                            <Image
+                              src={blog.author.image}
+                              alt={blog.author.fullname}
+                              width={36}
+                              height={36}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <span className="text-white font-bold">
+                              {blog.author.fullname.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-gray-100 font-semibold truncate">
+                            {blog.author.fullname}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {formatTimeAgo(blog.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                      {currentUser?.id === blog.author.id && (
+                        <div className="relative" ref={optionsRef}>
+                          <button
+                            onClick={() => setShowOptions(!showOptions)}
+                            className="p-2 rounded-full hover:bg-gray-800 transition-colors"
+                          >
+                            <div
+                              className="w-5 h-5 bg-[#7565E6]"
+                              style={{
+                                maskImage: 'url(/icons/edit.svg)',
+                                maskRepeat: 'no-repeat',
+                                maskPosition: 'center',
+                                maskSize: 'contain',
+                                WebkitMaskImage: 'url(/icons/edit.svg)',
+                                WebkitMaskRepeat: 'no-repeat',
+                                WebkitMaskPosition: 'center',
+                                WebkitMaskSize: 'contain'
+                              }}
+                            />
+                          </button>
+
+                          {showOptions && (
+                            <div className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[100]">
+                              <button
+                                onClick={() => {
+                                  setShowOptions(false)
+                                  router.push(`/blog/${blog.id}/edit`)
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-t-lg"
+                              >
+                                Chỉnh sửa
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setShowOptions(false)
+                                  setShowDeleteConfirm(true)
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-b-lg"
+                              >
+                                Xóa bài viết
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {blog.caption && (
+                      <div className="mt-3 text-gray-200 whitespace-pre-wrap">
+                        <RenderCaption text={blog.caption} />
+                      </div>
+                    )}
+
+                  </div>
+
+                  <div className="p-4">
+                    <CommentSection
+                      blogId={blog.id}
+                      currentUser={safeUser}
+                      inline={true}
+                      showComposer={false}
+                      inlineScrollable={false}
+                      reloadKey={reloadKey}
+                      onRequestReply={({ parentId, username, fullname }) => {
+                        setReplyTo({ parentId, username, fullname })
+
+                        // Prefill @tag cơ bản
+                        if (username) {
+                          const mention = `@${username}`
+                          setComposer((prev) => {
+                            const prevTrim = prev.trimStart()
+                            const replaced = prevTrim.replace(/^@[^\s]+\s+/, '')
+                            const nextBase = replaced.length > 0 ? replaced : ''
+                            return `${mention} ${nextBase}`.trimEnd() + ' '
+                          })
+                        }
+
+                        requestAnimationFrame(() => composerRef.current?.focus())
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="mt-auto border-t border-gray-800">
+                  {replyTo && (
+                    <div className="px-4 pt-3 text-xs text-purple-primary flex items-center justify-between gap-3">
+                      <div className="truncate">
+                        Đang trả lời{' '}
+                        <span className="font-semibold">
+                          {replyTo.username ? `@${replyTo.username}` : replyTo.fullname}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="text-gray-400 hover:text-gray-200 underline whitespace-nowrap"
+                        onClick={() => setReplyTo(null)}
+                      >
+                        Huỷ
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Row: like + share + save */}
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={handleLike}
+                        className="flex items-center gap-2 text-gray-200 hover:text-white"
+                        aria-label="Thích"
+                      >
+                        <Image
+                          src={liked ? '/icons/liked.svg' : '/icons/like.svg'}
+                          alt="Thích"
+                          width={22}
+                          height={22}
+                        />
+                        <span className="text-sm">{likeCount}</span>
+                      </button>
+
+                      <button
+                        onClick={handleShare}
+                        className="text-gray-200 hover:text-white"
+                        aria-label="Chia sẻ"
+                      >
+                        <Image src="/icons/share.svg" alt="Chia sẻ" width={22} height={22} />
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        if (!currentUser) {
+                          router.push('/login')
+                          return
+                        }
+                        const prevSaved = saved
+                        setSaved(!prevSaved)
+                        try {
+                          const res = await fetch(`/api/blog/${blog.id}/save`, {
+                            method: 'POST',
+                            credentials: 'include',
+                          })
+                          if (!res.ok) {
+                            setSaved(prevSaved)
+                            return
+                          }
+                          const data = await res.json()
+                          if (typeof data?.saved === 'boolean') {
+                            setSaved(data.saved)
+                          }
+                        } catch {
+                          setSaved(prevSaved)
+                        }
+                      }}
+                      className="text-gray-200 hover:text-white"
+                      aria-label="Lưu"
+                    >
+                      <Image
+                        src={saved ? '/icons/saved.svg' : '/icons/bookmark.svg'}
+                        alt="Lưu"
+                        width={22}
+                        height={22}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Composer pinned bottom */}
+                  <div className="px-4 py-3 border-t border-gray-800 flex items-center gap-3">
+                    <input
+                      ref={composerRef}
+                      value={composer}
+                      onChange={(e) => setComposer(e.target.value)}
+                      placeholder="Bình luận..."
+                      className="flex-1 bg-transparent border-0 px-0 py-2 text-gray-100 placeholder-gray-500 focus:outline-none"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          void handleSubmitComment()
+                        }
+                      }}
+                      disabled={posting}
+                    />
+                    <button
+                      onClick={() => void handleSubmitComment()}
+                      disabled={posting || !composer.trim()}
+                      className="text-purple-primary font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Đăng
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </div>
 

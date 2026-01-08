@@ -18,7 +18,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       
       {/* Layout 3 cột: Navbar trái | Sidebar cài đặt giữa | Nội dung phải */}
       <div className="ml-0 md:ml-20 lg:ml-64 min-h-screen flex">
-        {/* Sidebar cài đặt (giữa) */}
+        {/* Sidebar cài đặt (giữa) - Desktop only */}
         <aside className="hidden lg:block w-64 border-r border-gray-800 bg-[#0B0E11] flex-shrink-0">
           <div className="p-6">
             <h2 className="text-xl font-bold text-white mb-6">Cài đặt</h2>
@@ -45,6 +45,28 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
         {/* Nội dung chính (phải - lớn nhất) */}
         <main className="flex-1 min-w-0">
+          {/* Mobile Navigation Tabs */}
+          <div className="lg:hidden border-b border-gray-800 bg-[#0B0E11] sticky top-14 z-10">
+            <div className="flex">
+              {settingsMenu.map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex-1 px-4 py-3 text-center text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'text-white border-b-2 border-[#877EFF]'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+          
           {children}
         </main>
       </div>
