@@ -149,12 +149,12 @@ export default function BlogDetailPage() {
               >
                 <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
                   <span className="font-bold text-white">
-                    {displayBlog.author.fullname.charAt(0)}
+                    {displayBlog.author.username.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div>
                   <p className="font-semibold text-gray-100">
-                    {displayBlog.author.fullname}
+                    {displayBlog.author.username}
                   </p>
                   <p className="text-xs text-gray-400">
                     {formatTimeAgo(new Date(displayBlog.createdAt))}
@@ -224,7 +224,13 @@ export default function BlogDetailPage() {
             {/* Share notification */}
             {isShared && (
               <div className="px-4 pt-4 text-sm text-gray-300 border-b border-gray-800 pb-2">
-                <span className="font-semibold">{blog.author.fullname}</span> đã chia sẻ
+                <Link
+                  href={blog.author.id === currentUser?.id ? '/profile' : `/profile/${blog.author.id}`}
+                  className="font-semibold hover:text-purple-primary transition-colors"
+                >
+                  {blog.author.username}
+                </Link>{' '}
+                đã chia sẻ
               </div>
             )}
 

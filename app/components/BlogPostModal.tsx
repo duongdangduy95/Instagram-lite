@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import BlogImages from '@/app/components/BlogImages'
 import CommentSection from '@/app/components/CommentSection'
 import { formatTimeAgo } from '@/lib/formatTimeAgo'
@@ -298,130 +299,166 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
         {!loading && blog && (
           <>
-            {/* Mobile Layout: Caption → Image → Comments (dọc từ trên xuống) */}
+            {/* Mobile Layout: Header fixed → Scrollable (Caption + Image + Comments) → Actions fixed → Composer fixed */}
             <div className="flex flex-col h-full md:hidden">
-              {/* 1. Caption Header */}
-              <div className="border-b border-gray-800 bg-[#212227] flex-shrink-0 flex flex-col max-h-[30vh]">
-                {/* Header Info - Fixed */}
-                <div className="p-4 pb-3 flex-shrink-0">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
-                        {blog.author.image ? (
-                          <Image
-                            src={blog.author.image}
-                            alt={blog.author.fullname}
-                            width={36}
-                            height={36}
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <span className="text-white font-bold">
-                            {blog.author.fullname.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-gray-100 font-semibold truncate">
-                          {blog.author.fullname}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {formatTimeAgo(blog.createdAt)}
-                        </p>
-                      </div>
+              {/* 1. Header - Fixed */}
+              <div className="border-b border-gray-800 bg-[#212227] flex-shrink-0 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/profile/${blog.author.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden"
+                    >
+                      {blog.author.image ? (
+                        <Image
+                          src={blog.author.image}
+                          alt={blog.author.username}
+                          width={36}
+                          height={36}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <span className="text-white font-bold">
+                          {blog.author.username.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </Link>
+                    <div className="min-w-0">
+                      <Link
+                        href={`/profile/${blog.author.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-gray-100 font-semibold truncate hover:text-purple-primary transition-colors block"
+                      >
+                        {blog.author.username}
+                      </Link>
+                      <p className="text-xs text-gray-400">
+                        {formatTimeAgo(blog.createdAt)}
+                      </p>
                     </div>
-                    {currentUser?.id === blog.author.id && (
-                      <div className="relative" ref={optionsRefMobile}>
-                        <button
+                  </div>
+                  {currentUser?.id === blog.author.id && (
+                    <div className="relative" ref={optionsRefMobile}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          e.preventDefault()
+                          setShowOptions(!showOptions)
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="p-2 rounded-full hover:bg-gray-800 transition-colors"
+                      >
+                        <div
+                          className="w-5 h-5 bg-[#7565E6]"
+                          style={{
+                            maskImage: 'url(/icons/edit.svg)',
+                            maskRepeat: 'no-repeat',
+                            maskPosition: 'center',
+                            maskSize: 'contain',
+                            WebkitMaskImage: 'url(/icons/edit.svg)',
+                            WebkitMaskRepeat: 'no-repeat',
+                            WebkitMaskPosition: 'center',
+                            WebkitMaskSize: 'contain'
+                          }}
+                        />
+                      </button>
+
+                      {showOptions && (
+                        <div 
+                          className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[200]" 
                           onClick={(e) => {
                             e.stopPropagation()
                             e.preventDefault()
-                            setShowOptions(!showOptions)
                           }}
                           onPointerDown={(e) => e.stopPropagation()}
-                          className="p-2 rounded-full hover:bg-gray-800 transition-colors"
+                          onMouseDown={(e) => {
+                            e.stopPropagation()
+                          }}
                         >
-                          <div
-                            className="w-5 h-5 bg-[#7565E6]"
-                            style={{
-                              maskImage: 'url(/icons/edit.svg)',
-                              maskRepeat: 'no-repeat',
-                              maskPosition: 'center',
-                              maskSize: 'contain',
-                              WebkitMaskImage: 'url(/icons/edit.svg)',
-                              WebkitMaskRepeat: 'no-repeat',
-                              WebkitMaskPosition: 'center',
-                              WebkitMaskSize: 'contain'
-                            }}
-                          />
-                        </button>
-
-                        {showOptions && (
-                          <div 
-                            className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[200]" 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation()
                               e.preventDefault()
+                              setShowOptions(false)
+                              router.push(`/blog/${blog.id}/edit`)
                             }}
                             onPointerDown={(e) => e.stopPropagation()}
                             onMouseDown={(e) => {
                               e.stopPropagation()
                             }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-t-lg"
                           >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                e.preventDefault()
-                                setShowOptions(false)
-                                router.push(`/blog/${blog.id}/edit`)
-                              }}
-                              onPointerDown={(e) => e.stopPropagation()}
-                              onMouseDown={(e) => {
-                                e.stopPropagation()
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-t-lg"
-                            >
-                              Chỉnh sửa
-                            </button>
+                            Chỉnh sửa
+                          </button>
 
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                e.preventDefault()
-                                setShowOptions(false)
-                                setShowDeleteConfirm(true)
-                              }}
-                              onPointerDown={(e) => e.stopPropagation()}
-                              onMouseDown={(e) => {
-                                e.stopPropagation()
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-b-lg"
-                            >
-                              Xóa bài viết
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              e.preventDefault()
+                              setShowOptions(false)
+                              setShowDeleteConfirm(true)
+                            }}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => {
+                              e.stopPropagation()
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-b-lg"
+                          >
+                            Xóa bài viết
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                {/* Caption - Scrollable */}
+              {/* 2. Scrollable Content: Caption + Image + Comments */}
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-win bg-[#212227]">
+                {/* Caption */}
                 {blog.caption && (
-                  <div className="px-4 pb-4 overflow-y-auto scrollbar-win flex-1 min-h-0">
+                  <div className="px-4 pt-4 pb-2">
                     <div className="text-gray-200 whitespace-pre-wrap">
                       <RenderCaption text={blog.caption} />
                     </div>
                   </div>
                 )}
+
+                {/* Image/Video */}
+                <div className="bg-[#0B0E11]">
+                  <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="aspect" />
+                </div>
+
+                {/* Comments Section */}
+                <div className="p-4 border-t border-gray-800">
+                  <CommentSection
+                    blogId={blog.id}
+                    currentUser={safeUser}
+                    inline={true}
+                    showComposer={false}
+                    inlineScrollable={false}
+                    reloadKey={reloadKey}
+                    onRequestReply={({ parentId, username, fullname }) => {
+                      setReplyTo({ parentId, username, fullname })
+
+                      // Prefill @tag cơ bản
+                      if (username) {
+                        const mention = `@${username}`
+                        setComposer((prev) => {
+                          const prevTrim = prev.trimStart()
+                          const replaced = prevTrim.replace(/^@[^\s]+\s+/, '')
+                          const nextBase = replaced.length > 0 ? replaced : ''
+                          return `${mention} ${nextBase}`.trimEnd() + ' '
+                        })
+                      }
+
+                      requestAnimationFrame(() => composerRef.current?.focus())
+                    }}
+                  />
+                </div>
               </div>
 
-              {/* 2. Image/Video */}
-              <div className="bg-[#0B0E11] flex-shrink-0">
-                <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="aspect" />
-              </div>
-
-              {/* 3. Actions (Like, Share, Save) */}
+              {/* 3. Actions (Like, Share, Save) - Fixed */}
               <div className="px-4 py-3 border-t border-gray-800 bg-[#212227] flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-4">
                   <button
@@ -454,7 +491,8 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                       return
                     }
                     const prevSaved = saved
-                    setSaved(!prevSaved)
+                    const newSaved = !prevSaved
+                    setSaved(newSaved)
                     try {
                       const res = await fetch(`/api/blog/${blog.id}/save`, {
                         method: 'POST',
@@ -462,56 +500,41 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                       })
                       if (!res.ok) {
                         setSaved(prevSaved)
+                        window.dispatchEvent(
+                          new CustomEvent('blog:save-change', {
+                            detail: { blogId: blog.id, saved: prevSaved },
+                          })
+                        )
                         return
                       }
                       const data = await res.json()
-                      if (typeof data?.saved === 'boolean') {
-                        setSaved(data.saved)
-                      }
+                      const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
+                      setSaved(finalSaved)
+                      // Dispatch event to sync with home feed
+                      window.dispatchEvent(
+                        new CustomEvent('blog:save-change', {
+                          detail: { blogId: blog.id, saved: finalSaved },
+                        })
+                      )
                     } catch {
                       setSaved(prevSaved)
+                      window.dispatchEvent(
+                        new CustomEvent('blog:save-change', {
+                          detail: { blogId: blog.id, saved: prevSaved },
+                        })
+                      )
                     }
                   }}
                   className="text-gray-200 hover:text-white"
                   aria-label="Lưu"
                 >
                   <Image
-                    src={saved ? '/icons/saved.svg' : '/icons/bookmark.svg'}
+                    src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
                     alt="Lưu"
                     width={22}
                     height={22}
                   />
                 </button>
-              </div>
-
-              {/* 4. Comments Section */}
-              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-win bg-[#212227] border-t border-gray-800 max-h-[40vh]">
-                <div className="p-4">
-                  <CommentSection
-                    blogId={blog.id}
-                    currentUser={safeUser}
-                    inline={true}
-                    showComposer={false}
-                    inlineScrollable={false}
-                    reloadKey={reloadKey}
-                    onRequestReply={({ parentId, username, fullname }) => {
-                      setReplyTo({ parentId, username, fullname })
-
-                      // Prefill @tag cơ bản
-                      if (username) {
-                        const mention = `@${username}`
-                        setComposer((prev) => {
-                          const prevTrim = prev.trimStart()
-                          const replaced = prevTrim.replace(/^@[^\s]+\s+/, '')
-                          const nextBase = replaced.length > 0 ? replaced : ''
-                          return `${mention} ${nextBase}`.trimEnd() + ' '
-                        })
-                      }
-
-                      requestAnimationFrame(() => composerRef.current?.focus())
-                    }}
-                  />
-                </div>
               </div>
 
               {/* 5. Comment Composer (pinned bottom) */}
@@ -574,25 +597,33 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                   <div className="p-4 border-b border-gray-800">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                        <Link
+                          href={`/profile/${blog.author.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden"
+                        >
                           {blog.author.image ? (
                             <Image
                               src={blog.author.image}
-                              alt={blog.author.fullname}
+                              alt={blog.author.username}
                               width={36}
                               height={36}
                               className="object-cover w-full h-full"
                             />
                           ) : (
                             <span className="text-white font-bold">
-                              {blog.author.fullname.charAt(0).toUpperCase()}
+                              {blog.author.username.charAt(0).toUpperCase()}
                             </span>
                           )}
-                        </div>
+                        </Link>
                         <div className="min-w-0">
-                          <p className="text-gray-100 font-semibold truncate">
-                            {blog.author.fullname}
-                          </p>
+                          <Link
+                            href={`/profile/${blog.author.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-gray-100 font-semibold truncate hover:text-purple-primary transition-colors block"
+                          >
+                            {blog.author.username}
+                          </Link>
                           <p className="text-xs text-gray-400">
                             {formatTimeAgo(blog.createdAt)}
                           </p>
@@ -762,7 +793,8 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                           return
                         }
                         const prevSaved = saved
-                        setSaved(!prevSaved)
+                        const newSaved = !prevSaved
+                        setSaved(newSaved)
                         try {
                           const res = await fetch(`/api/blog/${blog.id}/save`, {
                             method: 'POST',
@@ -770,21 +802,36 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                           })
                           if (!res.ok) {
                             setSaved(prevSaved)
+                            window.dispatchEvent(
+                              new CustomEvent('blog:save-change', {
+                                detail: { blogId: blog.id, saved: prevSaved },
+                              })
+                            )
                             return
                           }
                           const data = await res.json()
-                          if (typeof data?.saved === 'boolean') {
-                            setSaved(data.saved)
-                          }
+                          const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
+                          setSaved(finalSaved)
+                          // Dispatch event to sync with home feed
+                          window.dispatchEvent(
+                            new CustomEvent('blog:save-change', {
+                              detail: { blogId: blog.id, saved: finalSaved },
+                            })
+                          )
                         } catch {
                           setSaved(prevSaved)
+                          window.dispatchEvent(
+                            new CustomEvent('blog:save-change', {
+                              detail: { blogId: blog.id, saved: prevSaved },
+                            })
+                          )
                         }
                       }}
                       className="text-gray-200 hover:text-white"
                       aria-label="Lưu"
                     >
                       <Image
-                        src={saved ? '/icons/saved.svg' : '/icons/bookmark.svg'}
+                        src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
                         alt="Lưu"
                         width={22}
                         height={22}

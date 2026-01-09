@@ -522,9 +522,12 @@ function CommentItem({ comment, currentUser, onReply, onUpdate, onDelete, inline
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <div className="flex items-center space-x-2">
-                <p className="text-sm font-medium text-gray-200">
-                  {comment.author.fullname}
-                </p>
+                <Link
+                  href={`/user/${comment.author.username}`}
+                  className="text-sm font-medium text-gray-200 hover:text-purple-primary transition-colors"
+                >
+                  {comment.author.username}
+                </Link>
                 <span className="text-gray-500 text-xs font-normal">
                   {new Date(comment.createdAt).toLocaleString('vi-VN', {
                     day: 'numeric',
@@ -703,7 +706,12 @@ function CommentItem({ comment, currentUser, onReply, onUpdate, onDelete, inline
     <div className="ml-2 mt-2">
       <div className="p-3 bg-gray-900/60 rounded-lg border border-gray-800">
         <p className="text-sm font-medium text-gray-100">
-          {comment.author.username}{' '}
+          <Link
+            href={`/user/${comment.author.username}`}
+            className="hover:text-purple-primary transition-colors"
+          >
+            {comment.author.username}
+          </Link>{' '}
           <span className="text-gray-500 text-xs font-normal">
             {new Date(comment.createdAt).toLocaleString()}
           </span>

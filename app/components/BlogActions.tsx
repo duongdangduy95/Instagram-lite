@@ -65,6 +65,22 @@ export default function BlogActions({
     return () => window.removeEventListener('blog:like-change', handler as EventListener)
   }, [blogId, displayBlogId])
 
+  // Đồng bộ save từ modal về feed (home/profile) mà không cần refresh
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ blogId: string; saved: boolean }>
+      const detail = ce.detail
+      if (!detail?.blogId) return
+
+      // match cả bài thường (blogId) và bài share (displayBlogId = bài gốc)
+      if (detail.blogId === blogId || detail.blogId === displayBlogId) {
+        setSaved(detail.saved)
+      }
+    }
+    window.addEventListener('blog:save-change', handler as EventListener)
+    return () => window.removeEventListener('blog:save-change', handler as EventListener)
+  }, [blogId, displayBlogId])
+
   const handleLike = async () => {
     if (authenticated === null || !authenticated) {
       router.push('/login')
@@ -265,7 +281,7 @@ export default function BlogActions({
               }`}
           >
             <Image
-              src={saved ? '/icons/saved.svg' : '/icons/bookmark.svg'}
+              src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
               alt="Lưu"
               width={24}
               height={24}

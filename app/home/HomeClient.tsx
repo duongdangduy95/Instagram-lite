@@ -65,11 +65,11 @@ export default function HomeClient(props: {
         prev.map((u) =>
           u.id === detail.userId
             ? {
-              ...u,
-              fullname: (detail.fullname ?? u.fullname) as string,
-              username: (detail.username ?? u.username) as string,
-              image: typeof detail.image !== 'undefined' ? detail.image : u.image,
-            }
+                ...u,
+                fullname: (detail.fullname ?? u.fullname) as string,
+                username: (detail.username ?? u.username) as string,
+                image: typeof detail.image !== 'undefined' ? detail.image : u.image,
+              }
             : u
         )
       )
@@ -104,6 +104,29 @@ export default function HomeClient(props: {
 
     window.addEventListener('user:profile-change', onProfileChange as EventListener)
     return () => window.removeEventListener('user:profile-change', onProfileChange as EventListener)
+  }, [])
+
+  // Listen for save/unsave events from modal to sync with home feed
+  useEffect(() => {
+    const handleSaveChange = (e: Event) => {
+      const ce = e as CustomEvent<{ blogId: string; saved: boolean }>
+      const detail = ce.detail
+      if (!detail?.blogId) return
+
+      // Update saved state for matching blog
+      setBlogs((prev) =>
+        prev.map((b) => {
+          // Match by blogId (for normal posts) or displayBlogId (for shared posts)
+          if (b.id === detail.blogId || (b.sharedFrom && b.sharedFrom.id === detail.blogId)) {
+            return { ...b, isSaved: detail.saved }
+          }
+          return b
+        })
+      )
+    }
+
+    window.addEventListener('blog:save-change', handleSaveChange as EventListener)
+    return () => window.removeEventListener('blog:save-change', handleSaveChange as EventListener)
   }, [])
 
   const loadMoreBlogs = useCallback(async () => {
