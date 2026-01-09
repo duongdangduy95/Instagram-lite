@@ -165,37 +165,53 @@ export async function POST(req: Request) {
   const lock1 = hashInt32(a)
   const lock2 = hashInt32(b)
 
-  const conversation = await prisma.$transaction(async (tx) => {
-    // pg_advisory_xact_lock có overload (int4,int4) hoặc (bigint). Prisma bind số thành bigint,
-    // nên cần cast rõ về int4 để match đúng signature.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lock1}::int4, ${lock2}::int4)`
+  const findOrCreateConversation = async () =>
+    prisma.$transaction(
+      async (tx) => {
+        // pg_advisory_xact_lock overload: (int4,int4) hoặc (bigint).
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lock1}::int4, ${lock2}::int4)`
 
-    // Check if conversation already exists
-    let conv = await tx.conversation.findFirst({
-      where: {
-        isGroup: false,
-        AND: [
-          { participants: { some: { userId } } },
-          { participants: { some: { userId: targetUserId } } }
-        ]
-      },
-      orderBy: { updatedAt: 'desc' }
-    })
+        // Check if conversation already exists
+        let conv = await tx.conversation.findFirst({
+          where: {
+            isGroup: false,
+            AND: [
+              { participants: { some: { userId } } },
+              { participants: { some: { userId: targetUserId } } }
+            ]
+          },
+          orderBy: { updatedAt: 'desc' }
+        })
 
-    // Create if doesn't exist
-    if (!conv) {
-      conv = await tx.conversation.create({
-        data: {
-          isGroup: false,
-          participants: {
-            create: [{ userId }, { userId: targetUserId }]
-          }
+        // Create if doesn't exist
+        if (!conv) {
+          conv = await tx.conversation.create({
+            data: {
+              isGroup: false,
+              participants: {
+                create: [{ userId }, { userId: targetUserId }]
+              }
+            }
+          })
         }
-      })
-    }
 
-    return conv
-  })
+        return conv
+      },
+      { maxWait: 10_000, timeout: 20_000 }
+    )
+
+  let conversation: any
+  try {
+    conversation = await findOrCreateConversation()
+  } catch (e: unknown) {
+    const code = (e as { code?: string } | null)?.code
+    if (code === 'P2028') {
+      await new Promise((r) => setTimeout(r, 250))
+      conversation = await findOrCreateConversation()
+    } else {
+      throw e
+    }
+  }
 
   return NextResponse.json(conversation)
 }

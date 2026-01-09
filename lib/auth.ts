@@ -91,9 +91,22 @@ export const authOptions: AuthOptions = {
         }
       }
 
-      // Cho phép client gọi useSession().update({ fullname, username }) để refresh session sau khi update profile
-      if (trigger === 'update' && session?.user) {
-        const s = session.user as { fullname?: string | null; username?: string | null; image?: string | null }
+      // Cho phép client gọi useSession().update(...) để refresh session sau khi update profile.
+      // Lưu ý: NextAuth gửi "session" = payload client truyền lên, KHÔNG nhất thiết bọc trong session.user.
+      if (trigger === 'update' && session) {
+        type SessionUpdatePayload = {
+          user?: {
+            fullname?: string | null
+            username?: string | null
+            image?: string | null
+          }
+          fullname?: string | null
+          username?: string | null
+          image?: string | null
+        }
+
+        const raw = session as SessionUpdatePayload
+        const s = raw.user ?? raw
         if (typeof s.fullname !== 'undefined') token.fullname = s.fullname ?? null
         if (typeof s.username !== 'undefined') token.username = s.username ?? null
         if (typeof s.image !== 'undefined') token.image = s.image ?? null

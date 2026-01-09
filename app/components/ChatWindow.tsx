@@ -36,6 +36,8 @@ export default function ChatWindow({
   targetFullname,
   targetImage,
   onClose,
+  showBackButton = false,
+  onBack,
   onSeen,
   isStandalone = false,
   onMessageSent
@@ -45,6 +47,8 @@ export default function ChatWindow({
   targetFullname: string
   targetImage?: string | null
   onClose: () => void
+  showBackButton?: boolean
+  onBack?: () => void
   onSeen?: (count: number) => void
   isStandalone?: boolean
   onMessageSent?: () => void
@@ -545,13 +549,24 @@ export default function ChatWindow({
   /* ================= UI ================= */
   return (
     <div className={isStandalone
-      ? "h-full bg-[#0B0E11] text-white flex flex-row border-l border-gray-800 overflow-hidden min-h-0"
-      : "fixed bottom-4 right-4 w-auto max-w-[90vw] h-[500px] bg-[#0B0E11] text-white rounded-lg flex flex-row border border-gray-700 shadow-xl overflow-hidden min-h-0"
+      ? `h-full bg-[#0B0E11] text-white flex flex-row overflow-hidden min-h-0 ${showBackButton ? '' : 'border-l border-gray-800'}`
+      : "fixed bottom-20 md:bottom-4 right-4 w-auto max-w-[90vw] h-[min(500px,calc(100dvh-6rem))] md:h-[500px] bg-[#0B0E11] text-white rounded-lg flex flex-row border border-gray-700 shadow-xl overflow-hidden min-h-0"
     }>
       {/* LEFT COLUMN: CHAT CONTENT */}
       <div className={`relative flex flex-col min-w-0 min-h-0 overflow-hidden transition-all duration-300 ${isStandalone ? 'flex-1' : 'w-80'}`}>
         {/* HEADER */}
         <div className={`${isStandalone ? "p-4" : "p-3"} bg-[#0B0E11]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0B0E11]/80 border-b border-gray-800 flex items-center gap-3 shrink-0 ${isStandalone ? 'h-[72px]' : ''}`}>
+          {showBackButton && (
+            <button
+              type="button"
+              onClick={() => onBack?.()}
+              className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors"
+              aria-label="Quay lại"
+              title="Quay lại"
+            >
+              ←
+            </button>
+          )}
           <div className="flex items-center gap-3 flex-1">
             {/* Avatar - show in both modes */}
             {targetImage ? (

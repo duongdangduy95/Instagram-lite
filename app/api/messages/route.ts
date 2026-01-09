@@ -124,35 +124,55 @@ export async function POST(req: Request) {
   const lock1 = hashInt32(a)
   const lock2 = hashInt32(b)
 
-  const conversation = await prisma.$transaction(async (tx) => {
-    // Prisma bind number -> bigint; cast về int4 để match overload (int4,int4)
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lock1}::int4, ${lock2}::int4)`
+  // Prisma interactive transaction đôi khi bị thiếu connection (P2028) trên Supabase.
+  // Tăng maxWait/timeout + retry nhẹ để tránh lỗi 500 ngẫu nhiên khi demo.
+  const findOrCreateConversation = async () =>
+    prisma.$transaction(
+      async (tx) => {
+        // Prisma bind number -> bigint; cast về int4 để match overload (int4,int4)
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lock1}::int4, ${lock2}::int4)`
 
-    // Kiểm tra conversation đã tồn tại chưa
-    let conv = await tx.conversation.findFirst({
-      where: {
-        isGroup: false,
-        AND: [
-          { participants: { some: { userId: currentUserId } } },
-          { participants: { some: { userId: targetUserId } } }
-        ]
-      },
-      orderBy: { updatedAt: 'desc' }
-    })
+        // Kiểm tra conversation đã tồn tại chưa
+        let conv = await tx.conversation.findFirst({
+          where: {
+            isGroup: false,
+            AND: [
+              { participants: { some: { userId: currentUserId } } },
+              { participants: { some: { userId: targetUserId } } }
+            ]
+          },
+          orderBy: { updatedAt: 'desc' }
+        })
 
-    if (!conv) {
-      conv = await tx.conversation.create({
-        data: {
-          isGroup: false,
-          participants: {
-            create: [{ userId: currentUserId }, { userId: targetUserId }]
-          }
+        if (!conv) {
+          conv = await tx.conversation.create({
+            data: {
+              isGroup: false,
+              participants: {
+                create: [{ userId: currentUserId }, { userId: targetUserId }]
+              }
+            }
+          })
         }
-      })
-    }
 
-    return conv
-  })
+        return conv
+      },
+      { maxWait: 10_000, timeout: 20_000 }
+    )
+
+  let conversation: { id: string }
+  try {
+    conversation = await findOrCreateConversation()
+  } catch (e: unknown) {
+    // Retry once on P2028
+    const code = (e as { code?: string } | null)?.code
+    if (code === 'P2028') {
+      await new Promise((r) => setTimeout(r, 250))
+      conversation = await findOrCreateConversation()
+    } else {
+      throw e
+    }
+  }
 
   const fileUrls: string[] = []
   const fileNames: string[] = []
