@@ -48,7 +48,21 @@ export default function ExplorePage() {
             const res = await fetch(url)
             const { data, nextCursor } = await res.json()
 
-            setExploreBlogs(prev => currentCursor ? [...prev, ...data] : data)
+            setExploreBlogs(prev => {
+                if (currentCursor) {
+                    // Deduplicate: only add blogs that don't already exist
+                    const existingIds = new Set(prev.map(b => b.id))
+                    const newBlogs = data.filter((b: BlogDTO) => !existingIds.has(b.id))
+                    return [...prev, ...newBlogs]
+                }
+                // Deduplicate initial load as well (in case API returns duplicates)
+                const seen = new Set<string>()
+                return data.filter((b: BlogDTO) => {
+                    if (seen.has(b.id)) return false
+                    seen.add(b.id)
+                    return true
+                })
+            })
             setCursor(nextCursor)
             setHasMore(!!nextCursor)
         } catch (error) {
@@ -157,14 +171,47 @@ export default function ExplorePage() {
                                                     ref={isLast ? lastBlogElementRef : null}
                                                     className="aspect-square relative group bg-gray-900 overflow-hidden cursor-pointer"
                                                 >
-                                                    {blog.imageUrls && blog.imageUrls.length > 0 && (
-                                                        <Image
-                                                            src={blog.imageUrls[0]}
-                                                            alt="Explore"
-                                                            fill
-                                                            className="object-cover group-hover:scale-110 transition-transform duration-300"
-                                                            sizes="(max-width: 768px) 33vw, 300px"
-                                                        />
+                                                    {blog.imageUrls && blog.imageUrls.length > 0 && (() => {
+                                                        const first = blog.imageUrls[0]
+                                                        const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|avif|svg)$/i.test(url)
+                                                        const isVideo = (url: string) => /\.(mp4|mov|webm)$/i.test(url)
+                                                        
+                                                        if (isImage(first)) {
+                                                            return (
+                                                                <Image
+                                                                    src={first}
+                                                                    alt="Explore"
+                                                                    fill
+                                                                    className="object-cover group-hover:scale-110 transition-transform duration-300"
+                                                                    sizes="(max-width: 768px) 33vw, 300px"
+                                                                />
+                                                            )
+                                                        } else if (isVideo(first)) {
+                                                            return (
+                                                                <>
+                                                                    <video
+                                                                        src={first}
+                                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                                                        muted
+                                                                        preload="metadata"
+                                                                    />
+                                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                                        <svg className="w-8 h-8 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                                                        </svg>
+                                                                    </div>
+                                                                </>
+                                                            )
+                                                        }
+                                                        return null
+                                                    })()}
+                                                    {blog.imageUrls && blog.imageUrls.length > 1 && (
+                                                        <div className="absolute top-2 right-2">
+                                                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                                                                <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
+                                                            </svg>
+                                                        </div>
                                                     )}
                                                     {/* Hover Overlay */}
                                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 text-white font-bold">

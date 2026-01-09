@@ -223,15 +223,40 @@ export default function ProfileOtherClient(props: {
                         href={`/blog/${displayBlog.id}`}
                         className="aspect-square bg-gray-900 relative group overflow-hidden"
                       >
-                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (
-                          <Image
-                            src={displayBlog.imageUrls[0]}
-                            alt={displayBlog.caption || 'Post'}
-                            fill
-                            className="object-cover group-hover:opacity-70 transition-opacity"
-                            sizes="(max-width: 768px) 33vw, 300px"
-                          />
-                        )}
+                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (() => {
+                          const first = displayBlog.imageUrls[0]
+                          const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|avif|svg)$/i.test(url)
+                          const isVideo = (url: string) => /\.(mp4|mov|webm)$/i.test(url)
+                          
+                          if (isImage(first)) {
+                            return (
+                              <Image
+                                src={first}
+                                alt={displayBlog.caption || 'Post'}
+                                fill
+                                className="object-cover group-hover:opacity-70 transition-opacity"
+                                sizes="(max-width: 768px) 33vw, 300px"
+                              />
+                            )
+                          } else if (isVideo(first)) {
+                            return (
+                              <>
+                                <video
+                                  src={first}
+                                  className="w-full h-full object-cover group-hover:opacity-70 transition-opacity"
+                                  muted
+                                  preload="metadata"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <svg className="w-8 h-8 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                  </svg>
+                                </div>
+                              </>
+                            )
+                          }
+                          return null
+                        })()}
 
                         {displayBlog.imageUrls && displayBlog.imageUrls.length > 1 && (
                           <div className="absolute top-2 right-2">
@@ -291,15 +316,40 @@ export default function ProfileOtherClient(props: {
                         href={`/blog/${displayBlog.id}`}
                         className="aspect-square bg-gray-900 relative group overflow-hidden"
                       >
-                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (
-                          <Image
-                            src={displayBlog.imageUrls[0]}
-                            alt={displayBlog.caption || 'Post'}
-                            fill
-                            className="object-cover group-hover:opacity-70 transition-opacity"
-                            sizes="(max-width: 768px) 33vw, 300px"
-                          />
-                        )}
+                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (() => {
+                          const first = displayBlog.imageUrls[0]
+                          const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|avif|svg)$/i.test(url)
+                          const isVideo = (url: string) => /\.(mp4|mov|webm)$/i.test(url)
+                          
+                          if (isImage(first)) {
+                            return (
+                              <Image
+                                src={first}
+                                alt={displayBlog.caption || 'Post'}
+                                fill
+                                className="object-cover group-hover:opacity-70 transition-opacity"
+                                sizes="(max-width: 768px) 33vw, 300px"
+                              />
+                            )
+                          } else if (isVideo(first)) {
+                            return (
+                              <>
+                                <video
+                                  src={first}
+                                  className="w-full h-full object-cover group-hover:opacity-70 transition-opacity"
+                                  muted
+                                  preload="metadata"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <svg className="w-8 h-8 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                  </svg>
+                                </div>
+                              </>
+                            )
+                          }
+                          return null
+                        })()}
                         {displayBlog.imageUrls && displayBlog.imageUrls.length > 1 && (
                           <div className="absolute top-2 right-2">
                             <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">

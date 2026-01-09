@@ -28,7 +28,7 @@ function normalizeCreatedAt(dateStr: string) {
   ).toISOString()
 }
 
-const isImage = (url: string) => /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(url)
+const isImage = (url: string) => /\.(png|jpg|jpeg|gif|webp|avif|svg)$/i.test(url)
 
 export default function ChatWindow({
   targetUserId,

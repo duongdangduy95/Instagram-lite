@@ -26,7 +26,7 @@ export default function BlogListPage() {
   }, [])
 
   // Kiểm tra URL là ảnh hay video
-  const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(url)
+  const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|avif|svg)$/i.test(url)
   const isVideo = (url: string) => /\.(mp4|mov|webm)$/i.test(url)
 
   return (
