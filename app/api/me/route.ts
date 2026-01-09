@@ -3,9 +3,13 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import { redis } from '@/lib/redis'
 
 export const dynamic = 'force-dynamic'
 
+const CACHE_TTL = 3000 // seconds
+
+/* ======================= GET ME ======================= */
 export async function GET() {
   const session = await getServerSession(authOptions)
 
@@ -14,67 +18,92 @@ export async function GET() {
   }
 
   const userId = session.user.id
+  const cacheKey = `me:${userId}`
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      blogs: {
-        include: {
-          _count: { select: { likes: true, comments: true } },
-          likes: { select: { userId: true } },
-          author: { select: { id: true, fullname: true, username: true, image: true } },
-          sharedFrom: {
-            include: {
-              author: { select: { id: true, fullname: true, username: true, image: true } },
-              _count: { select: { likes: true, comments: true } },
+  try {
+    // 🔥 1. Redis first
+    const cached = await redis.get(cacheKey)
+if (cached) {
+  return NextResponse.json(cached)
+}
+
+
+    // 🐢 2. DB fallback
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        blogs: {
+          include: {
+            _count: { select: { likes: true, comments: true } },
+            likes: { select: { userId: true } },
+            author: {
+              select: { id: true, fullname: true, username: true, image: true },
+            },
+            sharedFrom: {
+              include: {
+                author: {
+                  select: { id: true, fullname: true, username: true, image: true },
+                },
+                _count: { select: { likes: true, comments: true } },
+              },
             },
           },
+          orderBy: { createdAt: 'desc' },
         },
-        orderBy: { createdAt: 'desc' },
-      },
-      likes: {
-        include: {
-          blog: {
-            include: {
-              _count: { select: { likes: true, comments: true } },
-              likes: { select: { userId: true } },
-              author: { select: { id: true, fullname: true, username: true, image: true } },
-              sharedFrom: {
-                include: {
-                  author: { select: { id: true, fullname: true, username: true, image: true } },
-                  _count: { select: { likes: true, comments: true } },
+        likes: {
+          include: {
+            blog: {
+              include: {
+                _count: { select: { likes: true, comments: true } },
+                likes: { select: { userId: true } },
+                author: {
+                  select: { id: true, fullname: true, username: true, image: true },
+                },
+                sharedFrom: {
+                  include: {
+                    author: {
+                      select: { id: true, fullname: true, username: true, image: true },
+                    },
+                    _count: { select: { likes: true, comments: true } },
+                  },
                 },
               },
             },
           },
         },
-      },
-      following: true,
-      _count: {
-        select: {
-          followers: true,
-          following: true,
+        following: true,
+        _count: {
+          select: {
+            followers: true,
+            following: true,
+          },
         },
       },
-    },
-  })
+    })
 
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const userWithMappedBlogs = {
+      ...user,
+      blogs: user.blogs.map((blog) => ({
+        ...blog,
+        imageUrls: blog.imageUrls || [],
+      })),
+    }
+
+    // ⚡ 3. Cache result
+    await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(userWithMappedBlogs))
+
+    return NextResponse.json(userWithMappedBlogs)
+  } catch (e) {
+    console.error(e)
+    return NextResponse.json({ error: 'Failed to load profile' }, { status: 500 })
   }
-
-  // Map blogs để client dùng imageUrls
-  const userWithMappedBlogs = {
-    ...user,
-    blogs: user.blogs.map(blog => ({
-      ...blog,
-      imageUrls: blog.imageUrls || [], // imageUrl -> imageUrls
-    })),
-  }
-
-  return NextResponse.json(userWithMappedBlogs)
 }
 
+/* ======================= PATCH ME ======================= */
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions)
 
@@ -90,7 +119,6 @@ export async function PATCH(req: Request) {
   let phone: string | undefined
   let avatarFile: File | null = null
 
-  // Hỗ trợ cả JSON (cũ) và multipart/form-data (mới, để upload avatar)
   if (contentType.includes('multipart/form-data')) {
     const form = await req.formData()
     fullname = (form.get('fullname') as string) || undefined
@@ -110,15 +138,17 @@ export async function PATCH(req: Request) {
   }
 
   try {
-    // Validate & check trùng username (bắt buộc unique cho route /user/[username])
+    // Validate username
     if (typeof username === 'string') {
       const nextUsername = username.trim()
+
       if (nextUsername.length < 3 || nextUsername.length > 30) {
         return NextResponse.json(
           { error: 'Username phải có 3-30 ký tự' },
           { status: 400 }
         )
       }
+
       if (!/^[a-zA-Z0-9._]+$/.test(nextUsername)) {
         return NextResponse.json(
           { error: 'Username chỉ được chứa chữ, số, dấu chấm và gạch dưới' },
@@ -130,6 +160,7 @@ export async function PATCH(req: Request) {
         where: { username: nextUsername, NOT: { id: userId } },
         select: { id: true },
       })
+
       if (existed) {
         return NextResponse.json({ error: 'Username đã được sử dụng' }, { status: 409 })
       }
@@ -137,7 +168,7 @@ export async function PATCH(req: Request) {
       username = nextUsername
     }
 
-    // Upload avatar nếu có
+    // Upload avatar
     let imageUrl: string | undefined
     if (avatarFile) {
       const buffer = Buffer.from(await avatarFile.arrayBuffer())
@@ -170,11 +201,7 @@ export async function PATCH(req: Request) {
         blogs: { orderBy: { createdAt: 'desc' } },
         likes: {
           include: {
-            blog: {
-              include: {
-                author: true,
-              },
-            },
+            blog: { include: { author: true } },
           },
         },
         following: true,
@@ -182,14 +209,16 @@ export async function PATCH(req: Request) {
       },
     })
 
-    // Map blogs để client dùng imageUrls
     const updatedUserWithMappedBlogs = {
       ...updatedUser,
-      blogs: updatedUser.blogs.map(blog => ({
+      blogs: updatedUser.blogs.map((blog) => ({
         ...blog,
         imageUrls: blog.imageUrls || [],
       })),
     }
+
+    // 🧹 Invalidate cache
+    await redis.del(`me:${userId}`)
 
     return NextResponse.json(updatedUserWithMappedBlogs)
   } catch (error) {

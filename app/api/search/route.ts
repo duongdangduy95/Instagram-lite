@@ -3,81 +3,118 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { Prisma } from '@prisma/client'
+import { Redis } from '@upstash/redis'
 
+/* ==============================
+   REDIS
+============================== */
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+})
+
+const searchKey = (q: string, cursor: string | null, limit: number) =>
+  `user_search:${q || 'all'}:${cursor || 'null'}:${limit}`
+
+/* ==============================
+   GET
+============================== */
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    const currentUserId = session?.user?.id
+    const currentUserId = session?.user?.id || null
 
     const { searchParams } = new URL(req.url)
-    const query = searchParams.get('q') || ''
+    const query = searchParams.get('q')?.trim() || ''
     const cursor = searchParams.get('cursor')
     const limit = parseInt(searchParams.get('limit') || '6', 10)
 
-    const whereClause: Prisma.UserWhereInput = {}
+    /* ==============================
+       REDIS FIRST (RAW USERS)
+    ============================== */
+    const redisKey = searchKey(query, cursor, limit)
+    const cached = await redis.get(redisKey)
 
-    // If there's a search query, filter by username or fullname
-    if (query.trim()) {
-      whereClause.OR = [
-        { username: { contains: query, mode: 'insensitive' } },
-        { fullname: { contains: query, mode: 'insensitive' } }
-      ]
-    }
+    let users: any[]
+    let nextCursor: string | null
 
-    // Exclude current user from results
-    if (currentUserId) {
-      whereClause.NOT = { id: currentUserId }
-    }
+    if (cached) {
+      ;({ users, nextCursor } = cached as any)
+    } else {
+      /* ==============================
+         BUILD WHERE
+      ============================== */
+      const whereClause: Prisma.UserWhereInput = {}
 
-    // Build cursor condition
-    const cursorCondition = cursor ? { id: { lt: cursor } } : {}
+      if (query) {
+        whereClause.OR = [
+          { username: { contains: query, mode: 'insensitive' } },
+          { fullname: { contains: query, mode: 'insensitive' } }
+        ]
+      }
 
-    const users = await prisma.user.findMany({
-      where: {
-        ...whereClause,
-        ...cursorCondition
-      },
-      select: {
-        id: true,
-        username: true,
-        fullname: true,
-        image: true,
-        _count: {
-          select: {
-            followers: true,
-            following: true
+      if (currentUserId) {
+        whereClause.NOT = { id: currentUserId }
+      }
+
+      if (cursor) {
+        whereClause.id = { lt: cursor }
+      }
+
+      const result = await prisma.user.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          username: true,
+          fullname: true,
+          image: true,
+          _count: {
+            select: {
+              followers: true,
+              following: true
+            }
           }
-        }
-      },
-      orderBy: { id: 'desc' },
-      take: limit + 1 // Take one extra to check if there's more
-    })
+        },
+        orderBy: { id: 'desc' },
+        take: limit + 1
+      })
 
-    const hasMore = users.length > limit
-    const data = hasMore ? users.slice(0, limit) : users
-    const nextCursor = hasMore ? data[data.length - 1].id : null
+      const hasMore = result.length > limit
+      users = hasMore ? result.slice(0, limit) : result
+      nextCursor = hasMore ? users[users.length - 1].id : null
 
-    // Get follow status for each user if logged in
-    let usersWithFollowStatus = data
+      // 🔥 CACHE RAW USERS
+      await redis.set(
+        redisKey,
+        { users, nextCursor },
+        { ex: 90 } // 90s
+      )
+    }
 
-    if (currentUserId) {
-      const userIds = data.map(u => u.id)
-      const followStatuses = await prisma.follow.findMany({
+    /* ==============================
+       FOLLOW STATUS (USER-SPECIFIC)
+    ============================== */
+    let usersWithFollowStatus = users
+
+    if (currentUserId && users.length > 0) {
+      const ids = users.map(u => u.id)
+
+      const follows = await prisma.follow.findMany({
         where: {
           followerId: currentUserId,
-          followingId: { in: userIds }
+          followingId: { in: ids }
         },
         select: { followingId: true }
       })
 
-      const followingSet = new Set(followStatuses.map(f => f.followingId))
+      const followingSet = new Set(follows.map(f => f.followingId))
 
-      usersWithFollowStatus = data.map(user => ({
+      usersWithFollowStatus = users.map(user => ({
         ...user,
         isFollowing: followingSet.has(user.id)
       }))
     } else {
-      usersWithFollowStatus = data.map(user => ({
+      usersWithFollowStatus = users.map(user => ({
         ...user,
         isFollowing: false
       }))
@@ -87,9 +124,11 @@ export async function GET(req: NextRequest) {
       data: usersWithFollowStatus,
       nextCursor
     })
-
   } catch (error) {
     console.error('User search error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
