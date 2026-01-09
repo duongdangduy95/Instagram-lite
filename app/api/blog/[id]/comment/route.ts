@@ -4,12 +4,15 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createNotification } from '@/lib/notification'
 import { NotificationType } from '@prisma/client'
+import { redis } from '@/lib/redis'
 
 async function getCurrentUserId() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return null
   return session.user.id
 }
+
+const COMMENTS_CACHE_KEY = (blogId: string) => `comments:blog:${blogId}`
 
 /* ================= GET COMMENTS ================= */
 export async function GET(
@@ -18,23 +21,29 @@ export async function GET(
 ) {
   const { id: blogId } = await params
   const userId = await getCurrentUserId()
+  const cacheKey = COMMENTS_CACHE_KEY(blogId)
 
+  /* ===== 1. CHECK REDIS CACHE ===== */
+  const cached = await redis.get(cacheKey)
+  if (cached) {
+    const cachedComments = cached as any[]
+
+    const result = cachedComments.map((c) => ({
+      ...c,
+      liked: userId ? c.likedUserIds?.includes(userId) : false,
+    }))
+
+    return NextResponse.json(result)
+  }
+
+  /* ===== 2. QUERY DATABASE ===== */
   const comments = await prisma.comment.findMany({
     where: { blogId },
     include: {
       author: { select: { fullname: true, username: true, image: true } },
-      blog: {
-        select: { authorId: true }, 
-      },
-      likes: userId
-        ? {
-            where: { userId },
-            select: { id: true },
-          }
-        : false,
-      _count: {
-        select: { likes: true },
-      },
+      blog: { select: { authorId: true } },
+      likes: { select: { userId: true } },
+      _count: { select: { likes: true } },
     },
     orderBy: { createdAt: 'asc' },
   })
@@ -48,10 +57,18 @@ export async function GET(
     parentId: c.parentId,
     author: c.author,
     likeCount: c._count.likes,
-    liked: userId ? c.likes.length > 0 : false,
+    likedUserIds: c.likes.map((l) => l.userId), // 🔥 cache field
   }))
 
-  return NextResponse.json(result)
+  /* ===== 3. SAVE CACHE ===== */
+  await redis.set(cacheKey, result, { ex: 30000 }) // cache 30s
+
+  const finalResult = result.map((c) => ({
+    ...c,
+    liked: userId ? c.likedUserIds.includes(userId) : false,
+  }))
+
+  return NextResponse.json(finalResult)
 }
 
 /* ================= CREATE COMMENT ================= */
@@ -71,7 +88,6 @@ export async function POST(
   }
 
   try {
-    // Lấy blog để biết author
     const blog = await prisma.blog.findUnique({
       where: { id: blogId },
       select: { authorId: true },
@@ -99,7 +115,6 @@ export async function POST(
       },
     })
 
-    // 🔔 NOTIFY CHỦ BLOG
     if (blog.authorId !== userId) {
       await createNotification({
         userId: blog.authorId,
@@ -110,13 +125,17 @@ export async function POST(
       })
     }
 
+    // ❌ CLEAR CACHE
+    await redis.del(COMMENTS_CACHE_KEY(blogId))
+
     return NextResponse.json(comment)
   } catch (err) {
     console.error('API ERROR:', err)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
- 
+
+/* ================= UPDATE COMMENT ================= */
 export async function PATCH(req: NextRequest) {
   const userId = await getCurrentUserId()
   if (!userId) {
@@ -132,14 +151,13 @@ export async function PATCH(req: NextRequest) {
 
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
-    select: { authorId: true },
+    select: { authorId: true, blogId: true },
   })
 
   if (!comment) {
     return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
   }
 
-  // Chỉ chủ comment được sửa
   if (comment.authorId !== userId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -149,9 +167,13 @@ export async function PATCH(req: NextRequest) {
     data: { content },
   })
 
+  // ❌ CLEAR CACHE
+  await redis.del(COMMENTS_CACHE_KEY(comment.blogId))
+
   return NextResponse.json(updated)
 }
 
+/* ================= DELETE COMMENT ================= */
 async function deleteCommentRecursive(commentId: string) {
   const children = await prisma.comment.findMany({
     where: { parentId: commentId },
@@ -161,11 +183,11 @@ async function deleteCommentRecursive(commentId: string) {
   for (const child of children) {
     await deleteCommentRecursive(child.id)
   }
+
   await prisma.like.deleteMany({
-    where: {
-      commentId: commentId,
-    },
+    where: { commentId },
   })
+
   await prisma.comment.delete({
     where: { id: commentId },
   })
@@ -182,14 +204,11 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Missing commentId' }, { status: 400 })
   }
 
-  // Lấy quyền
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
     select: {
       authorId: true,
-      blog: {
-        select: { authorId: true },
-      },
+      blog: { select: { authorId: true, id: true } },
     },
   })
 
@@ -204,8 +223,10 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // XOÁ ĐỆ QUY
   await deleteCommentRecursive(commentId)
+
+  // ❌ CLEAR CACHE
+  await redis.del(COMMENTS_CACHE_KEY(comment.blog.id))
 
   return NextResponse.json({ success: true })
 }
