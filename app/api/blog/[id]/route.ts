@@ -3,8 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createClient } from '@supabase/supabase-js'
-
-const HASHTAG_REGEX = /#([\p{L}\p{N}_]+)/gu
+import { Prisma } from '@prisma/client'
 
 function extractHashtags(text: string): string[] {
   return Array.from(
@@ -46,54 +45,55 @@ export async function GET(
 
 
   try {
+    const include: Prisma.BlogInclude = {
+      author: {
+        select: {
+          id: true,
+          fullname: true,
+          username: true,
+          image: true,
+        },
+      },
+      sharedFrom: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              fullname: true,
+              username: true,
+              image: true,
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+          comments: true,
+        },
+      },
+    }
+
+    if (currentUserId) {
+      include.likes = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      }
+      include.savedBy = {
+        where: { userId: currentUserId },
+        select: { userId: true },
+      }
+    }
+
     const blog = await prisma.blog.findUnique({
       where: { id: blogId },
-      include: {
-        author: {
-          select: {
-            id: true,
-            fullname: true,
-            username: true,
-            image: true,
-          },
-        },
-        sharedFrom: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                fullname: true,
-                username: true,
-                image: true,
-              },
-            },
-            _count: {
-              select: {
-                likes: true,
-                comments: true,
-              },
-            },
-          },
-        },
-        likes: currentUserId
-          ? {
-            where: { userId: currentUserId },
-            select: { userId: true },
-          }
-          : undefined,
-        savedBy: currentUserId
-          ? {
-            where: { userId: currentUserId },
-            select: { userId: true },
-          }
-          : undefined,
-        _count: {
-          select: {
-            likes: true,
-            comments: true,
-          },
-        },
-      } as any,
+      include,
     })
 
     if (!blog) {
@@ -102,7 +102,7 @@ export async function GET(
 
     const result = {
       ...blog,
-      isSaved: !!(blog as any).savedBy?.length,
+      isSaved: currentUserId ? (blog.savedBy?.length ?? 0) > 0 : false,
     }
 
     return NextResponse.json(result)

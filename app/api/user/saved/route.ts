@@ -13,7 +13,7 @@ export async function GET() {
     const userId = session.user.id
 
     try {
-        const savedPosts = await (prisma as any).savedPost.findMany({
+        const savedPosts = await prisma.savedPost.findMany({
             where: {
                 userId,
             },
@@ -43,9 +43,9 @@ export async function GET() {
         })
 
         const result = savedPosts
-            .filter((sp: any) => sp.blog !== null)
-            .map((sp: any) => ({
-                ...(sp.blog as any),
+            .filter((sp) => sp.blog !== null)
+            .map((sp) => ({
+                ...sp.blog!,
                 isSaved: true,
             }))
 

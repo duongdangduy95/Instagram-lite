@@ -190,12 +190,12 @@ export default function ProfilePage() {
   const sharedBlogs = myBlogs.filter((b) => !!b.sharedFrom)
 
   return (
-    <div className="min-h-screen bg-[#0B0E11]">
+    <div className="min-h-screen bg-[#0B0E11] pt-14 md:pt-0 pb-20 md:pb-0">
       {/* NAVIGATION - Cố định bên trái */}
       <Navigation />
 
       {/* PROFILE CONTENT - Chiếm phần còn lại */}
-      <div className="ml-64 min-h-screen">
+      <div className="ml-0 md:ml-20 lg:ml-64 min-h-screen">
         {/* Profile Header */}
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="flex flex-col sm:flex-row items-start gap-8 sm:gap-12">

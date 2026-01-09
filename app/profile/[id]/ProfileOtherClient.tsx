@@ -6,7 +6,6 @@ import Image from 'next/image'
 import Navigation from '@/app/components/Navigation'
 import FollowButton from '@/app/components/FollowButton'
 import FollowModal from '@/app/components/FollowModal'
-import ChatButton from '@/app/components/ChatButton'
 import ChatWindow from '@/app/components/ChatWindow'
 
 type BlogCounts = { likes: number; comments: number }
@@ -35,6 +34,7 @@ type UserDTO = {
   id: string
   fullname: string
   username: string
+  image: string | null
   createdAt: string
   blogs: BlogDTO[]
   _count: {
@@ -61,18 +61,30 @@ export default function ProfileOtherClient(props: {
   const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
 
   return (
-    <div className="min-h-screen bg-[#0B0E11]">
+    <div className="min-h-screen bg-[#0B0E11] pt-14 md:pt-0 pb-20 md:pb-0">
       <Navigation />
 
-      <div className="ml-64 min-h-screen">
+      <div className="ml-0 md:ml-20 lg:ml-64 min-h-screen">
         {/* Profile Header */}
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="flex flex-col sm:flex-row items-start gap-8 sm:gap-12">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-2 border-gray-700">
-                {user.username?.charAt(0).toUpperCase()}
-              </div>
+              {user.image ? (
+                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-gray-700">
+                  <Image
+                    src={user.image}
+                    alt={user.username}
+                    width={128}
+                    height={128}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-2 border-gray-700">
+                  {user.username?.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
 
             {/* Profile Info */}
@@ -392,6 +404,7 @@ export default function ProfileOtherClient(props: {
           targetUserId={chatTargetUserId}
           targetUsername={user.username}
           targetFullname={user.fullname}
+          targetImage={user.image}
           onClose={() => setIsChatOpen(false)}
         />
       )}

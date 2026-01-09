@@ -34,17 +34,17 @@ export async function GET(req: Request) {
                         comments: true
                     }
                 }
-            } as any
+            }
         })
 
         let nextCursor: string | undefined = undefined
         if (blogs.length > limit) {
             blogs.pop()
-            nextCursor = (blogs[blogs.length - 1] as any).id
+            nextCursor = blogs[blogs.length - 1]?.id
         }
 
         // Map to simple DTO (handling potential nulls/formatting)
-        const data = blogs.map((blog: any) => ({
+        const data = blogs.map((blog) => ({
             ...blog,
             createdAt: blog.createdAt.toISOString(),
             // Ensure sharedFrom structure if used by BlogFeed/Grid, though Explore usually shows main posts

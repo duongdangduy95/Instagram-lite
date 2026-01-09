@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import Navigation from '@/app/components/Navigation'
 import { useCurrentUser } from '@/app/contexts/CurrentUserContext'
 
 type ProfileData = {
@@ -166,11 +165,7 @@ export default function SettingsProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0E11]">
-      <Navigation />
-
-      <div className="ml-64 min-h-screen">
-        <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 lg:px-8 py-8">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-white">Chỉnh sửa trang cá nhân</h1>
           </div>
@@ -284,8 +279,6 @@ export default function SettingsProfilePage() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
   )
 }
 

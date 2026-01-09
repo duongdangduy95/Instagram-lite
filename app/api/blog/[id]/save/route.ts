@@ -14,7 +14,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { id: blogId } = await params
 
     try {
-        const existingSave = await (prisma as any).savedPost.findFirst({
+        const existingSave = await prisma.savedPost.findFirst({
             where: {
                 userId,
                 blogId,
@@ -24,12 +24,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         let saved: boolean
 
         if (existingSave) {
-            await (prisma as any).savedPost.delete({
+            await prisma.savedPost.delete({
                 where: { id: existingSave.id },
             })
             saved = false
         } else {
-            await (prisma as any).savedPost.create({
+            await prisma.savedPost.create({
                 data: {
                     userId,
                     blogId,

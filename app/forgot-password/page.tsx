@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
         setMessage(data.error || 'Có lỗi xảy ra. Vui lòng thử lại.')
         setMessageType('error')
       }
-    } catch (error) {
+    } catch {
       setMessage('Có lỗi xảy ra. Vui lòng thử lại.')
       setMessageType('error')
     } finally {

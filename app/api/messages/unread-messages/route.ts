@@ -23,8 +23,9 @@ export async function GET(req: NextRequest) {
     })
 
     return NextResponse.json({ unreadCount })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    const message = err instanceof Error ? err.message : 'Internal server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

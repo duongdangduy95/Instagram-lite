@@ -44,7 +44,7 @@ export default function BlogFeed({
         const initialIsFollowing =
           typeof followMap?.[followTargetUserId] === 'boolean'
             ? followMap![followTargetUserId]
-            : (((isShared ? blog.author : displayBlog.author) as any).followers?.length ?? 0) > 0
+            : ((isShared ? blog.author : displayBlog.author).followers?.length ?? 0) > 0
 
         return (
           <div key={blog.id} className="bg-[#0B0E11] text-gray-100">

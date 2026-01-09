@@ -4,46 +4,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import HomeClient from './HomeClient'
 import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
+import { Prisma } from '@prisma/client'
 
 const FEED_LIMIT = 10
-
-
-
-type BlogWithRelations = {
-  id: string
-  caption?: string
-  imageUrls: string[]
-  createdAt: Date
-  author: {
-    id: string
-    fullname: string
-    username: string
-    image?: string | null
-    followers?: { followerId: string }[]
-  }
-  likes?: { userId: string }[]
-  savedBy?: { userId: string }[]
-  _count: {
-    likes: number
-    comments: number
-  }
-  sharedFrom?: {
-    id: string
-    caption?: string
-    imageUrls: string[]
-    createdAt: Date
-    author: {
-      id: string
-      fullname: string
-      username: string
-      image?: string | null
-    }
-    _count: {
-      likes: number
-      comments: number
-    }
-  }
-}
 
 // Lấy người dùng hiện tại từ NextAuth session
 async function getCurrentUser() {
@@ -88,75 +51,74 @@ export default async function HomePage() {
   /* =====================
      BLOG FEED (TỐI ƯU)
   ====================== */
+  const authorSelect: Prisma.UserSelect = {
+    id: true,
+    fullname: true,
+    username: true,
+    image: true,
+  }
+  if (currentUser) {
+    authorSelect.followers = {
+      select: { followerId: true },
+      where: { followerId: currentUser.id },
+    }
+  }
+
+  const blogSelect: Prisma.BlogSelect = {
+    id: true,
+    caption: true,
+    imageUrls: true,
+    createdAt: true,
+    author: { select: authorSelect },
+    _count: {
+      select: {
+        likes: true,
+        comments: true,
+      },
+    },
+    sharedFrom: {
+      select: {
+        id: true,
+        caption: true,
+        imageUrls: true,
+        createdAt: true,
+        author: { select: { id: true, fullname: true, username: true, image: true } },
+        _count: { select: { likes: true, comments: true } },
+      },
+    },
+  }
+
+  if (currentUserId) {
+    blogSelect.likes = {
+      where: { userId: currentUserId },
+      select: { userId: true },
+      take: 1,
+    }
+    blogSelect.savedBy = {
+      where: { userId: currentUserId },
+      select: { userId: true },
+      take: 1,
+    }
+  }
+
   const blogs = await prisma.blog.findMany({
     orderBy: { createdAt: 'desc' },
     take: FEED_LIMIT, // 🔥 RẤT QUAN TRỌNG
-    select: {
-      id: true,
-      caption: true,
-      imageUrls: true,
-      createdAt: true,
-
-      author: {
-        select: {
-          id: true,
-          fullname: true,
-          username: true,
-          image: true,
-          followers: currentUser
-            ? { select: { followerId: true }, where: { followerId: currentUser.id } }
-            : undefined,
-        },
-      },
-
-      likes: currentUserId
-        ? {
-          where: { userId: currentUserId },
-          select: { userId: true },
-          take: 1, // 🔥 LIKE HAY KHÔNG
-        }
-        : undefined,
-
-      savedBy: currentUserId
-        ? {
-          where: { userId: currentUserId },
-          select: { userId: true },
-          take: 1,
-        }
-        : undefined,
-
-      _count: {
-        select: {
-          likes: true,
-          comments: true,
-        },
-      },
-
-      sharedFrom: {
-        select: {
-          id: true,
-          caption: true,
-          imageUrls: true,
-          createdAt: true,
-          author: { select: { id: true, fullname: true, username: true, image: true } },
-          _count: { select: { likes: true, comments: true } },
-        },
-      },
-    } as any,
+    select: blogSelect,
   })
 
   /* =====================
      SERIALIZE DATE
   ====================== */
-  const blogsDto: BlogDTO[] = (blogs as any[]).map((b: any) => ({
+  const blogsDto: BlogDTO[] = blogs.map((b) => ({
     ...b,
     createdAt: b.createdAt.toISOString(),
-    isSaved: !!(currentUserId && b.savedBy?.length),
+    isSaved: !!(currentUserId && (b.savedBy?.length ?? 0) > 0),
     sharedFrom: b.sharedFrom
       ? {
-        ...b.sharedFrom,
-        createdAt: b.sharedFrom.createdAt.toISOString(),
-      }
+          ...b.sharedFrom,
+          createdAt: b.sharedFrom.createdAt.toISOString(),
+        }
       : null,
   }))
 

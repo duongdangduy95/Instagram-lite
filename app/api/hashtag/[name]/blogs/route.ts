@@ -36,7 +36,7 @@ export async function GET(
             comments: true,
           },
         },
-      } as any,
+      },
     })
 
     return NextResponse.json({

@@ -106,9 +106,9 @@ export default function BlogDetailPage() {
 
   if (!blog) {
     return (
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen bg-black pt-14 md:pt-0 pb-20 md:pb-0">
         <Navigation />
-        <div className="ml-64 min-h-screen flex items-center justify-center">
+        <div className="ml-0 md:ml-20 lg:ml-64 min-h-screen flex items-center justify-center">
           <div className="text-white text-xl">Bài viết không tồn tại</div>
         </div>
       </div>
@@ -121,10 +121,10 @@ export default function BlogDetailPage() {
   const isLiked = (blog.likes?.length ?? 0) > 0
 
   return (
-    <div className="min-h-screen bg-[#0B0E11]">
+    <div className="min-h-screen bg-[#0B0E11] pt-14 md:pt-0 pb-20 md:pb-0">
       <Navigation />
 
-      <div className="ml-64 min-h-screen">
+      <div className="ml-0 md:ml-20 lg:ml-64 min-h-screen">
         <div className="max-w-4xl mx-auto px-4 py-8">
           {/* Back button */}
           <div className="mb-4">

@@ -1,18 +1,13 @@
-import { Server } from "socket.io"
+import { NextResponse } from 'next/server'
 
-export default function handler(req: any, res: any) {
-  if (!res.socket.server.io) {
-    const io = new Server(res.socket.server)
-    res.socket.server.io = io
+export const dynamic = 'force-dynamic'
 
-    io.on("connection", (socket: { id: any; on: (arg0: string, arg1: ({ conversationId, senderId }: { conversationId: any; senderId: any }) => void) => void; broadcast: { emit: (arg0: string, arg1: { conversationId: any; senderId: any }) => void } }) => {
-      console.log("Socket connected:", socket.id)
-
-      socket.on("typing", ({ conversationId, senderId }) => {
-        // Broadcast cho tất cả client khác trong conversation
-        socket.broadcast.emit("typing", { conversationId, senderId })
-      })
-    })
-  }
-  res.end()
+// Ghi chú: Socket.IO kiểu pages/api (res.socket.server) không chạy trong App Router route handlers.
+// Project này đã có websocket/real-time theo hướng khác (vd `socket-server.js`, `/api/ws`).
+// Endpoint này giữ lại để tránh 404 nếu client có fetch "warm up".
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    message: 'Socket endpoint (noop in App Router). Use external socket server instead.',
+  })
 }

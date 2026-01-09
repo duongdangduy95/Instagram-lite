@@ -4,10 +4,21 @@ import { useNotifications } from './NotificationProvider'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 
+type NotificationItem = {
+  id: string
+  type: 'FOLLOW' | 'NEW_POST' | 'LIKE_POST' | 'COMMENT_POST' | 'SHARE_POST' | 'MESSAGE' | string
+  isRead: boolean
+  createdAt: string
+  actor: { id: string; fullname: string; username: string; image?: string | null }
+  blog?: { id: string } | null
+  comment?: { id: string; blogId: string } | null
+  message?: { id: string; conversationId: string } | null
+}
+
 export default function NotificationList() {
   const { notifications } = useNotifications()
 
-  const getLink = (n: any) => {
+  const getLink = (n: NotificationItem) => {
     switch (n.type) {
       case 'FOLLOW': return `/profile/${n.actor.id}`
       case 'NEW_POST': return n.blog ? `/post/${n.blog.id}` : '#'

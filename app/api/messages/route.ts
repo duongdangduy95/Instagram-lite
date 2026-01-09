@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -8,6 +8,17 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+function hashInt32(input: string) {
+  // FNV-1a 32-bit
+  let h = 0x811c9dc5
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  // signed int32
+  return h | 0
+}
 
 // Dọn dẹp tên file
 function sanitizeFileName(name: string) {
@@ -57,7 +68,7 @@ export async function GET(req: Request) {
   }
 
   // Lấy conversation với 1 người cụ thể
-  let conversation = await prisma.conversation.findFirst({
+  const conversation = await prisma.conversation.findFirst({
     where: {
       isGroup: false,
       AND: [
@@ -65,7 +76,8 @@ export async function GET(req: Request) {
         { participants: { some: { userId: targetUserId } } }
       ]
     },
-    include: { messages: { orderBy: { createdAt: 'asc' } } }
+    include: { messages: { orderBy: { createdAt: 'asc' } } },
+    orderBy: { updatedAt: 'desc' }
   })
 
   // Cập nhật trạng thái Delivered
@@ -107,47 +119,107 @@ export async function POST(req: Request) {
 
   if (!targetUserId) return new Response('Missing targetUserId', { status: 400 })
 
-  // Kiểm tra conversation đã tồn tại chưa
-  let conversation = await prisma.conversation.findFirst({
-    where: {
-      isGroup: false,
-      AND: [
-        { participants: { some: { userId: currentUserId } } },
-        { participants: { some: { userId: targetUserId } } }
-      ]
-    }
-  })
+  // Serialize create/find to avoid duplicate direct conversations
+  const [a, b] = [currentUserId, targetUserId].sort()
+  const lock1 = hashInt32(a)
+  const lock2 = hashInt32(b)
 
-  if (!conversation) {
-    conversation = await prisma.conversation.create({
-      data: {
-        isGroup: false,
-        participants: {
-          create: [{ userId: currentUserId }, { userId: targetUserId }]
+  // Prisma interactive transaction đôi khi bị thiếu connection (P2028) trên Supabase.
+  // Tăng maxWait/timeout + retry nhẹ để tránh lỗi 500 ngẫu nhiên khi demo.
+  const findOrCreateConversation = async () =>
+    prisma.$transaction(
+      async (tx) => {
+        // Prisma bind number -> bigint; cast về int4 để match overload (int4,int4)
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lock1}::int4, ${lock2}::int4)`
+
+        // Kiểm tra conversation đã tồn tại chưa
+        let conv = await tx.conversation.findFirst({
+          where: {
+            isGroup: false,
+            AND: [
+              { participants: { some: { userId: currentUserId } } },
+              { participants: { some: { userId: targetUserId } } }
+            ]
+          },
+          orderBy: { updatedAt: 'desc' }
+        })
+
+        if (!conv) {
+          conv = await tx.conversation.create({
+            data: {
+              isGroup: false,
+              participants: {
+                create: [{ userId: currentUserId }, { userId: targetUserId }]
+              }
+            }
+          })
         }
-      }
-    })
+
+        return conv
+      },
+      { maxWait: 10_000, timeout: 20_000 }
+    )
+
+  let conversation: { id: string }
+  try {
+    conversation = await findOrCreateConversation()
+  } catch (e: unknown) {
+    // Retry once on P2028
+    const code = (e as { code?: string } | null)?.code
+    if (code === 'P2028') {
+      await new Promise((r) => setTimeout(r, 250))
+      conversation = await findOrCreateConversation()
+    } else {
+      throw e
+    }
   }
 
   const fileUrls: string[] = []
   const fileNames: string[] = []
 
   for (const file of files) {
+    // Server-side guard (để tránh tình huống bucket limit/req quá lớn gây lỗi khó hiểu)
+    const maxImageBytes = 10 * 1024 * 1024 // 10MB
+    const maxVideoBytes = 50 * 1024 * 1024 // 50MB
+    const isVideo = file.type?.startsWith('video/')
+    const limit = isVideo ? maxVideoBytes : maxImageBytes
+    if (file.size > limit) {
+      return NextResponse.json(
+        { error: `"${file.name}" vượt quá dung lượng cho phép.` },
+        { status: 400 }
+      )
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer())
     const safeName = sanitizeFileName(file.name)
     const fileName = `messages/${currentUserId}/${Date.now()}-${safeName}`
 
     const { error } = await supabase.storage
       .from('messages')
-      .upload(fileName, buffer, { contentType: file.type })
+      .upload(fileName, buffer, {
+        contentType: file.type || 'application/octet-stream',
+        cacheControl: '3600',
+        // Tránh trường hợp tên file trùng ms (double click/2 files cùng tên) gây fail "resource already exists"
+        upsert: true
+      })
 
-    if (!error) {
-      const { data } = supabase.storage.from('messages').getPublicUrl(fileName)
-      if (data?.publicUrl) {
-        fileUrls.push(data.publicUrl)
-        fileNames.push(file.name)
-      }
+    if (error) {
+      return NextResponse.json(
+        { error: `Upload ảnh/file thất bại: ${error.message}` },
+        { status: 400 }
+      )
     }
+
+    const { data } = supabase.storage.from('messages').getPublicUrl(fileName)
+    if (!data?.publicUrl) {
+      return NextResponse.json(
+        { error: 'Không lấy được public URL cho file đã upload.' },
+        { status: 500 }
+      )
+    }
+
+    fileUrls.push(data.publicUrl)
+    fileNames.push(file.name)
   }
 
   // Tạo message
@@ -160,6 +232,12 @@ export async function POST(req: Request) {
       fileNames,
       status: 'SENT'
     }
+  })
+
+  // Bump conversation updatedAt để canonical ordering ổn định
+  await prisma.conversation.update({
+    where: { id: conversation.id },
+    data: { updatedAt: new Date() }
   })
 
   // 🔔 Tạo notification MESSAGE cho người nhận

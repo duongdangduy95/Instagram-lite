@@ -174,7 +174,7 @@ export default function HomeClient(props: {
   }
 
   return (
-    <div className="ml-64 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-0">
+    <div className="ml-0 md:ml-20 lg:ml-64 pt-14 md:pt-0 pb-20 md:pb-0 grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-0">
       {/* Main Content - Cột giữa */}
       <main className="flex justify-center px-4 py-4">
         <div className="w-full max-w-xl space-y-4">
@@ -201,7 +201,7 @@ export default function HomeClient(props: {
       </main>
 
       {/* USER LIST SIDE BAR */}
-      <aside className="hidden lg:block px-6 py-4 space-y-3 border-l border-gray-800 bg-[#0B0E11] sticky top-0 h-screen overflow-y-auto no-scrollbar">
+      <aside className="hidden xl:block px-6 py-4 space-y-3 border-l border-gray-800 bg-[#0B0E11] sticky top-0 h-screen overflow-y-auto no-scrollbar">
         <p className="text-gray-300 font-semibold mb-4 text-lg">Gợi ý theo dõi</p>
         <div className="space-y-4">
           {users.map((u) => (
