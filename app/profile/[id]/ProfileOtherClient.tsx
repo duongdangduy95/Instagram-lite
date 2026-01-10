@@ -66,12 +66,12 @@ export default function ProfileOtherClient(props: {
 
       <div className="ml-0 md:ml-20 lg:ml-64 min-h-screen">
         {/* Profile Header */}
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="flex flex-col sm:flex-row items-start gap-8 sm:gap-12">
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-12">
             {/* Avatar */}
             <div className="flex-shrink-0">
               {user.image ? (
-                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-gray-700">
+                <div className="w-20 h-20 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-gray-700 aspect-square">
                   <Image
                     src={user.image}
                     alt={user.username}
@@ -81,45 +81,47 @@ export default function ProfileOtherClient(props: {
                   />
                 </div>
               ) : (
-                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-2 border-gray-700">
+                <div className="w-20 h-20 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl sm:text-4xl font-bold border-2 border-gray-700 aspect-square">
                   {user.username?.charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
 
             {/* Profile Info */}
-            <div className="flex-1 min-w-0">
-              {/* Fullname + Follow button */}
-              <div className="flex items-center gap-4 mb-4">
-                <h1 className="text-xl sm:text-2xl font-light text-white">{user.username}</h1>
-
-                {currentUserId && (
-                  <>
-                    <FollowButton
-                      targetUserId={user.id}
-                      initialIsFollowing={initialIsFollowing}
-                      onFollowChange={(_isFollowing, newFollowersCount) => {
-                        if (typeof newFollowersCount === 'number') setFollowersCount(newFollowersCount)
-                      }}
-                      size="md"
-                    />
-
-                    {/* Nút Message */}
-                    <button
-                      onClick={() => {
-                        setChatTargetUserId(user.id)
-                        setIsChatOpen(true)
-                      }}
-                      className="px-4 py-2 bg-[#877EFF] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
-                    >
-                      Nhắn tin
-                    </button>
-                  </>
-                )}
+            <div className="flex-1 min-w-0 w-full sm:w-auto">
+              {/* Username - Mobile: center, Desktop: left */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
+                <h1 className="text-lg sm:text-2xl font-light text-white break-words text-center sm:text-left">{user.username}</h1>
               </div>
 
+              {/* Buttons - Mobile: center, Desktop: left, cùng kích thước */}
+              {currentUserId && (
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start mb-3 sm:mb-4">
+                  <FollowButton
+                    targetUserId={user.id}
+                    initialIsFollowing={initialIsFollowing}
+                    onFollowChange={(_isFollowing, newFollowersCount) => {
+                      if (typeof newFollowersCount === 'number') setFollowersCount(newFollowersCount)
+                    }}
+                    size="sm"
+                    className="flex-1 sm:flex-none w-full sm:w-auto"
+                  />
+
+                  {/* Nút Message */}
+                  <button
+                    onClick={() => {
+                      setChatTargetUserId(user.id)
+                      setIsChatOpen(true)
+                    }}
+                    className="flex-1 sm:flex-none w-full sm:w-auto px-3 sm:px-4 py-1.5 sm:py-2 bg-[#877EFF] text-white rounded-lg text-xs sm:text-sm font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
+                  >
+                    Nhắn tin
+                  </button>
+                </div>
+              )}
+
               {/* Stats */}
-              <div className="flex items-center gap-6 sm:gap-8 mb-4">
+              <div className="flex items-center gap-4 sm:gap-8 mb-3 sm:mb-4 text-sm sm:text-base justify-center sm:justify-start">
                 <div className="flex items-center gap-1">
                   <span className="text-white font-semibold">{originalBlogs.length}</span>
                   <span className="text-gray-400">bài viết</span>
@@ -140,47 +142,47 @@ export default function ProfileOtherClient(props: {
                 </button>
               </div>
 
-              {/* Username */}
-              <div className="mb-2">
-                <h2 className="text-white font-semibold">{user.fullname}</h2>
+              {/* Fullname */}
+              <div className="mb-2 text-center sm:text-left">
+                <h2 className="text-white font-semibold text-sm sm:text-base break-words">{user.fullname}</h2>
               </div>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex items-center justify-center gap-0 border-t border-gray-800 mt-8">
+          <div className="flex items-center justify-center gap-0 border-t border-gray-800 mt-4 sm:mt-8 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveTab('posts')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'posts'
+              className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-8 py-3 sm:py-4 border-t transition-colors flex-shrink-0 ${activeTab === 'posts'
                 ? 'border-white text-white'
                 : 'border-transparent text-gray-400 hover:text-white'
                 }`}
             >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
-              <span className="text-xs uppercase tracking-wider font-medium">Bài viết</span>
+              <span className="text-[10px] sm:text-xs uppercase tracking-wider font-medium whitespace-nowrap">BÀI VIẾT</span>
             </button>
             <button
               onClick={() => setActiveTab('saved')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'saved'
+              className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-8 py-3 sm:py-4 border-t transition-colors flex-shrink-0 ${activeTab === 'saved'
                 ? 'border-white text-white'
                 : 'border-transparent text-gray-400 hover:text-white'
                 }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
-              <span className="text-xs uppercase tracking-wider font-medium">Đã lưu</span>
+              <span className="text-[10px] sm:text-xs uppercase tracking-wider font-medium whitespace-nowrap">ĐÃ LƯU</span>
             </button>
             <button
               onClick={() => setActiveTab('shared')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'shared'
+              className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-8 py-3 sm:py-4 border-t transition-colors flex-shrink-0 ${activeTab === 'shared'
                 ? 'border-white text-white'
                 : 'border-transparent text-gray-400 hover:text-white'
                 }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -188,29 +190,29 @@ export default function ProfileOtherClient(props: {
                   d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"
                 />
               </svg>
-              <span className="text-xs uppercase tracking-wider font-medium">Chia sẻ</span>
+              <span className="text-[10px] sm:text-xs uppercase tracking-wider font-medium whitespace-nowrap">CHIA SẺ</span>
             </button>
             <button
               onClick={() => setActiveTab('liked')}
-              className={`flex items-center gap-2 px-8 py-4 border-t transition-colors ${activeTab === 'liked'
+              className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-8 py-3 sm:py-4 border-t transition-colors flex-shrink-0 ${activeTab === 'liked'
                 ? 'border-white text-white'
                 : 'border-transparent text-gray-400 hover:text-white'
                 }`}
             >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
                   clipRule="evenodd"
                 />
               </svg>
-              <span className="text-xs uppercase tracking-wider font-medium">Đã thích</span>
+              <span className="text-[10px] sm:text-xs uppercase tracking-wider font-medium whitespace-nowrap">ĐÃ THÍCH</span>
             </button>
           </div>
         </div>
 
         {/* Posts Grid */}
-        <div className="max-w-4xl mx-auto px-4 pb-8">
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 pb-8">
           {activeTab === 'posts' && (
             <>
               {originalBlogs.length > 0 ? (

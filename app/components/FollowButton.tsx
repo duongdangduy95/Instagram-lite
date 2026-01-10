@@ -7,13 +7,15 @@ interface FollowButtonProps {
   initialIsFollowing: boolean
   onFollowChange?: (isFollowing: boolean, followersCount?: number) => void
   size?: 'sm' | 'md' // sm cho sidebar, md cho post
+  className?: string
 }
 
 export default function FollowButton({ 
   targetUserId, 
   initialIsFollowing,
   onFollowChange,
-  size = 'md'
+  size = 'md',
+  className = ''
 }: FollowButtonProps) {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing)
   const [isLoading, setIsLoading] = useState(false)
@@ -66,8 +68,8 @@ export default function FollowButton({
       onClick={handleFollow}
       disabled={isLoading}
       className={`font-semibold transition-colors disabled:opacity-50 text-white rounded-lg bg-[#877EFF] hover:bg-[#7565E6] ${
-        size === 'sm' ? 'text-xs px-3 py-1' : 'text-sm px-4 py-2'
-      }`}
+        size === 'sm' ? 'text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2' : 'text-sm px-4 py-2'
+      } ${className}`}
     >
       {isLoading ? '...' : isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
     </button>
