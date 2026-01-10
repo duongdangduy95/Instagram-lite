@@ -131,11 +131,18 @@ export default function BlogImages({
                 src={urls[currentIndex]}
                 playsInline
                 controls
-                preload="metadata"
+                preload="none"
                 className="block w-full h-full object-contain"
                 onClick={(e) => {
                   // nếu BlogImages nằm trong Link, tránh navigate khi user bấm play/controls
                   e.stopPropagation()
+                }}
+                onMouseEnter={(e) => {
+                  // Preload metadata khi hover (tối ưu UX)
+                  const video = e.currentTarget
+                  if (video.readyState < 1) {
+                    video.preload = 'metadata'
+                  }
                 }}
               />
             </>
@@ -147,6 +154,7 @@ export default function BlogImages({
               height={1080}
               className="block w-full h-full object-contain"
               sizes="(max-width: 768px) 100vw, 560px"
+              loading="lazy"
             />
           )}
         </div>

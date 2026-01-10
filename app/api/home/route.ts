@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 3
 const FEED_TTL = 60 // Tăng lên 60s để thấy rõ hiệu quả cache
 
 export async function GET(req: Request) {
@@ -15,10 +15,10 @@ export async function GET(req: Request) {
 
   const userId = session.user.id
   const { searchParams } = new URL(req.url)
-  const page = Number(searchParams.get('page') ?? 1)
+  const cursor = searchParams.get('cursor') // Cursor-based pagination
 
-  // Cache key theo trang
-  const feedCacheKey = `feed:page:${page}`
+  // Cache key theo cursor (hoặc 'initial' cho lần đầu)
+  const feedCacheKey = cursor ? `feed:cursor:${cursor}` : 'feed:initial'
 
   try {
     let feed: any[] = []
@@ -29,14 +29,28 @@ export async function GET(req: Request) {
     if (cachedData) {
       // Upstash tự động parse JSON nếu bạn dùng SDK mới, 
       // nhưng an toàn nhất là kiểm tra kiểu dữ liệu
-      feed = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData
+      const parsed = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData
+      
+      // Backward compatibility: nếu là array cũ thì dùng trực tiếp
+      if (Array.isArray(parsed)) {
+        feed = parsed
+      } else if (parsed && typeof parsed === 'object' && 'feed' in parsed) {
+        // Cấu trúc mới với nextCursor
+        feed = parsed.feed || []
+      } else {
+        feed = []
+      }
       console.log(`--- Cache Hit: ${feedCacheKey} ---`)
     } else {
       console.log(`--- Cache Miss: Querying Prisma ---`)
       // 🔥 Feed chung cho mọi người dùng để tối ưu dung lượng Redis
+      // Cursor-based pagination: dùng cursor thay vì skip/take
       const blogs = await prisma.blog.findMany({
-        take: PAGE_SIZE,
-        skip: (page - 1) * PAGE_SIZE,
+        take: PAGE_SIZE + 1, // Lấy thêm 1 để check có next page không
+        ...(cursor ? {
+          cursor: { id: cursor },
+          skip: 1, // Bỏ qua post có id = cursor (vì đã có rồi)
+        } : {}),
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         select: {
           id: true,
@@ -76,6 +90,12 @@ export async function GET(req: Request) {
         },
       })
 
+      // Kiểm tra có next page không (nếu lấy được PAGE_SIZE + 1 items)
+      const hasNextPage = blogs.length > PAGE_SIZE
+      if (hasNextPage) {
+        blogs.pop() // Bỏ item thừa
+      }
+
       // Chuẩn hóa Date thành String để lưu vào Redis không bị lỗi
       feed = blogs.map((b) => ({
         ...b,
@@ -85,8 +105,14 @@ export async function GET(req: Request) {
           : null,
       }))
 
+      // Lưu thêm metadata về next cursor vào cache
+      const cacheData = {
+        feed,
+        nextCursor: hasNextPage ? blogs[blogs.length - 1]?.id : null,
+      }
+
       // LƯU VÀO REDIS (Dùng cấu trúc object cho options)
-      await redis.set(feedCacheKey, JSON.stringify(feed), { ex: FEED_TTL })
+      await redis.set(feedCacheKey, JSON.stringify(cacheData), { ex: FEED_TTL })
     }
 
     if (!feed || feed.length === 0) {
@@ -130,6 +156,9 @@ export async function GET(req: Request) {
         isFollowing: followSet.has(b.author.id),
       },
     }))
+
+    // Tính nextCursor từ result cuối cùng
+    const nextCursor = result.length > 0 ? result[result.length - 1]?.id : null
 
     return NextResponse.json(result)
 

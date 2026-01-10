@@ -153,10 +153,15 @@ export default function HomeClient(props: {
         return
       }
 
-      setBlogs((prev) => [...prev, ...newBlogs])
+      // Deduplicate: chỉ thêm blogs chưa có trong danh sách hiện tại
+      setBlogs((prev) => {
+        const existingIds = new Set(prev.map(b => b.id))
+        const uniqueNewBlogs = newBlogs.filter((b: BlogDTO) => !existingIds.has(b.id))
+        return [...prev, ...uniqueNewBlogs]
+      })
       
-      // If we got less than expected, we might be at the end
-      if (newBlogs.length < 10) {
+      // If we got less than expected (PAGE_SIZE = 3), we might be at the end
+      if (newBlogs.length < 3) {
         setHasMore(false)
       }
     } catch (error) {
