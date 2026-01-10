@@ -241,15 +241,7 @@ export async function POST(req: Request) {
   await redis.del(conversationListKey(currentUserId))
   await redis.del(conversationListKey(targetUserId))
 
-  await prisma.notification.create({
-    data: {
-      userId: targetUserId,
-      actorId: currentUserId,
-      type: 'MESSAGE',
-      conversationId: conversation.id,
-      messageId: message.id
-    }
-  })
+  // NOTE: không tạo notification cho tin nhắn (đã bỏ thông báo tin nhắn ở nút Thông báo)
 
   return NextResponse.json({ message })
 }

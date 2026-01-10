@@ -47,7 +47,8 @@ export default function Navigation() {
     try {
       const res = await fetch('/api/notifications')
       const data = await res.json()
-      setNotifications(data)
+      // Bỏ thông báo tin nhắn khỏi nút Thông báo
+      setNotifications((Array.isArray(data) ? data : []).filter((n: any) => n?.type !== 'MESSAGE'))
     } catch (err) {
       console.error('Error fetching notifications', err)
     } finally {
@@ -172,32 +173,38 @@ export default function Navigation() {
     switch (n.type) {
       case 'FOLLOW':
         href = `/profile/${n.actor.id}`
-        text = `${n.actor.fullname || n.actor.username} đã theo dõi bạn`
+        text = `đã theo dõi bạn`
         break
       case 'NEW_POST':
         href = `/blog/${n.blog?.id}`
-        text = `${n.actor.fullname || n.actor.username} đã đăng bài mới`
+        text = `đã đăng bài mới`
         break
       case 'LIKE_POST':
         href = `/blog/${n.blog?.id}`
-        text = `${n.actor.fullname || n.actor.username} đã thích bài viết của bạn`
+        text = `đã thích bài viết của bạn`
         break
       case 'COMMENT_POST':
         href = `/blog/${n.blog?.id}`
-        text = `${n.actor.fullname || n.actor.username} đã bình luận bài viết của bạn`
+        text = `đã bình luận bài viết của bạn`
         break
       case 'SHARE_POST':
         href = `/blog/${n.blog?.id}`
-        text = `${n.actor.fullname || n.actor.username} đã chia sẻ bài viết của bạn`
-        break
-      case 'MESSAGE':
-        href = `/messages?conversationId=${n.message?.conversationId}`
-        text = `${n.actor.fullname || n.actor.username} đã gửi bạn tin nhắn`
+        text = `đã chia sẻ bài viết của bạn`
         break
       default:
         text = 'Thông báo mới'
     }
     return { href, text }
+  }
+
+  const markAllNotificationsRead = async () => {
+    try {
+      const res = await fetch('/api/notifications/mark-all-read', { method: 'POST' })
+      if (!res.ok) return
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+    } catch (err) {
+      console.error('Error marking all notifications read', err)
+    }
   }
 
   return (
@@ -254,12 +261,24 @@ export default function Navigation() {
 
               {notifOpen && (
                 <div className="absolute right-0 top-12 w-[min(92vw,360px)] max-h-[70vh] overflow-y-auto scrollbar-win bg-[#0B0E11] border border-gray-800 rounded-lg shadow-xl z-50">
+                {!loadingNotif && notifications.some(n => !n.isRead) && (
+                  <div className="sticky top-0 z-10 bg-[#0B0E11]/95 backdrop-blur border-b border-gray-800 px-4 py-2 flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={markAllNotificationsRead}
+                      className="text-xs font-semibold text-[#7565E6] hover:text-[#877EFF] transition-colors"
+                    >
+                      Đánh dấu tất cả đã đọc
+                    </button>
+                  </div>
+                )}
                   {loadingNotif && <div className="p-4 text-gray-300">Đang tải...</div>}
                   {!loadingNotif && notifications.length === 0 && (
                     <div className="p-4 text-gray-300">Chưa có thông báo</div>
                   )}
                   {!loadingNotif && notifications.map(n => {
                     const { href, text } = getNotifLinkAndText(n)
+                  const actorName = n?.actor?.username || n?.actor?.fullname || 'User'
                     return (
                       <Link
                         key={n.id}
@@ -275,21 +294,38 @@ export default function Navigation() {
                             }
                           }
                         }}
-                        className={`block px-4 py-3 text-sm border-b border-gray-800 hover:bg-gray-900 hover:text-white transition-colors ${
-                          !n.isRead ? 'bg-gray-900' : ''
-                        }`}
+                      className={`block px-4 py-3 text-sm border-b border-gray-800 hover:bg-gray-900/60 hover:text-white transition-colors ${
+                        !n.isRead ? 'bg-[#212227]' : ''
+                      }`}
                       >
-                        <div className="flex justify-between gap-3">
-                          <span className="min-w-0">
-                            <span className={`${!n.isRead ? 'font-bold' : ''}`}>
-                              {n.actor.fullname || n.actor.username}
-                            </span>{' '}
-                            <span className="font-normal">{text.replace(n.actor.fullname || n.actor.username, '')}</span>
-                          </span>
-                          <span className="text-gray-400 text-xs whitespace-nowrap">
-                            {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
-                          </span>
+                      <div className="flex items-start gap-3">
+                        {/* Avatar */}
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
+                          {n?.actor?.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={n.actor.image} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-white font-bold text-sm">
+                              {(actorName || 'U').charAt(0).toUpperCase()}
+                            </span>
+                          )}
                         </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="text-white leading-snug">
+                            <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
+                            <span className="text-gray-300 font-normal">{text}</span>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className="text-gray-400 text-xs">
+                              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                            </span>
+                            {!n.isRead && (
+                              <span className="w-2.5 h-2.5 bg-[#7565E6] rounded-full flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
                       </Link>
                     )
                   })}
@@ -414,12 +450,24 @@ export default function Navigation() {
 
             {notifOpen && (
               <div className="absolute left-full ml-2 bottom-0 lg:left-0 lg:ml-0 lg:bottom-12 w-80 max-h-96 overflow-y-auto scrollbar-win bg-[#0B0E11] border border-gray-800 rounded-lg shadow-xl z-50">
+                {!loadingNotif && notifications.some(n => !n.isRead) && (
+                  <div className="sticky top-0 z-10 bg-[#0B0E11]/95 backdrop-blur border-b border-gray-800 px-4 py-2 flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={markAllNotificationsRead}
+                      className="text-xs font-semibold text-[#7565E6] hover:text-[#877EFF] transition-colors"
+                    >
+                      Đánh dấu tất cả đã đọc
+                    </button>
+                  </div>
+                )}
                 {loadingNotif && <div className="p-4 text-gray-300">Đang tải...</div>}
                 {!loadingNotif && notifications.length === 0 && (
                   <div className="p-4 text-gray-300">Chưa có thông báo</div>
                 )}
                 {!loadingNotif && notifications.map(n => {
                   const { href, text } = getNotifLinkAndText(n)
+                  const actorName = n?.actor?.username || n?.actor?.fullname || 'User'
                   return (
                     <Link
                       key={n.id}
@@ -442,25 +490,38 @@ export default function Navigation() {
                           }
                         }
                       }}
-                      className={`block px-4 py-3 text-sm border-b border-gray-800 hover:bg-gray-900 hover:text-white transition-colors flex justify-between ${
-                        !n.isRead ? 'bg-gray-900' : ''
+                      className={`block px-4 py-3 text-sm border-b border-gray-800 hover:bg-gray-900/60 hover:text-white transition-colors ${
+                        !n.isRead ? 'bg-[#212227]' : ''
                       }`}
                     >
-                      <span>
-                        <span className={`${!n.isRead ? 'font-bold' : ''}`}>
-                          {n.actor.fullname || n.actor.username}
-                        </span>{' '}
-                        <span className="font-normal">{text.replace(n.actor.fullname || n.actor.username, '')}</span>
-                      </span>
-                      
-                      <span className="flex items-center justify-end space-x-2">
-                        <span className="text-gray-400 text-xs">
-                          {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
-                        </span>
-                        {!n.isRead && (
-                          <span className="w-3 h-3 bg-blue-500 rounded-full flex-shrink-0"></span>
-                        )}
-                      </span>
+                      <div className="flex items-start gap-3">
+                        {/* Avatar */}
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
+                          {n?.actor?.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={n.actor.image} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-white font-bold text-sm">
+                              {(actorName || 'U').charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="text-white leading-snug">
+                            <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
+                            <span className="text-gray-300 font-normal">{text}</span>
+                          </div>
+                          <div className="mt-1 flex items-center justify-between gap-2">
+                            <span className="text-gray-400 text-xs">
+                              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                            </span>
+                            {!n.isRead && (
+                              <span className="w-2.5 h-2.5 bg-[#7565E6] rounded-full flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
 
                     </Link>
 

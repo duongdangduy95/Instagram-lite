@@ -6,7 +6,7 @@ import { formatDistanceToNow } from 'date-fns'
 
 type NotificationItem = {
   id: string
-  type: 'FOLLOW' | 'NEW_POST' | 'LIKE_POST' | 'COMMENT_POST' | 'SHARE_POST' | 'MESSAGE' | string
+  type: 'FOLLOW' | 'NEW_POST' | 'LIKE_POST' | 'COMMENT_POST' | 'SHARE_POST' | string
   isRead: boolean
   createdAt: string
   actor: { id: string; fullname: string; username: string; image?: string | null }
@@ -17,6 +17,8 @@ type NotificationItem = {
 
 export default function NotificationList() {
   const { notifications } = useNotifications()
+  const filtered = (notifications || []).filter((n: any) => n?.type !== 'MESSAGE')
+  const list = filtered as NotificationItem[]
 
   const getLink = (n: NotificationItem) => {
     switch (n.type) {
@@ -26,41 +28,52 @@ export default function NotificationList() {
       case 'COMMENT_POST':
       case 'SHARE_POST':
         return n.comment ? `/post/${n.comment.blogId}` : n.blog ? `/post/${n.blog.id}` : '#'
-      case 'MESSAGE': return n.message ? `/messages/${n.message.conversationId}` : '#'
       default: return '#'
     }
   }
 
   return (
-    <div className="w-80 border rounded shadow p-2 bg-white">
-      {notifications.length === 0 && <p className="text-gray-500">Không có thông báo</p>}
+    <div className="w-80 border border-gray-800 rounded shadow p-2 bg-[#0B0E11]">
+      {list.length === 0 && <p className="text-gray-500">Không có thông báo</p>}
       <ul>
-        {notifications.map(n => (
-          <li key={n.id} className={`p-2 border-b ${n.isRead ? '' : 'bg-blue-50'}`}>
+        {list.map(n => {
+          const actorName = n?.actor?.username || n?.actor?.fullname || 'User'
+          const text =
+            n.type === 'FOLLOW' ? 'đã theo dõi bạn'
+            : n.type === 'NEW_POST' ? 'đã đăng bài mới'
+            : n.type === 'LIKE_POST' ? 'đã thích bài viết của bạn'
+            : n.type === 'COMMENT_POST' ? 'đã bình luận bài viết của bạn'
+            : n.type === 'SHARE_POST' ? 'đã chia sẻ bài viết của bạn'
+            : 'Thông báo mới'
+
+          return (
+          <li key={n.id} className={`p-2 border-b border-gray-800 ${n.isRead ? '' : 'bg-[#212227]'}`}>
             <Link href={getLink(n)}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-3">
                 {n.actor.image ? (
-                  <img src={n.actor.image} alt="" className="w-8 h-8 rounded-full" />
+                  <img src={n.actor.image} alt="" className="w-9 h-9 rounded-full object-cover" />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white">
-                    {n.actor.fullname[0]}
+                  <div className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center text-white">
+                    {(actorName || 'U').charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div className="text-sm">
-                  {n.type === 'FOLLOW' && <span><b>{n.actor.fullname}</b> đã theo dõi bạn</span>}
-                  {n.type === 'NEW_POST' && <span><b>{n.actor.fullname}</b> vừa đăng bài mới</span>}
-                  {n.type === 'LIKE_POST' && <span><b>{n.actor.fullname}</b> thích bài viết của bạn</span>}
-                  {n.type === 'COMMENT_POST' && <span><b>{n.actor.fullname}</b> bình luận bài viết của bạn</span>}
-                  {n.type === 'SHARE_POST' && <span><b>{n.actor.fullname}</b> chia sẻ bài viết của bạn</span>}
-                  {n.type === 'MESSAGE' && <span><b>{n.actor.fullname}</b> đã nhắn tin cho bạn</span>}
-                  <div className="text-gray-400 text-xs">
-                    {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                <div className="text-sm min-w-0 flex-1">
+                  <div className="text-white leading-snug">
+                    <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
+                    <span className="text-gray-300 font-normal">{text}</span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-gray-400 text-xs">
+                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                    </span>
+                    {!n.isRead && <span className="w-2.5 h-2.5 bg-[#7565E6] rounded-full" />}
                   </div>
                 </div>
               </div>
             </Link>
           </li>
-        ))}
+          )
+        })}
       </ul>
     </div>
   )

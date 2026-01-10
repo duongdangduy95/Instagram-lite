@@ -48,8 +48,9 @@ export function NotificationProvider({
     fetch('/api/notifications')
       .then(res => res.json())
       .then((data: Notification[]) => {
-        setNotifications(data)
-        setUnreadCount(data.filter(n => !n.isRead).length)
+        const filtered = (Array.isArray(data) ? data : []).filter(n => n?.type !== 'MESSAGE')
+        setNotifications(filtered)
+        setUnreadCount(filtered.filter(n => !n.isRead).length)
       })
   }, [])
 
@@ -64,6 +65,8 @@ export function NotificationProvider({
         { event: 'INSERT', schema: 'public', table: 'notification', filter: `userId=eq.${userId}` },
         payload => {
           const n = payload.new as Notification
+          // Bỏ thông báo tin nhắn khỏi nút Thông báo (không add, không tăng unread, không toast)
+          if ((n as any)?.type === 'MESSAGE') return
           setNotifications(prev => [n, ...prev])
           setUnreadCount(prev => prev + 1)
 
@@ -78,8 +81,6 @@ export function NotificationProvider({
               ? 'thích bài viết của bạn'
               : n.type === 'NEW_POST'
               ? 'đăng bài mới'
-              : n.type === 'MESSAGE'
-              ? 'nhắn tin cho bạn'
               : 'có thông báo mới'
           }`
           toast.className =

@@ -12,7 +12,8 @@ const CACHE_TTL = 3000 // seconds
 export async function createNotification(notification: {
   userId: string
   actorId: string
-  type: 'FOLLOW' | 'NEW_POST' | 'LIKE_POST' | 'COMMENT_POST' | 'SHARE_POST' | 'MESSAGE'
+  // NOTE: đã bỏ thông báo tin nhắn ở nút Thông báo -> không tạo MESSAGE
+  type: 'FOLLOW' | 'NEW_POST' | 'LIKE_POST' | 'COMMENT_POST' | 'SHARE_POST'
   blogId?: string
   commentId?: string
   messageId?: string
@@ -45,12 +46,24 @@ export async function GET() {
     // 🔥 1. Redis first
     const cached = await redis.get(cacheKey)
     if (cached) {
+      // Backward-compat: trước đây cache có thể là JSON string
+      if (typeof cached === 'string') {
+        try {
+          return NextResponse.json(JSON.parse(cached))
+        } catch {
+          return NextResponse.json([])
+        }
+      }
       return NextResponse.json(cached)
     }
 
     // 🐢 2. DB fallback
     const notifications = await prisma.notification.findMany({
-      where: { userId },
+      where: {
+        userId,
+        // bỏ hẳn noti tin nhắn khỏi nút Thông báo
+        NOT: { type: 'MESSAGE' }
+      },
       include: {
         actor: {
           select: { id: true, username: true, fullname: true, image: true }
@@ -64,7 +77,7 @@ export async function GET() {
     })
 
     // ⚡ 3. Cache result
-    await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(notifications))
+    await redis.set(cacheKey, notifications, { ex: CACHE_TTL })
 
     return NextResponse.json(notifications)
   } catch (error) {
