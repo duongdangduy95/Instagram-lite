@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client'
 import { createClient } from '@supabase/supabase-js'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { redis } from '@/lib/redis'
 
 const prisma = new PrismaClient()
 
@@ -128,6 +129,9 @@ export async function POST(req: Request) {
         })),
       })
     }
+
+    // 🧹 Invalidate Cache
+    await redis.del(`me:${userId}`)
 
     // ✅ Done
     return NextResponse.json({

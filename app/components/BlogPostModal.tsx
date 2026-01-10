@@ -11,6 +11,7 @@ import type { CurrentUserSafe } from '@/types/dto'
 import RenderCaption from '@/app/components/RenderCaption'
 import { usePathname, useRouter } from 'next/navigation'
 import ShareModal from '@/app/components/ShareModal'
+import ExpandableCaption from '@/app/components/ExpandableCaption'
 
 
 type BlogAuthor = {
@@ -29,6 +30,14 @@ type BlogDetail = {
   createdAt: string
   hashtags?: string[]
   author: BlogAuthor
+  sharedFrom?: {
+    id: string
+    caption?: string | null
+    imageUrls: string[]
+    createdAt: string
+    author: BlogAuthor
+    _count: BlogCounts
+  } | null
   likes?: { userId: string }[]
   savedBy?: { userId: string }[]
   _count: BlogCounts
@@ -74,7 +83,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
       const inMobile = optionsRefMobile.current?.contains(target) ?? false
       const inDesktop = optionsRefDesktop.current?.contains(target) ?? false
       if (inMobile || inDesktop) return
-        setShowOptions(false)
+      setShowOptions(false)
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
@@ -235,6 +244,9 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
   const safeUser: CurrentUserSafe = currentUser
 
+  const isShared = !!blog?.sharedFrom
+  const displayBlog = blog?.sharedFrom ?? blog
+
   const handleSubmitComment = async () => {
     if (!blog) return
     if (!currentUser) {
@@ -364,8 +376,8 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                       </button>
 
                       {showOptions && (
-                        <div 
-                          className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[200]" 
+                        <div
+                          className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[200]"
                           onClick={(e) => {
                             e.stopPropagation()
                             e.preventDefault()
@@ -415,19 +427,78 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
               {/* 2. Scrollable Content: Caption + Image + Comments */}
               <div className="flex-1 min-h-0 overflow-y-auto scrollbar-win bg-[#212227]">
-                {/* Caption */}
-                {blog.caption && (
-                  <div className="px-4 pt-4 pb-2">
-                    <div className="text-gray-200 whitespace-pre-wrap">
-                      <RenderCaption text={blog.caption} />
+                {/* Content: Shared vs Normal */}
+                {isShared ? (
+                  <div className="px-4 py-4">
+                    {/* Sharer Caption */}
+                    {blog.caption && (
+                      <div className="mb-3 text-gray-200 whitespace-pre-wrap text-sm">
+                        <RenderCaption text={blog.caption} />
+                      </div>
+                    )}
+
+                    {/* Inner Card */}
+                    <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900/40">
+                      {/* Media */}
+                      <Link href={`/blog/${displayBlog?.id}`} className="block" onClick={close}>
+                        <div className="bg-gray-900">
+                          {displayBlog && <BlogImages imageUrls={displayBlog.imageUrls} rounded={false} frameMode="aspect" />}
+                        </div>
+                      </Link>
+
+                      {/* Original Info + Caption */}
+                      <div className="px-4 py-3 border-t border-gray-800">
+                        <Link
+                          href={`/profile/${displayBlog?.author.id}`}
+                          onClick={(e) => { e.stopPropagation(); close() }}
+                          className="block mb-2"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                              {displayBlog?.author.image ? (
+                                <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={32} height={32} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="font-bold text-white text-xs">
+                                  {displayBlog?.author.username.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-100 text-sm">
+                                {displayBlog?.author.username}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                {displayBlog && formatTimeAgo(displayBlog.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+
+                        {displayBlog?.caption && (
+                          <div className="text-gray-200 text-sm whitespace-pre-wrap">
+                            <RenderCaption text={displayBlog.caption} />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                )}
+                ) : (
+                  <>
+                    {/* Caption */}
+                    {blog.caption && (
+                      <div className="px-4 pt-4 pb-2">
+                        <div className="text-gray-200 whitespace-pre-wrap">
+                          <RenderCaption text={blog.caption} />
+                        </div>
+                      </div>
+                    )}
 
-                {/* Image/Video */}
-                <div className="bg-[#0B0E11]">
-                  <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="aspect" />
-                </div>
+                    {/* Image/Video */}
+                    <div className="bg-[#0B0E11]">
+                      <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="aspect" />
+                    </div>
+                  </>
+                )}
 
                 {/* Comments Section */}
                 <div className="p-4 border-t border-gray-800">
@@ -577,9 +648,9 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                     disabled={posting || !composer.trim()}
                     className="p-1.5 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <img 
-                      src="/icons/send-solid-purple.svg" 
-                      alt="Đăng" 
+                    <img
+                      src="/icons/send-solid-purple.svg"
+                      alt="Đăng"
                       className="w-5 h-5"
                     />
                   </button>
@@ -589,9 +660,59 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
             {/* Desktop Layout: Image Left | Caption + Comments Right (giữ nguyên) */}
             <div className="hidden md:grid md:grid-cols-[1.2fr_0.8fr] md:h-full">
-              {/* Left: media */}
-              <div className="bg-[#0B0E11] md:h-full">
-                <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="fill" />
+              {/* Left: media or Shared Card */}
+              <div className="bg-[#0B0E11] md:h-full overflow-y-auto scrollbar-win flex items-center justify-center">
+                {isShared ? (
+                  <div className="w-full h-full flex flex-col">
+                    <div className="flex-1 flex flex-col border border-gray-800 bg-gray-900/40">
+                      {/* Media - Flex grow to fill available space, centered */}
+                      <Link
+                        href={`/blog/${displayBlog?.id}`}
+                        className="flex-1 bg-gray-900 flex items-center justify-center overflow-hidden min-h-0 relative group"
+                        onClick={close}
+                      >
+                        {displayBlog && <BlogImages imageUrls={displayBlog.imageUrls} rounded={false} frameMode="aspect" />}
+                      </Link>
+
+                      {/* Original Info + Caption - Fixed at bottom of left panel */}
+                      <div className="px-4 py-3 border-t border-gray-800 bg-[#0B0E11] flex-shrink-0">
+                        <Link
+                          href={`/profile/${displayBlog?.author.id}`}
+                          onClick={(e) => { e.stopPropagation() }}
+                          className="block mb-2"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                              {displayBlog?.author.image ? (
+                                <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={32} height={32} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="font-bold text-white text-xs">
+                                  {displayBlog?.author.username.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-100 text-sm">
+                                {displayBlog?.author.username}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                {displayBlog && formatTimeAgo(displayBlog.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+
+                        {displayBlog?.caption && (
+                          <div className="text-gray-200 text-sm">
+                            <ExpandableCaption text={displayBlog.caption} initialLines={3} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="fill" />
+                )}
               </div>
 
               {/* Right: content */}
@@ -630,87 +751,94 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                           </Link>
                           <p className="text-xs text-gray-400">
                             {formatTimeAgo(blog.createdAt)}
+                            {isShared && ' đã chia sẻ'}
                           </p>
                         </div>
                       </div>
-                       {currentUser?.id === blog.author.id && (
-                         <div className="relative" ref={optionsRefDesktop}>
-                           <button
-                             onClick={(e) => {
-                               e.stopPropagation()
-                               e.preventDefault()
-                               setShowOptions(!showOptions)
-                             }}
-                             onPointerDown={(e) => e.stopPropagation()}
-                             className="p-2 rounded-full hover:bg-gray-800 transition-colors"
-                           >
-                             <div
-                               className="w-5 h-5 bg-[#7565E6]"
-                               style={{
-                                 maskImage: 'url(/icons/edit.svg)',
-                                 maskRepeat: 'no-repeat',
-                                 maskPosition: 'center',
-                                 maskSize: 'contain',
-                                 WebkitMaskImage: 'url(/icons/edit.svg)',
-                                 WebkitMaskRepeat: 'no-repeat',
-                                 WebkitMaskPosition: 'center',
-                                 WebkitMaskSize: 'contain'
-                               }}
-                             />
-                           </button>
+                      {currentUser?.id === blog.author.id && (
+                        <div className="relative" ref={optionsRefDesktop}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              e.preventDefault()
+                              setShowOptions(!showOptions)
+                            }}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            className="p-2 rounded-full hover:bg-gray-800 transition-colors"
+                          >
+                            <div
+                              className="w-5 h-5 bg-[#7565E6]"
+                              style={{
+                                maskImage: 'url(/icons/edit.svg)',
+                                maskRepeat: 'no-repeat',
+                                maskPosition: 'center',
+                                maskSize: 'contain',
+                                WebkitMaskImage: 'url(/icons/edit.svg)',
+                                WebkitMaskRepeat: 'no-repeat',
+                                WebkitMaskPosition: 'center',
+                                WebkitMaskSize: 'contain'
+                              }}
+                            />
+                          </button>
 
-                           {showOptions && (
-                             <div 
-                               className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[200]" 
-                               onClick={(e) => {
-                                 e.stopPropagation()
-                                 e.preventDefault()
-                               }}
-                               onPointerDown={(e) => e.stopPropagation()}
-                               onMouseDown={(e) => {
-                                 e.stopPropagation()
-                               }}
-                             >
-                               <button
-                                 onClick={(e) => {
-                                   e.stopPropagation()
-                                   e.preventDefault()
-                                   setShowOptions(false)
-                                   router.push(`/blog/${blog.id}/edit`)
-                                 }}
-                                 onPointerDown={(e) => e.stopPropagation()}
-                                 onMouseDown={(e) => {
-                                   e.stopPropagation()
-                                 }}
-                                 className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-t-lg"
-                               >
-                                 Chỉnh sửa
-                               </button>
+                          {showOptions && (
+                            <div
+                              className="absolute right-0 top-full mt-1 w-40 bg-[#0B0E11] border border-gray-800 rounded-lg shadow-lg z-[200]"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                e.preventDefault()
+                              }}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => {
+                                e.stopPropagation()
+                              }}
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  e.preventDefault()
+                                  setShowOptions(false)
+                                  router.push(`/blog/${blog.id}/edit`)
+                                }}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => {
+                                  e.stopPropagation()
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-t-lg"
+                              >
+                                Chỉnh sửa
+                              </button>
 
-                               <button
-                                 onClick={(e) => {
-                                   e.stopPropagation()
-                                   e.preventDefault()
-                                   setShowOptions(false)
-                                   setShowDeleteConfirm(true)
-                                 }}
-                                 onPointerDown={(e) => e.stopPropagation()}
-                                 onMouseDown={(e) => {
-                                   e.stopPropagation()
-                                 }}
-                                 className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-b-lg"
-                               >
-                                 Xóa bài viết
-                               </button>
-                             </div>
-                           )}
-                         </div>
-                       )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  e.preventDefault()
+                                  setShowOptions(false)
+                                  setShowDeleteConfirm(true)
+                                }}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => {
+                                  e.stopPropagation()
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-b-lg"
+                              >
+                                Xóa bài viết
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {blog.caption && (
                       <div className="mt-3 text-gray-200 whitespace-pre-wrap">
                         <RenderCaption text={blog.caption} />
+                      </div>
+                    )}
+
+                    {isShared && (
+                      <div className="mt-2 text-xs text-gray-400 italic">
+                        Đã chia sẻ bài viết của <Link href={`/profile/${displayBlog?.author.id}`} className="font-semibold text-gray-300 hover:text-white">{displayBlog?.author.username}</Link>
                       </div>
                     )}
 
@@ -864,9 +992,9 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                       disabled={posting || !composer.trim()}
                       className="p-1.5 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <img 
-                        src="/icons/send-solid-purple.svg" 
-                        alt="Đăng" 
+                      <img
+                        src="/icons/send-solid-purple.svg"
+                        alt="Đăng"
                         className="w-5 h-5"
                       />
                     </button>

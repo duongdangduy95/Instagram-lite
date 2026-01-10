@@ -197,7 +197,7 @@ export default function BlogActions({
     // - Ở trang blog detail => giữ inline comments như cũ
     const isOnBlogDetail = !!pathname && pathname.startsWith('/blog/')
     if (!isOnBlogDetail) {
-      router.push(`/blog/${displayBlogId}`)
+      router.push(`/blog/${blogId}`)
       return
     }
 

@@ -222,14 +222,14 @@ export default function ProfileOtherClient(props: {
                     return (
                       <Link
                         key={blog.id}
-                        href={`/blog/${displayBlog.id}`}
+                        href={`/blog/${blog.id}`}
                         className="aspect-square bg-gray-900 relative group overflow-hidden"
                       >
                         {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (() => {
                           const first = displayBlog.imageUrls[0]
                           const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|avif|svg)$/i.test(url)
                           const isVideo = (url: string) => /\.(mp4|mov|webm)$/i.test(url)
-                          
+
                           if (isImage(first)) {
                             return (
                               <Image
@@ -315,14 +315,14 @@ export default function ProfileOtherClient(props: {
                     return (
                       <Link
                         key={blog.id}
-                        href={`/blog/${displayBlog.id}`}
+                        href={`/blog/${blog.id}`}
                         className="aspect-square bg-gray-900 relative group overflow-hidden"
                       >
                         {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (() => {
                           const first = displayBlog.imageUrls[0]
                           const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|avif|svg)$/i.test(url)
                           const isVideo = (url: string) => /\.(mp4|mov|webm)$/i.test(url)
-                          
+
                           if (isImage(first)) {
                             return (
                               <Image

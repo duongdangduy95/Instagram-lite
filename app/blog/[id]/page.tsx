@@ -23,6 +23,7 @@ interface Blog {
     id: string
     fullname: string
     username: string
+    image?: string | null
   }
   sharedFrom?: {
     id: string
@@ -143,21 +144,25 @@ export default function BlogDetailPage() {
             {/* Header */}
             <div className="px-4 py-3 flex justify-between items-center border-b border-gray-800">
               <Link
-                href={displayBlog.author.id === currentUser?.id ? '/profile' : `/profile/${displayBlog.author.id}`}
+                href={blog.author.id === currentUser?.id ? '/profile' : `/profile/${blog.author.id}`}
                 prefetch={true}
                 className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
               >
                 <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-                  <span className="font-bold text-white">
-                    {displayBlog.author.username.charAt(0).toUpperCase()}
-                  </span>
+                  {blog.author.image ? (
+                    <img src={blog.author.image} alt={blog.author.username} className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    <span className="font-bold text-white">
+                      {blog.author.username.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <p className="font-semibold text-gray-100">
-                    {displayBlog.author.username}
+                    {blog.author.username}
                   </p>
                   <p className="text-xs text-gray-400">
-                    {formatTimeAgo(new Date(displayBlog.createdAt))}
+                    {formatTimeAgo(new Date(blog.createdAt))}
                   </p>
                 </div>
               </Link>
@@ -241,30 +246,90 @@ export default function BlogDetailPage() {
               </div>
             )}
 
-            {/* Original caption */}
-            {displayBlog.caption && (
-              <div className="px-4 pt-4 pb-2 text-gray-200">
-                <ExpandableCaption text={displayBlog.caption} initialLines={10} />
-              </div>
-            )}
+            {/* Content Area */}
+            {isShared ? (
+              // Shared Post Layout: Inner Card
+              <div className="px-4 py-4">
+                <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900/40">
+                  {/* Media */}
+                  <Link href={`/blog/${displayBlog.id}`} className="block">
+                    <div className="bg-gray-900">
+                      <BlogImages imageUrls={displayBlog.imageUrls} />
+                    </div>
+                  </Link>
 
-            {/* Hashtags */}
-            {displayBlog.hashtags && displayBlog.hashtags.length > 0 && (
-              <div className="px-4 pb-2 flex flex-wrap gap-2">
-                {displayBlog.hashtags.map((tag, index) => (
-                  <span key={index} className="text-[#7565E6] text-sm font-medium">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
+                  {/* Original Info + Caption */}
+                  <div className="px-4 py-3 border-t border-gray-800">
+                    <Link
+                      href={displayBlog.author.id === currentUser?.id ? '/profile' : `/profile/${displayBlog.author.id}`}
+                      className="block mb-2"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                          {(displayBlog.author as any).image ? (
+                            <img src={(displayBlog.author as any).image} alt={displayBlog.author.username} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="font-bold text-white text-xs">
+                              {displayBlog.author.username.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-100 text-sm">
+                            {displayBlog.author.username}
+                          </p>
+                          <p className="text-[10px] text-gray-400">
+                            {formatTimeAgo(new Date(displayBlog.createdAt))}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
 
-            {/* Images */}
-            <div className="px-4 pb-4">
-              <div className="rounded-lg overflow-hidden bg-gray-900">
-                <BlogImages imageUrls={displayBlog.imageUrls} />
+                    {displayBlog.caption && (
+                      <div className="text-gray-200 text-sm">
+                        <ExpandableCaption text={displayBlog.caption} initialLines={3} />
+                      </div>
+                    )}
+
+                    {/* Hashtags inside card if shared */}
+                    {displayBlog.hashtags && displayBlog.hashtags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {displayBlog.hashtags.map((tag, index) => (
+                          <span key={index} className="text-[#7565E6] text-xs font-medium">
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              // Normal Post Layout
+              <>
+                {displayBlog.caption && (
+                  <div className="px-4 pt-4 pb-2 text-gray-200">
+                    <ExpandableCaption text={displayBlog.caption} initialLines={10} />
+                  </div>
+                )}
+
+                {displayBlog.hashtags && displayBlog.hashtags.length > 0 && (
+                  <div className="px-4 pb-2 flex flex-wrap gap-2">
+                    {displayBlog.hashtags.map((tag, index) => (
+                      <span key={index} className="text-[#7565E6] text-sm font-medium">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="px-4 pb-4">
+                  <div className="rounded-lg overflow-hidden bg-gray-900">
+                    <BlogImages imageUrls={displayBlog.imageUrls} />
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Actions */}
             <BlogActions
