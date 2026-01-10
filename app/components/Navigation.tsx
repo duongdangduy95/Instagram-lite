@@ -54,8 +54,29 @@ export default function Navigation() {
       setLoadingNotif(false)
     }
   }
+
+  // Fetch initial unread messages badge (navbar "Tin nhắn")
+  const fetchMessageBadge = async () => {
+    if (!user?.id) return
+    try {
+      const res = await fetch(`/api/messages/unread-messages?userId=${user.id}`, {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      })
+      if (!res.ok) return
+      const data = await res.json().catch(() => null)
+      const count = Number(data?.unreadCount ?? 0)
+      setMessageBadge(Number.isFinite(count) ? Math.max(0, count) : 0)
+    } catch {
+      // ignore
+    }
+  }
+
   useEffect(() => {
   if (!user?.id) return
+
+  // init count
+  void fetchMessageBadge()
 
   const channel = supabase
     .channel(`message-badge-${user.id}`)
@@ -82,8 +103,17 @@ export default function Navigation() {
     )
     .subscribe()
 
+  // Listen "seen" event from ChatWindow to decrement badge
+  const onSeen = (e: Event) => {
+    const seenCount = Number((e as CustomEvent)?.detail?.seenCount ?? 0)
+    if (!Number.isFinite(seenCount) || seenCount <= 0) return
+    setMessageBadge(prev => Math.max(0, prev - seenCount))
+  }
+  window.addEventListener('messages:seen', onSeen as EventListener)
+
   return () => {
     supabase.removeChannel(channel)
+    window.removeEventListener('messages:seen', onSeen as EventListener)
   }
 }, [user?.id])
 

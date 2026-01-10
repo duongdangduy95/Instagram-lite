@@ -32,9 +32,18 @@ export async function GET() {
 
   /* ===== REDIS CACHE ===== */
   const cached = await redis.get(cacheKey)
-if (cached) {
-  return NextResponse.json(cached)
-}
+  if (cached) {
+    // Backward-compat: trước đây cache có thể là JSON string
+    if (typeof cached === 'string') {
+      try {
+        return NextResponse.json(JSON.parse(cached))
+      } catch {
+        // fallback: trả thẳng (đỡ crash) và để TTL tự hết
+        return NextResponse.json([])
+      }
+    }
+    return NextResponse.json(cached)
+  }
 
   /* ===== DATABASE QUERY ===== */
   const conversations = await prisma.conversation.findMany({
@@ -150,8 +159,9 @@ if (cached) {
 
   const result = Array.from(byOtherUser.values())
 
-  /* ===== SAVE CACHE (JSON STRING ONLY) ===== */
-  await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result))
+  /* ===== SAVE CACHE ===== */
+  // Upstash redis client tự serialize JSON, nên lưu object trực tiếp để get() trả ra đúng kiểu
+  await redis.set(cacheKey, result, { ex: CACHE_TTL })
 
   return NextResponse.json(result)
 }

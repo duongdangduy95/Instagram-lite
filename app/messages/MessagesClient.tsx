@@ -33,6 +33,7 @@ type ConversationsApiItem = {
     image: string | null
   }
   lastMessage: { content: string; createdAt: string; senderId: string } | null
+  unreadCount?: number
   isFollowing?: boolean
   hasReplied?: boolean
 }
@@ -115,6 +116,7 @@ export default function MessagesClient() {
         image: conv.otherUser.image,
         lastMessage: conv.lastMessage,
         conversationId: conv.id,
+        unreadCount: conv.unreadCount ?? 0,
         isFollowing: conv.isFollowing,
         hasReplied: conv.hasReplied
       }))
@@ -215,7 +217,7 @@ export default function MessagesClient() {
                 (conv.lastMessage &&
                   (!existing.lastMessage ||
                     new Date(conv.lastMessage.createdAt) >
-                      new Date(existing.lastMessage.createdAt)))
+                    new Date(existing.lastMessage.createdAt)))
               ) {
                 map.set(key, conv)
               }
@@ -324,27 +326,27 @@ export default function MessagesClient() {
     }
 
     let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch(`/api/user/${urlUserId}`, {
-          headers: { Accept: 'application/json' },
-          cache: 'no-store',
-        })
-        if (!res.ok) return
-        const u = (await res.json()) as FollowingUser
-        if (cancelled) return
-        setSelectedUser({
-          id: u.id,
-          username: u.username,
-          fullname: u.fullname,
-          image: u.image,
-          isFollowing: true,
-          hasReplied: false,
-        })
-      } catch {
-        // ignore
-      }
-    })()
+      ; (async () => {
+        try {
+          const res = await fetch(`/api/user/${urlUserId}`, {
+            headers: { Accept: 'application/json' },
+            cache: 'no-store',
+          })
+          if (!res.ok) return
+          const u = (await res.json()) as FollowingUser
+          if (cancelled) return
+          setSelectedUser({
+            id: u.id,
+            username: u.username,
+            fullname: u.fullname,
+            image: u.image,
+            isFollowing: true,
+            hasReplied: false,
+          })
+        } catch {
+          // ignore
+        }
+      })()
 
     return () => {
       cancelled = true
@@ -377,6 +379,35 @@ export default function MessagesClient() {
       return updated
     })
   }, [currentUserId])
+
+  // Khi mở chat và mark SEEN, clear badge đúng conversation đó (không ảnh hưởng conversation khác)
+  const handleSeen = useCallback((userId: string) => {
+    setConversations(prev => {
+      const updated = [...prev]
+      const index = updated.findIndex(c => c.id === userId)
+      if (index >= 0) {
+        updated[index] = {
+          ...updated[index],
+          unreadCount: 0,
+        }
+      }
+      return updated
+    })
+  }, [])
+
+
+  // Calculate unread counts for tabs
+  const primaryUnreadCount = conversations.reduce((count, conv) => {
+    const isPrimary = conv.isFollowing !== false || conv.hasReplied
+    const isUnread = conv.lastMessage?.senderId !== currentUserId && (conv.unreadCount || 0) > 0
+    return count + (isPrimary && isUnread ? 1 : 0)
+  }, 0)
+
+  const pendingUnreadCount = conversations.reduce((count, conv) => {
+    const isPending = conv.isFollowing === false && !conv.hasReplied && conv.lastMessage
+    const isUnread = conv.lastMessage?.senderId !== currentUserId && (conv.unreadCount || 0) > 0
+    return count + (isPending && isUnread ? 1 : 0)
+  }, 0)
 
   const conversationListPanel = (
     <>
@@ -430,12 +461,17 @@ export default function MessagesClient() {
         <div className="flex gap-0 mt-4 border-b border-gray-800">
           <button
             onClick={() => setActiveTab('primary')}
-            className={`flex-1 py-3 font-medium transition-colors relative ${activeTab === 'primary'
+            className={`flex-1 py-3 font-medium transition-colors relative flex items-center justify-center gap-2 ${activeTab === 'primary'
               ? 'text-[#7565E6]'
               : 'text-gray-400 hover:text-white'
               }`}
           >
             Đoạn chat
+            {primaryUnreadCount > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.2rem] text-center">
+                {primaryUnreadCount > 99 ? '99+' : primaryUnreadCount}
+              </span>
+            )}
             {activeTab === 'primary' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#7565E6]"></div>
             )}
@@ -445,12 +481,17 @@ export default function MessagesClient() {
               setActiveTab('pending')
               setSearchQuery('')
             }}
-            className={`flex-1 py-3 font-medium transition-colors relative ${activeTab === 'pending'
+            className={`flex-1 py-3 font-medium transition-colors relative flex items-center justify-center gap-2 ${activeTab === 'pending'
               ? 'text-[#7565E6]'
               : 'text-gray-400 hover:text-white'
               }`}
           >
             Tin nhắn chờ
+            {pendingUnreadCount > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.2rem] text-center">
+                {pendingUnreadCount > 99 ? '99+' : pendingUnreadCount}
+              </span>
+            )}
             {activeTab === 'pending' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#7565E6]"></div>
             )}
@@ -466,7 +507,10 @@ export default function MessagesClient() {
           </div>
         ) : filteredConversations.length > 0 ? (
           filteredConversations.map(conv => {
-            const isUnread = conv.lastMessage?.senderId !== currentUserId && conv.unreadCount && conv.unreadCount > 0
+            // IMPORTANT: luôn ép về boolean, tránh case unreadCount=0 bị render ra "0" khi dùng `{isUnread && ...}`
+            const isUnread =
+              conv.lastMessage?.senderId !== currentUserId &&
+              (conv.unreadCount ?? 0) > 0
             const isSelected = selectedUser?.id === conv.id
 
             return (
@@ -554,6 +598,7 @@ export default function MessagesClient() {
             showBackButton={true}
             onBack={closeChat}
             onMessageSent={() => handleMessageSent(selectedUser.id)}
+            onSeen={() => handleSeen(selectedUser.id)}
           />
         ) : (
           <div className="w-full h-full bg-[#0B0E11] flex flex-col min-h-0">
@@ -577,6 +622,7 @@ export default function MessagesClient() {
             onClose={closeChat}
             isStandalone={true}
             onMessageSent={() => handleMessageSent(selectedUser.id)}
+            onSeen={() => handleSeen(selectedUser.id)}
           />
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-gray-500 px-6">

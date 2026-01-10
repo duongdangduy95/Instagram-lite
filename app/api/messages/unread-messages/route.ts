@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const unreadCount = await prisma.message.count({
       where: {
         senderId: { not: userId },      // tin nhắn từ người khác
-        status: 'DELIVERED',            // chưa xem
+        status: { in: ['SENT', 'DELIVERED'] }, // chưa xem (chưa SEEN)
         conversation: {
           participants: {
             some: { userId }            // conversation mà tôi tham gia

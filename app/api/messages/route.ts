@@ -40,6 +40,9 @@ function sanitizeFileName(name: string) {
 const messagesKey = (conversationId: string) =>
   `conversation:${conversationId}:messages`
 
+const conversationListKey = (userId: string) =>
+  `conversation:list:user:${userId}`
+
 /* ==============================
    GET
 ============================== */
@@ -103,9 +106,40 @@ export async function GET(req: Request) {
   // 🔥 TRY REDIS FIRST
   const cachedMessages = await redis.get(redisKey)
   if (cachedMessages) {
+    // Dù cache hit, vẫn cần update SENT -> DELIVERED (người nhận đã mở chat)
+    // và refresh cache để UI nhận status mới ngay.
+    try {
+      await prisma.message.updateMany({
+        where: {
+          conversationId: conversation.id,
+          senderId: { not: currentUserId },
+          status: 'SENT'
+        },
+        data: { status: 'DELIVERED' }
+      })
+    } catch {
+      // ignore
+    }
+
+    const cachedArray = Array.isArray(cachedMessages) ? (cachedMessages as any[]) : null
+    const nextMessages = cachedArray
+      ? cachedArray.map(m =>
+          m?.senderId !== currentUserId && m?.status === 'SENT'
+            ? { ...m, status: 'DELIVERED' }
+            : m
+        )
+      : cachedMessages
+
+    // best-effort: đồng bộ cache với status mới
+    try {
+      await redis.set(redisKey, nextMessages, { ex: 3000 })
+    } catch {
+      // ignore
+    }
+
     return NextResponse.json({
       conversationId: conversation.id,
-      messages: cachedMessages
+      messages: nextMessages
     })
   }
 
@@ -114,9 +148,6 @@ export async function GET(req: Request) {
     where: { conversationId: conversation.id },
     orderBy: { createdAt: 'asc' }
   })
-
-  // Cache 60s
-  await redis.set(redisKey, messages, { ex: 3000 })
 
   // Update DELIVERED
   await prisma.message.updateMany({
@@ -128,9 +159,19 @@ export async function GET(req: Request) {
     data: { status: 'DELIVERED' }
   })
 
+  // Trả về messages đã DELIVERED luôn để UI cập nhật ngay
+  const nextMessages = messages.map(m =>
+    m.senderId !== currentUserId && m.status === 'SENT'
+      ? { ...m, status: 'DELIVERED' as const }
+      : m
+  )
+
+  // Cache 3000s
+  await redis.set(redisKey, nextMessages, { ex: 3000 })
+
   return NextResponse.json({
     conversationId: conversation.id,
-    messages
+    messages: nextMessages
   })
 }
 
@@ -193,8 +234,12 @@ export async function POST(req: Request) {
     data: { updatedAt: new Date() }
   })
 
-  // ❌ INVALIDATE REDIS
+  // ✅ INVALIDATE REDIS
+  // - messages cache của conversation
+  // - conversation list cache của cả 2 phía để hasReplied/unreadCount/isPending không bị stale khi F5
   await redis.del(messagesKey(conversation.id))
+  await redis.del(conversationListKey(currentUserId))
+  await redis.del(conversationListKey(targetUserId))
 
   await prisma.notification.create({
     data: {
@@ -262,11 +307,12 @@ export async function PUT(req: Request) {
   if (!conversationId)
     return new Response('Missing conversationId', { status: 400 })
 
+  // "Seen" theo UI hiện tại: mở chat là xem => mark SEEN cho mọi message của đối phương chưa SEEN
   const seenCount = await prisma.message.count({
     where: {
       conversationId,
       senderId: { not: userId },
-      status: 'DELIVERED'
+      status: { in: ['SENT', 'DELIVERED'] }
     }
   })
 
@@ -278,11 +324,13 @@ export async function PUT(req: Request) {
     where: {
       conversationId,
       senderId: { not: userId },
-      status: 'DELIVERED'
+      status: { in: ['SENT', 'DELIVERED'] }
     },
     data: { status: 'SEEN' }
   })
 
   await redis.del(messagesKey(conversationId))
+  // unreadCount trong conversation list phụ thuộc status -> cần clear cache list của user đang xem
+  await redis.del(conversationListKey(userId))
   return NextResponse.json({ seenCount })
 }

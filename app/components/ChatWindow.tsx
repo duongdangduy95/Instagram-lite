@@ -93,6 +93,7 @@ export default function ChatWindow({
   const scrollRef = useRef<HTMLDivElement>(null)
   const messagesCacheRef = useRef<Map<string, Message[]>>(new Map())
   const fetchAbortRef = useRef<AbortController | null>(null)
+  const markingSeenRef = useRef(false)
 
   /* ================= TAB ACTIVE ================= */
   useEffect(() => {
@@ -114,20 +115,35 @@ export default function ChatWindow({
   const markSeen = async () => {
     if (!convIdRef.current) return
     if (!isChatOpen || !isTabActive) return
+    if (markingSeenRef.current) return
+    markingSeenRef.current = true
 
-    const res = await fetch('/api/messages', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        conversationId: convIdRef.current
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: convIdRef.current
+        })
       })
-    })
 
-    const data = await res.json()
+      const data = await res.json().catch(() => ({ seenCount: 0 }))
+      const seenCount = Number(data?.seenCount || 0)
 
-    // 🔥 TRỪ BADGE ĐÚNG SỐ TIN VỪA SEEN
-    if (data.seenCount > 0) {
-      onSeen?.(data.seenCount)
+      // 🔥 TRỪ BADGE ĐÚNG SỐ TIN VỪA SEEN
+      if (seenCount > 0) {
+        onSeen?.(seenCount)
+        // Đồng bộ badge ở Navigation (global) — chỉ trừ "Tin nhắn" navbar, không đụng notifications
+        try {
+          window.dispatchEvent(
+            new CustomEvent('messages:seen', { detail: { seenCount } })
+          )
+        } catch {
+          // ignore
+        }
+      }
+    } finally {
+      markingSeenRef.current = false
     }
   }
 
@@ -139,14 +155,14 @@ export default function ChatWindow({
     const hasUnread = messages.some(
       m =>
         m.senderId !== currentUserId &&
-        m.status === 'DELIVERED'
+        m.status !== 'SEEN'
     )
 
 
     if (hasUnread) {
       markSeen()
     }
-  }, [messages, isChatOpen, isTabActive])
+  }, [messages, isChatOpen, isTabActive, currentUserId])
 
   /* ================= AUTO SCROLL ================= */
   useEffect(() => {
@@ -191,23 +207,23 @@ export default function ChatWindow({
       try {
         setIsLoading(true)
         setError(null)
-        
+
         const res = await fetch(
           `/api/messages?userId=${targetUserId}`,
           { signal: abortController.signal }
         )
-        
+
         if (!res.ok) {
           throw new Error(`Failed to load messages: ${res.statusText}`)
         }
-        
+
         const data = await res.json()
         if (!active) return
 
         const nextMessages = (data.messages || []).map((m: Message) => ({
-            ...m,
-            createdAt: normalizeCreatedAt(m.createdAt)
-          }))
+          ...m,
+          createdAt: normalizeCreatedAt(m.createdAt)
+        }))
 
         setMessages(nextMessages)
         messagesCacheRef.current.set(targetUserId, nextMessages)
@@ -219,92 +235,92 @@ export default function ChatWindow({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ targetUserId })
           })
-          
+
           if (!r.ok) {
             throw new Error(`Failed to create conversation: ${r.statusText}`)
           }
-          
+
           cid = (await r.json()).id
         }
 
         convIdRef.current = cid
 
-      // Đảm bảo remove channel cũ trước khi tạo mới (tránh duplicate)
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-        channelRef.current = null
-        channelConvIdRef.current = null
-      }
+        // Đảm bảo remove channel cũ trước khi tạo mới (tránh duplicate)
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current)
+          channelRef.current = null
+          channelConvIdRef.current = null
+        }
 
-      // Nếu đã có channel đúng conversationId rồi thì thôi (tránh subscribe lặp)
-      if (channelConvIdRef.current === cid && channelRef.current) return
+        // Nếu đã có channel đúng conversationId rồi thì thôi (tránh subscribe lặp)
+        if (channelConvIdRef.current === cid && channelRef.current) return
 
-      const channel = supabase
-        .channel(`chat:${cid}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'Message',
-            filter: `conversationId=eq.${cid}`
-          },
-          payload => {
-            if (!active) return // Bỏ qua nếu component đã unmount
-            
-            if (payload.eventType === 'INSERT') {
-              const raw = payload.new as Message
-              const msg = {
-                ...raw,
-                createdAt: normalizeCreatedAt(
-                  raw.createdAt
+        const channel = supabase
+          .channel(`chat:${cid}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'Message',
+              filter: `conversationId=eq.${cid}`
+            },
+            payload => {
+              if (!active) return // Bỏ qua nếu component đã unmount
+
+              if (payload.eventType === 'INSERT') {
+                const raw = payload.new as Message
+                const msg = {
+                  ...raw,
+                  createdAt: normalizeCreatedAt(
+                    raw.createdAt
+                  )
+                }
+
+                // Kiểm tra duplicate trước khi thêm (bảo vệ kép)
+                setMessages(prev =>
+                  prev.some(m => m.id === msg.id) ? prev : (() => {
+                    const merged = [...prev, msg]
+                    messagesCacheRef.current.set(targetUserId, merged)
+                    return merged
+                  })()
                 )
               }
 
-              // Kiểm tra duplicate trước khi thêm (bảo vệ kép)
-              setMessages(prev =>
-                prev.some(m => m.id === msg.id) ? prev : (() => {
-                  const merged = [...prev, msg]
-                  messagesCacheRef.current.set(targetUserId, merged)
-                  return merged
-                })()
-              )
-            }
+              if (payload.eventType === 'UPDATE') {
+                const raw = payload.new as Message
+                setMessages(prev =>
+                  (() => {
+                    const merged = prev.map(m =>
+                      m.id === raw.id
+                        ? {
+                          ...raw,
+                          createdAt: normalizeCreatedAt(raw.createdAt)
+                        }
+                        : m
+                    )
+                    messagesCacheRef.current.set(targetUserId, merged)
+                    return merged
+                  })()
+                )
+              }
 
-            if (payload.eventType === 'UPDATE') {
-              const raw = payload.new as Message
-              setMessages(prev =>
-                (() => {
-                  const merged = prev.map(m =>
-                    m.id === raw.id
-                      ? {
-                        ...raw,
-                        createdAt: normalizeCreatedAt(raw.createdAt)
-                      }
-                      : m
-                  )
-                  messagesCacheRef.current.set(targetUserId, merged)
-                  return merged
-                })()
-              )
+              if (payload.eventType === 'DELETE') {
+                const msg = payload.old as Message
+                setMessages(prev =>
+                  (() => {
+                    const merged = prev.filter(m => m.id !== msg.id)
+                    messagesCacheRef.current.set(targetUserId, merged)
+                    return merged
+                  })()
+                )
+              }
             }
+          )
+          .subscribe()
 
-            if (payload.eventType === 'DELETE') {
-              const msg = payload.old as Message
-              setMessages(prev =>
-                (() => {
-                  const merged = prev.filter(m => m.id !== msg.id)
-                  messagesCacheRef.current.set(targetUserId, merged)
-                  return merged
-                })()
-              )
-            }
-          }
-        )
-        .subscribe()
-
-      channelRef.current = channel
-      channelConvIdRef.current = cid
+        channelRef.current = channel
+        channelConvIdRef.current = cid
       } catch (err) {
         // Khi đổi chat nhanh, request cũ bị abort là bình thường → không log/không setError
         const isAbort =
@@ -683,11 +699,11 @@ export default function ChatWindow({
 
                   {/* Message Bubble */}
                   <div className={m.senderId === currentUserId
-                    ? "bg-[#7565E6] p-3 rounded-2xl max-w-[90%]"
+                    ? "bg-[#7565E6] p-3 rounded-2xl max-w-[90%] break-words whitespace-pre-wrap overflow-hidden"
                     : isStandalone
-                      ? "bg-gray-700 p-3 rounded-2xl max-w-[90%]"
-                      : "bg-[#3E4042] p-3 rounded-2xl max-w-[90%]"
-                  }>
+                      ? "bg-gray-700 p-3 rounded-2xl max-w-[90%] break-words whitespace-pre-wrap overflow-hidden"
+                      : "bg-[#3E4042] p-3 rounded-2xl max-w-[90%] break-words whitespace-pre-wrap overflow-hidden"
+                  } style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                     {editingId === m.id ? (
                       <input
                         value={editValue}
@@ -702,7 +718,7 @@ export default function ChatWindow({
                         className="bg-transparent outline-none w-full"
                       />
                     ) : (
-                      m.content && <p>{m.content}</p>
+                      m.content && <p style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.content}</p>
                     )}
 
                     {m.fileUrls?.map((url, i) =>
