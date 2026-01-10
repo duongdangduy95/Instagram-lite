@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 
 const PAGE_SIZE = 3
-const FEED_TTL = 60 // Tăng lên 60s để thấy rõ hiệu quả cache
+const FEED_TTL = 300 // Tăng lên 60s để thấy rõ hiệu quả cache
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
