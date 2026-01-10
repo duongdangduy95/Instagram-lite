@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
+import { sendEmail, generatePasswordResetEmail } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,8 +52,32 @@ export async function POST(req: NextRequest) {
     
     console.log('Password Reset Link:', resetLink)
     
-    // TODO: Send email with reset link
-    // await sendPasswordResetEmail(email, resetLink)
+    // Send email with reset link
+    try {
+      const emailHtml = generatePasswordResetEmail(resetLink, user.username)
+      await sendEmail({
+        to: email,
+        subject: 'Đặt lại mật khẩu - Instagram Lite',
+        html: emailHtml
+      })
+      
+      console.log('Password reset email sent successfully to:', email)
+    } catch (emailError) {
+      console.error('Failed to send reset email:', emailError)
+      // Delete the token if email fails
+      await prisma.verificationToken.delete({
+        where: {
+          identifier_token: {
+            identifier: email,
+            token: resetToken
+          }
+        }
+      })
+      return NextResponse.json(
+        { error: 'Không thể gửi email. Vui lòng kiểm tra cấu hình email hoặc thử lại sau.' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({
       message: 'Link đặt lại mật khẩu đã được gửi đến email của bạn',

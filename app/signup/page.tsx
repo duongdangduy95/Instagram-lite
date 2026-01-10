@@ -31,6 +31,7 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -80,13 +81,35 @@ export default function SignupPage() {
       const data = await res.json()
 
       if (res.ok) {
-        setMessage('Đăng ký thành công!')
-        setMessageType('success')
-        setFormData({ username: '', fullname: '', email: '', phone: '', password: '' })
-        setConfirmPassword('')
-        setTimeout(() => router.push('/login'), 1500)
+        // If requires OTP verification, redirect to verify page
+        if (data.requiresVerification) {
+          setMessage('✅ Đăng ký thành công! Đang chuyển đến trang nhập OTP...')
+          setMessageType('success')
+          
+          // Redirect ngay lập tức đến trang nhập OTP (sau 800ms để user thấy message)
+          setTimeout(() => {
+            router.push(`/verify-otp?email=${encodeURIComponent(formData.email)}&username=${encodeURIComponent(formData.username)}`)
+          }, 800)
+        } else {
+          // Old flow - direct to login (trường hợp không cần OTP)
+          setMessage(data.message || 'Đăng ký thành công!')
+          setMessageType('success')
+          
+          setFormData({
+            username: '',
+            fullname: '',
+            email: '',
+            phone: '',
+            password: ''
+          })
+          setConfirmPassword('')
+          
+          setTimeout(() => {
+            router.push('/login')
+          }, 1500)
+        }
       } else {
-        setMessage(data.message || 'Đăng ký thất bại')
+        setMessage(data.message || data.error || 'Đăng ký thất bại')
         setMessageType('error')
       }
     } catch {
@@ -292,54 +315,77 @@ export default function SignupPage() {
                     </motion.div>
                   )}
 
-                  {/* Terms Checkbox */}
-                  <div className="flex items-start gap-2 pt-2">
-                    <input type="checkbox" id="terms" className="mt-1 w-4 h-4 rounded border-white/20 bg-white/10 text-purple-600 focus:ring-purple-500 focus:ring-offset-0" defaultChecked={false} />
-                    <label htmlFor="terms" className="text-xs text-gray-400 leading-tight">
-                      Tôi đồng ý với <Link href="#" className="text-purple-400 hover:text-purple-300 underline">Điều khoản dịch vụ</Link> và <Link href="#" className="text-purple-400 hover:text-purple-300 underline">Chính sách bảo mật</Link>
-                    </label>
-                  </div>
-
-                  {/* Submit Button */}
-                  <motion.button
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                    onClick={handleSubmit}
-                    disabled={isLoading || !formData.username || !formData.fullname || !formData.email || !formData.password || !confirmPassword}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
-                  >
-                    {isLoading ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <span>Đăng ký</span>
-                      </>
-                    )}
-                  </motion.button>
-                  
-                  {/* Social & Divider */}
-                  <div className="relative my-4">
-                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-                    <div className="relative flex justify-center text-xs uppercase"><span className="px-4 bg-[#1a152e] text-gray-500 rounded-full">Hoặc</span></div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => signIn('google', { callbackUrl: '/profile' })}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all group"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                  </button>
-                  
-                  <p className="text-center text-gray-400 text-sm">
-                    Đã có tài khoản? <Link href="/login" className="text-purple-400 hover:text-pink-400 font-semibold transition-colors">Đăng nhập ngay</Link>
-                  </p>
+                {/* Terms Checkbox */}
+                <div className="flex items-start gap-2 p-3 bg-white/5 border border-white/10 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded border-white/10 bg-white/5 text-purple-500 focus:ring-purple-500 cursor-pointer"
+                  />
+                  <label htmlFor="terms" className="text-xs text-gray-300 cursor-pointer">
+                    Tôi đồng ý với {' '}
+                    <Link href="#" className="text-purple-400 hover:text-purple-300 underline font-medium">
+                      Điều khoản dịch vụ
+                    </Link>
+                    {' '} và {' '}
+                    <Link href="#" className="text-purple-400 hover:text-purple-300 underline font-medium">
+                      Chính sách bảo mật
+                    </Link>
+                    {' '} của Instagram Lite *
+                  </label>
                 </div>
+
+                {/* Submit Button */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={handleSubmit}
+                  disabled={isLoading || !formData.username || !formData.fullname || !formData.email || !formData.password || !confirmPassword || !agreedToTerms}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span>Đăng ký</span>
+                    </>
+                  )}
+                </motion.button>
+                
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-transparent text-gray-400">Hoặc tiếp tục với</span>
+                  </div>
+                </div>
+
+                {/* Google Sign Up */}
+                <button
+                  type="button"
+                  onClick={() => signIn('google', { callbackUrl: '/profile' })}
+                  className="flex items-center justify-center w-12 h-12 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all mx-auto"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                </button>
+
+                {/* Login Link */}
+                <p className="text-center text-gray-400 text-sm">
+                  Đã có tài khoản?{' '}
+                  <Link href="/login" className="text-purple-400 hover:text-purple-300 font-medium transition-colors">
+                    Đăng nhập ngay
+                  </Link>
+                </p>
               </div>
+            </div>
             </div>
             <p className="text-center text-gray-600 text-xs mt-6">Copyright © InstaClone 2024</p>
           </motion.div>
