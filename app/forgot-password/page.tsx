@@ -130,7 +130,7 @@ export default function ForgotPasswordPage() {
 
           {/* Footer */}
           <p className="text-center text-gray-500 text-sm mt-8">
-            Copyright © Instagram Lite
+            Copyright © InstaClone
           </p>
         </div>
       </div>

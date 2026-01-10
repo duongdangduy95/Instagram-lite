@@ -321,9 +321,14 @@ export default function CommentSection({
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-purple-primary text-white rounded-lg hover:bg-purple-primary-dark transition-colors font-medium"
+                  className="p-2.5 bg-purple-primary text-white rounded-lg hover:bg-purple-primary-dark transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!newComment.trim()}
                 >
-                  Gửi
+                  <img 
+                    src="/icons/send-solid-purple.svg" 
+                    alt="Gửi" 
+                    className="w-6 h-6"
+                  />
                 </button>
               </div>
             </form>
@@ -400,9 +405,14 @@ export default function CommentSection({
             />
             <button
               type="submit"
-              className="mt-2 px-4 py-2 bg-purple-primary text-white rounded-lg hover:bg-purple-primary-dark transition-colors"
+              className="mt-2 p-2.5 bg-purple-primary text-white rounded-lg hover:bg-purple-primary-dark transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!newComment.trim()}
             >
-              Gửi
+              <img 
+                src="/icons/send-solid-purple.svg" 
+                alt="Gửi" 
+                className="w-6 h-6 "
+              />
             </button>
           </form>
         </div>

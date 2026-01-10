@@ -575,9 +575,13 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                   <button
                     onClick={() => void handleSubmitComment()}
                     disabled={posting || !composer.trim()}
-                    className="text-purple-primary font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Đăng
+                    <img 
+                      src="/icons/send-solid-purple.svg" 
+                      alt="Đăng" 
+                      className="w-5 h-5"
+                    />
                   </button>
                 </div>
               </div>
@@ -858,9 +862,13 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                     <button
                       onClick={() => void handleSubmitComment()}
                       disabled={posting || !composer.trim()}
-                      className="text-purple-primary font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Đăng
+                      <img 
+                        src="/icons/send-solid-purple.svg" 
+                        alt="Đăng" 
+                        className="w-5 h-5"
+                      />
                     </button>
                   </div>
                 </div>

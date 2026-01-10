@@ -212,7 +212,7 @@ export default function Navigation() {
       {/* ============ MOBILE TOP BAR ============ */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-[#0B0E11]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0B0E11]/80 border-b border-gray-800 z-50">
         <div className="h-full px-4 flex items-center justify-between">
-          <Link href="/home" className="text-lg font-bold text-white">
+          <Link href="/home" className="text-2xl font-light text-white" style={{ fontFamily: 'var(--font-logo), cursive' }}>
             InstaClone
           </Link>
 
@@ -340,7 +340,7 @@ export default function Navigation() {
       <nav className="hidden md:block fixed left-0 top-0 h-full bg-[#0B0E11] border-r border-gray-800 z-50 w-20 lg:w-64">
         <div className="flex flex-col h-full px-3 lg:px-4 py-6">
           {/* Logo */}
-          <Link href="/home" className="text-2xl font-bold text-white mb-6 px-2 hidden lg:block">
+          <Link href="/home" className="text-2xl font-light text-white mb-6 px-2 hidden lg:block" style={{ fontFamily: 'var(--font-logo), cursive' }}>
             InstaClone
           </Link>
           <Link href="/home" className="text-white mb-6 px-2 lg:hidden flex justify-center">

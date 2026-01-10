@@ -10,8 +10,8 @@ interface FollowButtonProps {
   className?: string
 }
 
-export default function FollowButton({ 
-  targetUserId, 
+export default function FollowButton({
+  targetUserId,
   initialIsFollowing,
   onFollowChange,
   size = 'md',
@@ -29,12 +29,12 @@ export default function FollowButton({
     // Optimistic update - cập nhật UI ngay lập tức
     const previousIsFollowing = isFollowing
     const newIsFollowing = !isFollowing
-    
+
     setIsFollowing(newIsFollowing)
     // Báo cho parent update ngay (đồng bộ sidebar/feed) — chưa có followersCount thì để undefined
     onFollowChange?.(newIsFollowing)
     setIsLoading(true)
-    
+
     try {
       const response = await fetch(`/api/follow/${targetUserId}`, {
         method: previousIsFollowing ? 'DELETE' : 'POST',
@@ -67,9 +67,10 @@ export default function FollowButton({
     <button
       onClick={handleFollow}
       disabled={isLoading}
-      className={`font-semibold transition-colors disabled:opacity-50 text-white rounded-lg bg-[#877EFF] hover:bg-[#7565E6] ${
-        size === 'sm' ? 'text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2' : 'text-sm px-4 py-2'
-      } ${className}`}
+      className={`font-semibold transition-all disabled:opacity-50 rounded-lg ${size === 'sm'
+          ? 'text-sm px-2.5 py-1 text-[#877EFF] hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20'
+          : 'text-sm px-4 py-2 text-white rounded-lg bg-[#877EFF] hover:bg-[#7565E6]'
+        } ${className}`}
     >
       {isLoading ? '...' : isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
     </button>

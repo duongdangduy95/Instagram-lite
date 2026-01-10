@@ -16,8 +16,10 @@
     "axios": "^1.9.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
+    "clsx": "^2.1.1",
     "cookie": "^1.0.2",
     "date-fns": "^4.1.0",
+    "framer-motion": "^12.25.0",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.511.0",
@@ -28,6 +30,7 @@
     "react-dom": "^19.0.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "tailwind-merge": "^3.4.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
