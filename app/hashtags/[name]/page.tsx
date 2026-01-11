@@ -64,6 +64,7 @@ export default async function HashtagPage({ params }: PageProps) {
       id: true,
       caption: true,
       imageUrls: true,
+      music: true,
       createdAt: true,
       author: {
         select: {
@@ -80,6 +81,7 @@ export default async function HashtagPage({ params }: PageProps) {
           id: true,
           caption: true,
           imageUrls: true,
+          music: true,
           createdAt: true,
           author: { select: { id: true, fullname: true, username: true } },
           _count: { select: { likes: true, comments: true } },

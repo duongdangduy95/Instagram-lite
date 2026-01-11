@@ -29,6 +29,7 @@ export async function POST(req: Request) {
     // 📦 Lấy form data
     const form = await req.formData()
     const caption = form.get('caption') as string
+    const musicRaw = form.get('music')
     const files: File[] = []
 
     form.forEach((value, key) => {
@@ -37,9 +38,28 @@ export async function POST(req: Request) {
       }
     })
 
+    // 🎵 Parse optional music (stored as JSON string)
+    let music: unknown = null
+    if (typeof musicRaw === 'string' && musicRaw.trim()) {
+      try {
+        music = JSON.parse(musicRaw)
+      } catch {
+        return NextResponse.json({ error: 'Music payload is invalid' }, { status: 400 })
+      }
+    }
+
     if (!caption || files.length === 0) {
       return NextResponse.json(
         { error: 'Caption and at least one image are required' },
+        { status: 400 }
+      )
+    }
+
+    // ✅ Rule: music only allowed for image-only posts (no video)
+    const hasVideo = files.some((f) => (f.type || '').startsWith('video'))
+    if (music && hasVideo) {
+      return NextResponse.json(
+        { error: 'Không thể thêm nhạc cho bài đăng có video. Tính năng nhạc chỉ áp dụng cho post toàn ảnh.' },
         { status: 400 }
       )
     }
@@ -85,6 +105,7 @@ export async function POST(req: Request) {
         caption,
         imageUrls,
         authorId: userId,
+        ...(music ? { music: music as any } : {}),
       },
     })
 

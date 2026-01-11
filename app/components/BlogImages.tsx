@@ -1,12 +1,23 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 interface BlogImagesProps {
   imageUrls: string[] // ảnh + video URLs (theo thứ tự)
   rounded?: boolean
   frameMode?: 'aspect' | 'fill'
+  // Optional: music preview (30s). Only for image-only posts.
+  music?: {
+    provider: 'deezer'
+    trackId: number
+    title: string
+    artist: string
+    previewUrl: string
+    coverUrl?: string | null
+    durationSec?: number | null
+  } | null
+  musicKey?: string
 }
 
 const isVideoUrl = (url: string) =>
@@ -19,8 +30,18 @@ export default function BlogImages({
   imageUrls,
   rounded = true,
   frameMode = 'aspect',
+  music = null,
+  musicKey,
 }: BlogImagesProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [musicPlaying, setMusicPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const instanceIdRef = useRef<string>(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? // @ts-expect-error - runtime guarded
+        crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`
+  )
 
   const urls = useMemo(() => imageUrls ?? [], [imageUrls])
   const [ratioByUrl, setRatioByUrl] = useState<Record<string, number>>({})
@@ -114,6 +135,82 @@ export default function BlogImages({
 
   if (urls.length === 0) return null
 
+  const canShowMusic = !!music?.previewUrl
+  const key = musicKey ?? (music?.previewUrl ?? '')
+
+  const stopMusic = () => {
+    const a = audioRef.current
+    if (a) {
+      a.pause()
+      try {
+        a.currentTime = 0
+      } catch {}
+    }
+    setMusicPlaying(false)
+  }
+
+  const toggleMusic = async () => {
+    if (!music?.previewUrl) return
+    if (musicPlaying) {
+      stopMusic()
+      return
+    }
+
+    // Tell other posts to stop
+    window.dispatchEvent(
+      new CustomEvent('music:play', {
+        detail: { key, instanceId: instanceIdRef.current },
+      })
+    )
+
+    try {
+      if (!audioRef.current) {
+        const a = new Audio(music.previewUrl)
+        a.preload = 'none'
+        a.onended = () => setMusicPlaying(false)
+        audioRef.current = a
+      } else {
+        audioRef.current.src = music.previewUrl
+      }
+
+      await audioRef.current.play()
+      setMusicPlaying(true)
+    } catch {
+      setMusicPlaying(false)
+    }
+  }
+
+  // Global stop listener: only one preview should play at a time
+  useEffect(() => {
+    if (!canShowMusic) return
+    const onPlay = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { key?: string; instanceId?: string } | undefined
+      if (!detail) return
+      // Stop if another instance started playing (even same post key)
+      if (detail.instanceId && detail.instanceId === instanceIdRef.current) return
+      stopMusic()
+    }
+    const onStopAll = () => stopMusic()
+    window.addEventListener('music:play', onPlay as EventListener)
+    window.addEventListener('music:stop', onStopAll as EventListener)
+    return () => {
+      window.removeEventListener('music:play', onPlay as EventListener)
+      window.removeEventListener('music:stop', onStopAll as EventListener)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canShowMusic, key])
+
+  // Cleanup on unmount / previewUrl change
+  useEffect(() => {
+    return () => {
+      const a = audioRef.current
+      if (a) {
+        a.pause()
+        audioRef.current = null
+      }
+    }
+  }, [music?.previewUrl])
+
   return (
     <div className={frameMode === 'fill' ? 'w-full h-full' : 'w-full'}>
       {/* Carousel (Instagram-like): 1 media + arrows + dots */}
@@ -158,6 +255,35 @@ export default function BlogImages({
             />
           )}
         </div>
+
+        {/* Music speaker icon (bottom-right) */}
+        {canShowMusic && !isVideoUrl(urls[currentIndex]) && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              void toggleMusic()
+            }}
+            className="absolute bottom-3 right-3 z-30 h-10 w-10 rounded-full bg-black/55 hover:bg-black/75 text-white flex items-center justify-center"
+            aria-label={musicPlaying ? 'Tắt nhạc' : 'Bật nhạc'}
+            title={music ? `${music.title} • ${music.artist}` : 'Nhạc'}
+          >
+            <div
+              className="w-5 h-5 bg-white"
+              style={{
+                maskImage: `url(${musicPlaying ? '/icons/sound-svgrepo-com.svg' : '/icons/sound-off-svgrepo-com.svg'})`,
+                maskRepeat: 'no-repeat',
+                maskPosition: 'center',
+                maskSize: 'contain',
+                WebkitMaskImage: `url(${musicPlaying ? '/icons/sound-svgrepo-com.svg' : '/icons/sound-off-svgrepo-com.svg'})`,
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
+                WebkitMaskSize: 'contain',
+              }}
+            />
+          </button>
+        )}
 
         {/* Arrows */}
         {hasMultiple && (

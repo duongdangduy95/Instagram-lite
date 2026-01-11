@@ -55,6 +55,8 @@ model Blog {
   sharedFromId     String?
   imageUrls        String[]
   hashtags         String[]
+  // Optional music metadata for image-only posts (e.g. Deezer preview 30s)
+  music            Json?
   search_vector    Unsupported("tsvector")?
   caption_unaccent String?
   isdeleted        Boolean                  @default(false)

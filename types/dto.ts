@@ -29,6 +29,16 @@ export type BlogCountsDTO = {
 
 export type BlogLikeEdgeDTO = { userId: string }
 
+export type BlogMusicDTO = {
+  provider: 'deezer'
+  trackId: number
+  title: string
+  artist: string
+  previewUrl: string
+  coverUrl?: string | null
+  durationSec?: number | null
+} | null
+
 export type SharedFromDTO = {
   id: string
   caption?: string | null
@@ -36,6 +46,7 @@ export type SharedFromDTO = {
   createdAt: string
   author: BlogAuthorDTO
   _count: BlogCountsDTO
+  music?: BlogMusicDTO
 } | null
 
 export type BlogDTO = {
@@ -48,6 +59,7 @@ export type BlogDTO = {
   _count: BlogCountsDTO
   sharedFrom?: SharedFromDTO
   isSaved?: boolean
+  music?: BlogMusicDTO
 }
 
 export type SuggestUserDTO = UserBasicDTO & {

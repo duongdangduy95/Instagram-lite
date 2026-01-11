@@ -17,6 +17,15 @@ interface Blog {
   caption?: string
   imageUrls: string[]
   hashtags: string[]
+  music?: {
+    provider: 'deezer'
+    trackId: number
+    title: string
+    artist: string
+    previewUrl: string
+    coverUrl?: string | null
+    durationSec?: number | null
+  } | null
   createdAt: string
   isSaved?: boolean
   author: {
@@ -30,6 +39,15 @@ interface Blog {
     caption?: string
     imageUrls: string[]
     hashtags: string[]
+    music?: {
+      provider: 'deezer'
+      trackId: number
+      title: string
+      artist: string
+      previewUrl: string
+      coverUrl?: string | null
+      durationSec?: number | null
+    } | null
     createdAt: string
     author: {
       id: string
@@ -254,7 +272,7 @@ export default function BlogDetailPage() {
                   {/* Media */}
                   <Link href={`/blog/${displayBlog.id}`} className="block">
                     <div className="bg-gray-900">
-                      <BlogImages imageUrls={displayBlog.imageUrls} />
+                      <BlogImages imageUrls={displayBlog.imageUrls} music={(displayBlog as any).music ?? null} musicKey={displayBlog.id} />
                     </div>
                   </Link>
 
@@ -325,7 +343,7 @@ export default function BlogDetailPage() {
 
                 <div className="px-4 pb-4">
                   <div className="rounded-lg overflow-hidden bg-gray-900">
-                    <BlogImages imageUrls={displayBlog.imageUrls} />
+                    <BlogImages imageUrls={displayBlog.imageUrls} music={(displayBlog as any).music ?? null} musicKey={displayBlog.id} />
                   </div>
                 </div>
               </>
