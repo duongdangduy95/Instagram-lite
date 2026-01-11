@@ -13,6 +13,7 @@ export async function createNotification(notification: {
     | 'LIKE_POST'
     | 'COMMENT_POST'
     | 'SHARE_POST'
+    | 'REPLY_COMMENT'
     | 'MESSAGE'
   blogId?: string
   commentId?: string
@@ -38,7 +39,11 @@ export async function GET() {
 
   try {
     const notifications = await prisma.notification.findMany({
-      where: { userId },
+      where: {
+        userId,
+        // bỏ hẳn noti tin nhắn khỏi nút Thông báo
+        NOT: { type: 'MESSAGE' }
+      },
       include: {
         actor: {
           select: {
