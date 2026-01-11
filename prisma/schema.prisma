@@ -43,6 +43,7 @@ model User {
   participations     Participant[]
   savedPosts         SavedPost[]
   Session            Session[]
+  report             report[]
 }
 
 model Blog {
@@ -56,14 +57,21 @@ model Blog {
   hashtags         String[]
   search_vector    Unsupported("tsvector")?
   caption_unaccent String?
+  isdeleted        Boolean                  @default(false)
+  deletedat        DateTime?                @db.Timestamp(6)
+  deletedbyadmin   String?
+  music            Json?
   author           User                     @relation(fields: [authorId], references: [id])
   sharedFrom       Blog?                    @relation("BlogShare", fields: [sharedFromId], references: [id])
   shares           Blog[]                   @relation("BlogShare")
+  admin            admin?                   @relation(fields: [deletedbyadmin], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "blog_deletedbyadmin_fkey")
   comments         Comment[]
   likes            Like[]
   notifications    Notification[]           @relation("BlogNotifications")
   savedBy          SavedPost[]
+  adminactionlog   adminactionlog[]
   blogHashtags     BlogHashtag[]
+  report           report[]
 
   @@index([caption_unaccent(ops: raw("gin_trgm_ops"))], map: "blog_caption_trgm_idx", type: Gin)
   @@index([search_vector], map: "blog_search_vector_idx", type: Gin)
@@ -76,6 +84,7 @@ model Blog {
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "idx_blog_created_id")
   @@index([createdAt(sort: Desc)], map: "idx_blog_createdat")
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "idx_blog_createdat_id")
+  @@index([isdeleted], map: "idx_blog_isdeleted")
 }
 
 model Hashtag {
@@ -277,6 +286,58 @@ model Notification {
   @@index([userId, isRead])
 }
 
+model admin {
+  id             String           @id
+  username       String           @unique
+  password       String
+  fullname       String?
+  role           String           @default("MOD")
+  isactive       Boolean          @default(true)
+  createdat      DateTime         @default(now()) @db.Timestamp(6)
+  Blog           Blog[]
+  adminactionlog adminactionlog[]
+  adminsession   adminsession[]
+}
+
+model adminactionlog {
+  id        String   @id
+  adminid   String
+  action    String
+  blogid    String?
+  reportid  String?
+  createdat DateTime @default(now()) @db.Timestamp(6)
+  admin     admin    @relation(fields: [adminid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "adminactionlog_admin_fkey")
+  Blog      Blog?    @relation(fields: [blogid], references: [id])
+  report    report?  @relation(fields: [reportid], references: [id])
+}
+
+model adminsession {
+  id        String   @id
+  adminid   String
+  token     String   @unique
+  expiresat DateTime @db.Timestamp(6)
+  createdat DateTime @default(now()) @db.Timestamp(6)
+  admin     admin    @relation(fields: [adminid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "adminsession_admin_fkey")
+}
+
+model report {
+  id             String           @id
+  reporterid     String
+  blogid         String
+  reason         String
+  status         String           @default("PENDING")
+  createdat      DateTime         @default(now()) @db.Timestamp(6)
+  reviewedby     String?
+  reviewedat     DateTime?        @db.Timestamp(6)
+  adminnote      String?
+  adminactionlog adminactionlog[]
+  Blog           Blog             @relation(fields: [blogid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "report_blog_fkey")
+  User           User             @relation(fields: [reporterid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "report_reporter_fkey")
+
+  @@index([blogid], map: "idx_report_blog")
+  @@index([status], map: "idx_report_status")
+}
+
 enum MessageStatus {
   SENT
   DELIVERED
@@ -288,6 +349,8 @@ enum NotificationType {
   NEW_POST
   LIKE_POST
   COMMENT_POST
+  REPLY_COMMENT
   SHARE_POST
   MESSAGE
+  BLOG_DELETED
 }

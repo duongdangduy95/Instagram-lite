@@ -6,7 +6,7 @@ import { createNotification } from '@/lib/notification'
 import { NotificationType } from '@prisma/client'
 import { redis } from '@/lib/redis'
 import { invalidateHomeFeed } from '@/lib/cache'
-
+import { notifyComment } from '@/lib/notification-helper'
 async function getCurrentUserId() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return null
@@ -115,16 +115,15 @@ export async function POST(
         },
       },
     })
+    await notifyComment({
+  blogId,
+  commentId: comment.id,
+  actorId: userId,
+  parentId,
+})
 
-    if (blog.authorId !== userId) {
-      await createNotification({
-        userId: blog.authorId,
-        actorId: userId,
-        type: NotificationType.COMMENT_POST,
-        blogId,
-        commentId: comment.id,
-      })
-    }
+
+   
   
     // ❌ CLEAR CACHE
     await redis.del(COMMENTS_CACHE_KEY(blogId))
