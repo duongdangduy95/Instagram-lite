@@ -60,6 +60,7 @@ model Blog {
   isdeleted        Boolean                  @default(false)
   deletedat        DateTime?                @db.Timestamp(6)
   deletedbyadmin   String?
+  music            Json?
   author           User                     @relation(fields: [authorId], references: [id])
   sharedFrom       Blog?                    @relation("BlogShare", fields: [sharedFromId], references: [id])
   shares           Blog[]                   @relation("BlogShare")

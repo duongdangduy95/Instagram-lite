@@ -77,7 +77,7 @@ export default async function HomePage() {
         ? JSON.parse(cachedFeed) 
         : cachedFeed
       if (Array.isArray(parsed) && parsed.length > 0) {
-        blogs = parsed
+        blogs = parsed.filter(b => !b.isdeleted)
         cacheHit = true
       }
     }
@@ -139,6 +139,7 @@ export default async function HomePage() {
     }
 
     blogs = await prisma.blog.findMany({
+      where: { isdeleted: false },
       orderBy: { createdAt: 'desc' },
       take: FEED_LIMIT,
       select: blogSelect,

@@ -274,19 +274,51 @@ export default function BlogActions({
             </button>
           </div>
 
-          {/* Right side: Save button */}
-          <button
-            onClick={handleSave}
-            className={`text-gray-300 hover:text-gray-100 transition-all duration-300 ${saveAnimating ? 'scale-75' : 'scale-100'
-              }`}
-          >
-            <Image
-              src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
-              alt="Lưu"
-              width={24}
-              height={24}
-            />
-          </button>
+          {/* Right side: Save + Report */}
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={handleSave}
+              className={`text-gray-300 hover:text-gray-100 transition-all duration-300 ${saveAnimating ? 'scale-75' : 'scale-100'}`}
+            >
+              <Image
+                src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
+                alt="Lưu"
+                width={24}
+                height={24}
+              />
+            </button>
+
+            {/* Report button */}
+            <button
+              onClick={async () => {
+                const reason = prompt("Nhập lý do báo cáo bài viết này:")
+                if (!reason || reason.trim() === "") return alert("Bạn phải nhập lý do!")
+
+                try {
+                  const res = await fetch(`/api/blog/${blogId}/report`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ reason }),
+                    credentials: "include", // gửi cookie session
+                  })
+
+                  const data = await res.json()
+                  if (!res.ok) {
+                    alert(data.error || "Có lỗi xảy ra khi gửi báo cáo")
+                  } else {
+                    alert("Báo cáo đã gửi!")
+                  }
+                } catch (err) {
+                  console.error(err)
+                  alert("Có lỗi xảy ra khi gửi báo cáo")
+                }
+              }}
+              className="text-yellow-500 hover:text-yellow-400 transition-all duration-300"
+            >
+              <Image src="/icons/report.svg" alt="Báo cáo" width={24} height={24} />
+            </button>
+
+          </div>
         </div>
       </div>
 
