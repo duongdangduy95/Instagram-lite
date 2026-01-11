@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     // In production, you would send an email here
     // For now, we'll just return the reset link
-    const resetLink = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}&email=${email}`
+    const resetLink = `https://instagram-lite.vercel.app/reset-password?token=${resetToken}&email=${email}`
     
     console.log('Password Reset Link:', resetLink)
     
