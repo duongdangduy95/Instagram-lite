@@ -299,12 +299,11 @@ export async function DELETE(
   }
 
   try {
+    // Lấy blog kèm hashtags
     const blog = await prisma.blog.findUnique({
       where: { id: blogId },
       include: {
-        blogHashtags: {
-          include: { hashtag: true },
-        },
+        blogHashtags: { include: { hashtag: true } },
       },
     })
 
@@ -318,6 +317,7 @@ export async function DELETE(
     const bucketName = 'instagram'
     const filesToDelete: string[] = []
 
+    // Xóa ảnh trên Supabase
     for (const url of blog.imageUrls ?? []) {
       try {
         const pathname = new URL(url).pathname
@@ -325,11 +325,11 @@ export async function DELETE(
         if (filePath) filesToDelete.push(filePath)
       } catch {}
     }
-
     if (filesToDelete.length > 0) {
       await supabase.storage.from(bucketName).remove(filesToDelete)
     }
 
+    // Xử lý hashtags
     for (const bh of blog.blogHashtags) {
       const hashtagId = bh.hashtag.id
       if (bh.hashtag.usage_count > 1) {
@@ -342,13 +342,33 @@ export async function DELETE(
       }
     }
 
+    // Xóa các dữ liệu liên quan
     await prisma.like.deleteMany({ where: { blogId } })
-    await prisma.comment.deleteMany({ where: { blogId } })
+
+    // Xóa comment + nested comment
+    const deleteCommentsRecursive = async (parentId: string) => {
+      const childComments = await prisma.comment.findMany({
+        where: { parentId },
+      })
+      for (const child of childComments) {
+        await deleteCommentsRecursive(child.id)
+      }
+      await prisma.comment.deleteMany({ where: { id: parentId } })
+    }
+
+    const topComments = await prisma.comment.findMany({
+      where: { blogId, parentId: null },
+    })
+    for (const comment of topComments) {
+      await deleteCommentsRecursive(comment.id)
+    }
+
     await prisma.savedPost.deleteMany({ where: { blogId } })
-    await prisma.blog.deleteMany({ where: { sharedFromId: blogId } })
+
+    // Cuối cùng xóa blog chính
     await prisma.blog.delete({ where: { id: blogId } })
 
-    // ❌ CLEAR CACHE
+    // Clear cache
     await redis.del(BLOG_CACHE_KEY(blogId))
 
     return NextResponse.json({ message: 'Blog deleted successfully' })

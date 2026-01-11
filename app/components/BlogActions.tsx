@@ -6,6 +6,10 @@ import CommentSection from './CommentSection'
 import Image from 'next/image'
 import type { CurrentUserSafe } from '@/types/dto'
 import ShareModal from './ShareModal'
+import ReportModal from './ReportModal'
+
+
+
 
 interface BlogActionsProps {
   blogId: string
@@ -40,6 +44,7 @@ export default function BlogActions({
   const [commentAnimating, setCommentAnimating] = useState(false)
   const [shareAnimating, setShareAnimating] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
 
   // Sử dụng useSession từ next-auth thay vì gọi API
   useEffect(() => {
@@ -274,19 +279,36 @@ export default function BlogActions({
             </button>
           </div>
 
-          {/* Right side: Save button */}
-          <button
-            onClick={handleSave}
-            className={`text-gray-300 hover:text-gray-100 transition-all duration-300 ${saveAnimating ? 'scale-75' : 'scale-100'
-              }`}
-          >
-            <Image
-              src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
-              alt="Lưu"
-              width={24}
-              height={24}
+          {/* Right side: Save + Report */}
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={handleSave}
+              className={`text-gray-300 hover:text-gray-100 transition-all duration-300 ${saveAnimating ? 'scale-75' : 'scale-100'}`}
+            >
+              <Image
+                src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
+                alt="Lưu"
+                width={24}
+                height={24}
+              />
+            </button>
+
+            {/* Report button */}
+            <button
+              onClick={() => {
+                setShowReportModal(true)
+              }}
+              className="text-yellow-500 hover:text-yellow-400 transition-all duration-300"
+            >
+              <Image src="/icons/report.svg" alt="Báo cáo" width={24} height={24} />
+            </button>
+            <ReportModal
+              isOpen={showReportModal}
+              onClose={() => setShowReportModal(false)}
+              blogId={blogId}
             />
-          </button>
+
+          </div>
         </div>
       </div>
 

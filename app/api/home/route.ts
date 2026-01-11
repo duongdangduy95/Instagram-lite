@@ -33,10 +33,10 @@ export async function GET(req: Request) {
       
       // Backward compatibility: nếu là array cũ thì dùng trực tiếp
       if (Array.isArray(parsed)) {
-        feed = parsed
+        feed = parsed.filter(b => !b.isdeleted)
       } else if (parsed && typeof parsed === 'object' && 'feed' in parsed) {
         // Cấu trúc mới với nextCursor
-        feed = parsed.feed || []
+        feed = (parsed.feed || []).filter(b => !b.isdeleted)
       } else {
         feed = []
       }
@@ -52,6 +52,7 @@ export async function GET(req: Request) {
           skip: 1, // Bỏ qua post có id = cursor (vì đã có rồi)
         } : {}),
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        where: { isdeleted: false },
         select: {
           id: true,
           caption: true,
@@ -106,9 +107,10 @@ export async function GET(req: Request) {
       }))
 
       // Lưu thêm metadata về next cursor vào cache
+      const feedForCache = feed.filter(b => !b.isdeleted)
       const cacheData = {
-        feed,
-        nextCursor: hasNextPage ? blogs[blogs.length - 1]?.id : null,
+        feed: feedForCache,
+        nextCursor: hasNextPage ? feedForCache[feedForCache.length - 1]?.id : null,
       }
 
       // LƯU VÀO REDIS (Dùng cấu trúc object cho options)

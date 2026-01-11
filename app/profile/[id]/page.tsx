@@ -29,6 +29,7 @@ export default async function ProfilePage({
       image: true,
       createdAt: true,
       blogs: {
+        where: { isdeleted: false },
         select: {
           id: true,
           caption: true,
@@ -36,6 +37,7 @@ export default async function ProfilePage({
           createdAt: true,
           _count: { select: { likes: true, comments: true } },
           sharedFrom: {
+            where: { isdeleted: false },
             select: {
               id: true,
               caption: true,
@@ -76,7 +78,7 @@ export default async function ProfilePage({
   const userDto = {
     ...user,
     createdAt: user.createdAt.toISOString(),
-    blogs: (user.blogs ?? []).map((b) => ({
+    blogs: (user.blogs ?? []).filter(b => !b.isdeleted).map((b) => ({
       ...b,
       createdAt: b.createdAt.toISOString(),
       sharedFrom: b.sharedFrom

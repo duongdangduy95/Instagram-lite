@@ -85,6 +85,8 @@ model Blog {
   @@index([createdAt(sort: Desc)], map: "idx_blog_createdat")
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "idx_blog_createdat_id")
   @@index([isdeleted], map: "idx_blog_isdeleted")
+  adminActionLogs adminactionlog[]
+
 }
 
 model Hashtag {
@@ -307,8 +309,8 @@ model adminactionlog {
   reportid  String?
   createdat DateTime @default(now()) @db.Timestamp(6)
   admin     admin    @relation(fields: [adminid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "adminactionlog_admin_fkey")
-  Blog      Blog?    @relation(fields: [blogid], references: [id])
-  report    report?  @relation(fields: [reportid], references: [id])
+  blog    Blog?  @relation(fields: [blogid], references: [id])
+  report  report? @relation(fields: [reportid], references: [id])
 }
 
 model adminsession {
