@@ -1,6 +1,7 @@
 // app/api/blog/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { invalidateHomeFeed } from '@/lib/cache'
 
 
 export async function POST(req: Request) {
@@ -9,6 +10,6 @@ export async function POST(req: Request) {
   const blog = await prisma.blog.create({
     data,
   });
-
+  await invalidateHomeFeed()
   return NextResponse.json(blog);
 }

@@ -5,7 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { createNotification } from '@/lib/notification'
 import { NotificationType } from '@prisma/client'
 import { redis } from '@/lib/redis'
-
+import { invalidateHomeFeed } from '@/lib/cache'
+import { notifyComment } from '@/lib/notification-helper'
 async function getCurrentUserId() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return null
@@ -114,20 +115,19 @@ export async function POST(
         },
       },
     })
+    await notifyComment({
+  blogId,
+  commentId: comment.id,
+  actorId: userId,
+  parentId,
+})
 
-    if (blog.authorId !== userId) {
-      await createNotification({
-        userId: blog.authorId,
-        actorId: userId,
-        type: NotificationType.COMMENT_POST,
-        blogId,
-        commentId: comment.id,
-      })
-    }
 
+   
+  
     // ❌ CLEAR CACHE
     await redis.del(COMMENTS_CACHE_KEY(blogId))
-
+    await invalidateHomeFeed()
     return NextResponse.json(comment)
   } catch (err) {
     console.error('API ERROR:', err)
@@ -169,7 +169,7 @@ export async function PATCH(req: NextRequest) {
 
   // ❌ CLEAR CACHE
   await redis.del(COMMENTS_CACHE_KEY(comment.blogId))
-
+   await invalidateHomeFeed()
   return NextResponse.json(updated)
 }
 
@@ -227,6 +227,6 @@ export async function DELETE(req: NextRequest) {
 
   // ❌ CLEAR CACHE
   await redis.del(COMMENTS_CACHE_KEY(comment.blog.id))
-
+  await invalidateHomeFeed()
   return NextResponse.json({ success: true })
 }
