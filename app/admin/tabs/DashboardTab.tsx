@@ -30,5 +30,6 @@ export default function DashboardTab() {
   if (loading) return <div className="text-gray-400">Loading...</div>
   if (!data) return <div className="text-red-500">Failed to load</div>
 
-  return <BlogFeed blogs={data.blogs} isAdmin />
+  return <BlogFeed blogs={data.blogs} />
+
 }

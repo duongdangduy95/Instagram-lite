@@ -7,6 +7,12 @@ export async function GET() {
   const reports = await prisma.report.findMany({
     where: { status: "PENDING" },
     include: {
+      User: {                // 👈 lấy người report
+        select: {
+          id: true,
+          username: true,
+        },
+      },
       Blog: {
         include: {
           author: true,
@@ -19,7 +25,8 @@ export async function GET() {
   const blogs = reports.map(r => ({
     ...r.Blog,
     reportId: r.id,
-    reason: r.reason,
+    reportReason: r.reason,
+    reporter: r.User,       // 👈 gửi cho frontend
   }))
 
   return NextResponse.json({ blogs })
