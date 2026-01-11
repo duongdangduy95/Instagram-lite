@@ -24,7 +24,7 @@ export default function BlogFeed({ blogs }: { blogs: any[] }) {
         <div
           key={blog.id}
           className="bg-[#11151B] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition cursor-pointer"
-          onClick={() => router.push(`/blog/${blog.id}?admin=1`)}
+          onClick={() => router.push(`/admin/blog/${blog.id}`)}
         >
           {/* HEADER */}
           <div className="flex items-center justify-between px-4 py-3">
