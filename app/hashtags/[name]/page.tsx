@@ -71,6 +71,7 @@ export default async function HashtagPage({ params }: PageProps) {
           id: true,
           fullname: true,
           username: true,
+          image: true,
           followers: currentUser
             ? { select: { followerId: true }, where: { followerId: currentUser.id } }
             : undefined,
@@ -83,7 +84,7 @@ export default async function HashtagPage({ params }: PageProps) {
           imageUrls: true,
           music: true,
           createdAt: true,
-          author: { select: { id: true, fullname: true, username: true } },
+          author: { select: { id: true, fullname: true, username: true, image: true } },
           _count: { select: { likes: true, comments: true } },
         },
       },
@@ -98,10 +99,12 @@ export default async function HashtagPage({ params }: PageProps) {
   // ===== SERIALIZE DATE =====
   const blogsDto: BlogDTO[] = blogs.map((b) => ({
     ...b,
+    music: b.music as BlogDTO['music'],
     createdAt: b.createdAt.toISOString(),
     sharedFrom: b.sharedFrom
       ? {
         ...b.sharedFrom,
+        music: b.sharedFrom.music as BlogDTO['music'],
         createdAt: b.sharedFrom.createdAt.toISOString(),
       }
       : null,
