@@ -28,6 +28,15 @@ type BlogDetail = {
   id: string
   caption?: string | null
   imageUrls: string[]
+  music?: {
+    provider: 'deezer'
+    trackId: number
+    title: string
+    artist: string
+    previewUrl: string
+    coverUrl?: string | null
+    durationSec?: number | null
+  } | null
   createdAt: string
   hashtags?: string[]
   author: BlogAuthor
@@ -35,6 +44,15 @@ type BlogDetail = {
     id: string
     caption?: string | null
     imageUrls: string[]
+    music?: {
+      provider: 'deezer'
+      trackId: number
+      title: string
+      artist: string
+      previewUrl: string
+      coverUrl?: string | null
+      durationSec?: number | null
+    } | null
     createdAt: string
     author: BlogAuthor
     _count: BlogCounts
@@ -105,6 +123,8 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
   // Lock background scroll while modal is open
   useEffect(() => {
     if (!isOpen) return
+    // Stop any preview playing in feed/background to avoid double audio when opening modal
+    window.dispatchEvent(new CustomEvent('music:stop'))
     const prevBodyOverflow = document.body.style.overflow
     const prevHtmlOverflow = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
@@ -450,7 +470,15 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                       {/* Media */}
                       <Link href={`/blog/${displayBlog?.id}`} className="block" onClick={close}>
                         <div className="bg-gray-900">
-                          {displayBlog && <BlogImages imageUrls={displayBlog.imageUrls} rounded={false} frameMode="aspect" />}
+                          {displayBlog && (
+                            <BlogImages
+                              imageUrls={displayBlog.imageUrls}
+                              music={(displayBlog as any).music ?? null}
+                              musicKey={displayBlog.id}
+                              rounded={false}
+                              frameMode="aspect"
+                            />
+                          )}
                         </div>
                       </Link>
 
@@ -503,7 +531,7 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
 
                     {/* Image/Video */}
                     <div className="bg-[#0B0E11]">
-                      <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="aspect" />
+                      <BlogImages imageUrls={blog.imageUrls} music={(blog as any).music ?? null} musicKey={blog.id} rounded={false} frameMode="aspect" />
                     </div>
                   </>
                 )}
@@ -705,7 +733,15 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                         className="flex-1 bg-gray-900 flex items-center justify-center overflow-hidden min-h-0 relative group"
                         onClick={close}
                       >
-                        {displayBlog && <BlogImages imageUrls={displayBlog.imageUrls} rounded={false} frameMode="aspect" />}
+                        {displayBlog && (
+                          <BlogImages
+                            imageUrls={displayBlog.imageUrls}
+                            music={(displayBlog as any).music ?? null}
+                            musicKey={displayBlog.id}
+                            rounded={false}
+                            frameMode="aspect"
+                          />
+                        )}
                       </Link>
 
                       {/* Original Info + Caption - Fixed at bottom of left panel */}
@@ -745,7 +781,7 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                     </div>
                   </div>
                 ) : (
-                  <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="fill" />
+                  <BlogImages imageUrls={blog.imageUrls} music={(blog as any).music ?? null} musicKey={blog.id} rounded={false} frameMode="fill" />
                 )}
               </div>
 

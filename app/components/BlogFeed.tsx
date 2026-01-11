@@ -98,7 +98,7 @@ export default function BlogFeed({
                     {/* MEDIA TRƯỚC */}
                     <Link href={`/blog/${displayBlog.id}`} className="block">
                       <div className="bg-gray-900">
-                        <BlogImages imageUrls={displayBlog.imageUrls} />
+                        <BlogImages imageUrls={displayBlog.imageUrls} music={displayBlog.music ?? null} musicKey={displayBlog.id} />
                       </div>
                     </Link>
 
@@ -177,7 +177,7 @@ export default function BlogFeed({
 
                 <div className="px-4 pb-4">
                   <div className="rounded-lg overflow-hidden bg-gray-900">
-                    <BlogImages imageUrls={displayBlog.imageUrls} />
+                    <BlogImages imageUrls={displayBlog.imageUrls} music={displayBlog.music ?? null} musicKey={displayBlog.id} />
                   </div>
                 </div>
               </>

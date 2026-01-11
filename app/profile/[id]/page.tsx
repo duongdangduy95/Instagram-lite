@@ -34,6 +34,7 @@ export default async function ProfilePage({
           id: true,
           caption: true,
           imageUrls: true,
+          music: true,
           createdAt: true,
           _count: { select: { likes: true, comments: true } },
           sharedFrom: {
@@ -42,6 +43,7 @@ export default async function ProfilePage({
               id: true,
               caption: true,
               imageUrls: true,
+              music: true,
               createdAt: true,
               author: { select: { id: true, fullname: true, username: true } },
               _count: { select: { likes: true, comments: true } },

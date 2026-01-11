@@ -55,6 +55,7 @@ export async function POST(req: Request) {
       caption: caption || '',
       imageUrls: originalBlog.imageUrls,
       hashtags: originalBlog.hashtags || [],
+      music: (originalBlog as any).music ?? null,
       authorId: userId,
       sharedFromId: originalBlog.id,
     },

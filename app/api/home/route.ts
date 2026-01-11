@@ -57,6 +57,7 @@ export async function GET(req: Request) {
           id: true,
           caption: true,
           imageUrls: true,
+          music: true,
           createdAt: true,
           author: {
             select: {
@@ -71,6 +72,7 @@ export async function GET(req: Request) {
               id: true,
               caption: true,
               imageUrls: true,
+              music: true,
               createdAt: true,
               author: {
                 select: {

@@ -105,6 +105,7 @@ export default async function HomePage() {
       id: true,
       caption: true,
       imageUrls: true,
+      music: true,
       createdAt: true,
       author: { select: authorSelect },
       _count: {
@@ -118,6 +119,7 @@ export default async function HomePage() {
           id: true,
           caption: true,
           imageUrls: true,
+          music: true,
           createdAt: true,
           author: { select: { id: true, fullname: true, username: true, image: true } },
           _count: { select: { likes: true, comments: true } },
