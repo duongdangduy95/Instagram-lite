@@ -13,7 +13,6 @@ export async function createNotification(notification: {
     | 'LIKE_POST'
     | 'COMMENT_POST'
     | 'SHARE_POST'
-    | 'REPLY_COMMENT'
     | 'MESSAGE'
   blogId?: string
   commentId?: string
