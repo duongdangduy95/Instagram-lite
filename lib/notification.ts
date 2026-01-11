@@ -10,7 +10,7 @@ const supabase = createClient(
 type CreateNotificationInput = {
   userId: string
   actorId: string
-  type: 'FOLLOW' | 'NEW_POST' | 'LIKE_POST' | 'COMMENT_POST' | 'SHARE_POST' | 'MESSAGE'
+  type: 'FOLLOW' | 'NEW_POST' | 'LIKE_POST' | 'COMMENT_POST' |'REPLY_COMMENT' | 'SHARE_POST' | 'MESSAGE'
   blogId?: string
   commentId?: string
   messageId?: string

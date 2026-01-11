@@ -183,10 +183,21 @@ export default function Navigation() {
         href = `/blog/${n.blog?.id}`
         text = `đã thích bài viết của bạn`
         break
-      case 'COMMENT_POST':
-        href = `/blog/${n.blog?.id}`
-        text = `đã bình luận bài viết của bạn`
-        break
+      case 'COMMENT_POST': {
+  const name = n.actor.fullname || n.actor.username
+
+  if (n.parentCommentId) {
+    // 🔥 REPLY COMMENT
+    href = `/blog/${n.blog?.id}?comment=${n.commentId}`
+    text = `${name} đã trả lời bình luận của bạn`
+  } else {
+    // 🟢 COMMENT BÀI VIẾT
+    href = `/blog/${n.blog?.id}?comment=${n.commentId}`
+    text = `${name} đã bình luận bài viết của bạn`
+  }
+  break
+}
+
       case 'SHARE_POST':
         href = `/blog/${n.blog?.id}`
         text = `đã chia sẻ bài viết của bạn`

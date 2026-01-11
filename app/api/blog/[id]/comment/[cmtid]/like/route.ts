@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createNotification } from '@/lib/notification'
 import { NotificationType } from '@prisma/client'
+import { invalidateHomeFeed } from '@/lib/cache'
+import { redis } from '@/lib/redis'
 
 export async function POST(
   req: Request,
@@ -69,6 +71,8 @@ export async function POST(
 
     return { liked, likeCount }
   })
+  await invalidateHomeFeed()
+await redis.del(`comments:blog:${blogId}`)
 
-  return NextResponse.json(result)
+return NextResponse.json(result)
 }
