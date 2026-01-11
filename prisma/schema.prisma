@@ -62,7 +62,6 @@ model Blog {
   isdeleted        Boolean                  @default(false)
   deletedat        DateTime?                @db.Timestamp(6)
   deletedbyadmin   String?
-  music            Json?
   author           User                     @relation(fields: [authorId], references: [id])
   sharedFrom       Blog?                    @relation("BlogShare", fields: [sharedFromId], references: [id])
   shares           Blog[]                   @relation("BlogShare")
@@ -87,8 +86,7 @@ model Blog {
   @@index([createdAt(sort: Desc)], map: "idx_blog_createdat")
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "idx_blog_createdat_id")
   @@index([isdeleted], map: "idx_blog_isdeleted")
-  adminActionLogs adminactionlog[]
-
+  
 }
 
 model Hashtag {
