@@ -283,7 +283,9 @@ export default function Navigation() {
                   )}
                   {!loadingNotif && notifications.map(n => {
                     const { href, text } = getNotifLinkAndText(n)
+                    console.log('Notification type:', n.type)
                     const actorName = n.type === 'BLOG_DELETED' ? 'Quản trị viên' : (n?.actor?.username || n?.actor?.fullname || 'User')
+                    console.log('Chosen actorName:', actorName, 'Actor image:', n?.actor?.image)
                     return (
                       <Link
                         key={n.id}
@@ -305,6 +307,7 @@ export default function Navigation() {
                       >
                       <div className="flex items-start gap-3">
                         {/* Avatar */}
+
                         <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
                           {n.type === 'BLOG_DELETED' ? (
                             <span className="text-white font-bold text-sm">Q</span>
