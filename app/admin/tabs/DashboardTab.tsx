@@ -27,8 +27,8 @@ export default function DashboardTab() {
     load()
   }, [])
 
-  if (loading) return <div className="text-gray-400">Loading...</div>
-  if (!data) return <div className="text-red-500">Failed to load</div>
+  if (loading) return <div className="text-gray-400">Đang tải</div>
+  if (!data) return <div className="text-red-500">Tải thất bại</div>
 
   return <BlogFeed blogs={data.blogs} />
 

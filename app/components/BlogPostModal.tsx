@@ -43,10 +43,11 @@ type BlogDetail = {
   _count: BlogCounts
 }
 
-export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: string isAdmin?: boolean}) {
+export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: string, isAdmin?: boolean}) {
   const pathname = usePathname()
-  const isOpen = pathname.startsWith('/blog/') && !pathname.endsWith('/edit')
-
+  const isOpen =
+  (pathname.startsWith('/blog/') || pathname.startsWith('/admin/blog/')) &&
+  !pathname.endsWith('/edit')
 
 
 
@@ -123,6 +124,11 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
 
   useEffect(() => {
     let cancelled = false
+    setBlog(null)
+    setLoading(true)
+    setLiked(false)
+    setLikeCount(0)
+    setSaved(false)
     const load = async () => {
       setLoading(true)
       try {
@@ -278,9 +284,9 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
     }
   }
 
-  if (!isOpen) {
-    return null
-  }
+  // if (!isOpen) {
+  //   return null
+  // }
 
   return (
     <div
@@ -985,7 +991,7 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                       placeholder="Bình luận..."
                       className="flex-1 bg-transparent border-0 px-0 py-2 text-gray-100 placeholder-gray-500 focus:outline-none"
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
+                        if (!isAdmin && e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()
                           void handleSubmitComment()
                         }

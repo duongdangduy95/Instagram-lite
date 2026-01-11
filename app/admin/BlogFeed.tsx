@@ -26,8 +26,20 @@ export default function BlogFeed({ blogs }: { blogs: any[] }) {
           className="bg-[#11151B] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition cursor-pointer"
           onClick={() => router.push(`/admin/blog/${blog.id}`)}
         >
+
+          {/* 🚨 REPORT INFO */}
+          <div className="px-4 py-2 bg-[#0E1116] border-t border-gray-800">
+            <p className="text-sm text-red-400">
+              <b>Bị báo cáo bởi:</b> {blog.reporter?.username || "Unknown"}
+            </p>
+            <p className="text-sm text-yellow-400">
+              <b>Lý do:</b> {blog.reportReason}
+            </p>
+          </div>
+
           {/* HEADER */}
           <div className="flex items-center justify-between px-4 py-3">
+            
             <Link
               href={`/profile/${blog.author.id}`}
               className="flex items-center gap-3"
@@ -52,7 +64,7 @@ export default function BlogFeed({ blogs }: { blogs: any[] }) {
                 }}
                 className="bg-red-600 px-3 py-1 text-sm rounded text-white hover:bg-red-700"
               >
-                Delete
+                Xác nhận xóa
               </button>
               <button
                 onClick={(e) => {
@@ -61,20 +73,12 @@ export default function BlogFeed({ blogs }: { blogs: any[] }) {
                 }}
                 className="bg-gray-600 px-3 py-1 text-sm rounded text-white hover:bg-gray-700"
               >
-                Reject
+                Từ chối
               </button>
             </div>
           </div>
 
-          {/* 🚨 REPORT INFO */}
-          <div className="px-4 py-2 bg-[#0E1116] border-t border-gray-800">
-            <p className="text-sm text-red-400">
-              <b>Reported by:</b> {blog.reporter?.username || "Unknown"}
-            </p>
-            <p className="text-sm text-yellow-400">
-              <b>Reason:</b> {blog.reportReason}
-            </p>
-          </div>
+          
 
           {/* CAPTION */}
           <div className="px-4 py-2 text-gray-200">
