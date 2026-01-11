@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { createNotification } from '@/lib/notification'
 import { NotificationType } from '@prisma/client'
 import { redis } from '@/lib/redis'
+import { invalidateHomeFeed } from '@/lib/cache'
 
 async function getCurrentUserId() {
   const session = await getServerSession(authOptions)
@@ -124,10 +125,10 @@ export async function POST(
         commentId: comment.id,
       })
     }
-
+  
     // ❌ CLEAR CACHE
     await redis.del(COMMENTS_CACHE_KEY(blogId))
-
+    await invalidateHomeFeed()
     return NextResponse.json(comment)
   } catch (err) {
     console.error('API ERROR:', err)
@@ -169,7 +170,7 @@ export async function PATCH(req: NextRequest) {
 
   // ❌ CLEAR CACHE
   await redis.del(COMMENTS_CACHE_KEY(comment.blogId))
-
+   await invalidateHomeFeed()
   return NextResponse.json(updated)
 }
 
@@ -227,6 +228,6 @@ export async function DELETE(req: NextRequest) {
 
   // ❌ CLEAR CACHE
   await redis.del(COMMENTS_CACHE_KEY(comment.blog.id))
-
+  await invalidateHomeFeed()
   return NextResponse.json({ success: true })
 }
