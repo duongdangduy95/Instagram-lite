@@ -78,7 +78,7 @@ export default function ProfilePage() {
       if (!data || data.error) return
 
       setUser(data)
-      setMyBlogs(data.blogs || [])
+      setMyBlogs((data.blogs || []).filter(b => !b.isdeleted))
       setLikedBlogs(data.likes?.map((like: Like) => like.blog).filter((b: Blog | null) => b !== null) || [])
     }
 
@@ -109,7 +109,7 @@ export default function ProfilePage() {
           const res = await fetch('/api/user/saved', { credentials: 'include' })
           const data = await res.json()
           if (Array.isArray(data)) {
-            setSavedBlogs(data.filter((b: Blog) => b && b.id))
+            setSavedBlogs(data.filter((b: Blog) => b && b.id && !b.isdeleted))
           }
         } catch (error) {
           console.error('Error fetching saved blogs:', error)
@@ -130,7 +130,7 @@ export default function ProfilePage() {
           .then(res => res.json())
           .then(data => {
             if (Array.isArray(data)) {
-              setSavedBlogs(data.filter((b: Blog) => b && b.id))
+              setSavedBlogs(data.filter((b: Blog) => b && b.id && !b.isdeleted))
             }
           })
           .catch(err => console.error('Error refetching saved blogs:', err))
@@ -186,8 +186,8 @@ export default function ProfilePage() {
   const followersCount = user._count?.followers || 0
   const followingCount = user._count?.following || 0
 
-  const originalBlogs = myBlogs.filter((b) => !b.sharedFrom)
-  const sharedBlogs = myBlogs.filter((b) => !!b.sharedFrom)
+  const originalBlogs = myBlogs.filter((b) => !b.sharedFrom && !b.isdeleted)
+  const sharedBlogs = myBlogs.filter((b) => !!b.sharedFrom && !b.isdeleted)
 
   return (
     <div className="min-h-screen bg-[#0B0E11] pt-14 md:pt-0 pb-20 md:pb-0">

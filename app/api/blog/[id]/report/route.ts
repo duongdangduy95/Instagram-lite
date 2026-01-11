@@ -8,7 +8,7 @@ const prisma = new PrismaClient()
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const { id: blogId } = await Promise.resolve(params) // ✅ tránh lỗi "params.id"
+    const { id: blogId } = await Promise.resolve(params) 
     const { reason } = await req.json()
     if (!reason || reason.trim() === "") {
       return NextResponse.json({ error: "Reason required" }, { status: 400 })
@@ -44,3 +44,4 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     console.error(err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
+}

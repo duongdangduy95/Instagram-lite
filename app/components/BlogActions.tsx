@@ -6,6 +6,10 @@ import CommentSection from './CommentSection'
 import Image from 'next/image'
 import type { CurrentUserSafe } from '@/types/dto'
 import ShareModal from './ShareModal'
+import ReportModal from './ReportModal'
+
+
+
 
 interface BlogActionsProps {
   blogId: string
@@ -40,6 +44,7 @@ export default function BlogActions({
   const [commentAnimating, setCommentAnimating] = useState(false)
   const [shareAnimating, setShareAnimating] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
 
   // Sử dụng useSession từ next-auth thay vì gọi API
   useEffect(() => {
@@ -290,33 +295,18 @@ export default function BlogActions({
 
             {/* Report button */}
             <button
-              onClick={async () => {
-                const reason = prompt("Nhập lý do báo cáo bài viết này:")
-                if (!reason || reason.trim() === "") return alert("Bạn phải nhập lý do!")
-
-                try {
-                  const res = await fetch(`/api/blog/${blogId}/report`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ reason }),
-                    credentials: "include", // gửi cookie session
-                  })
-
-                  const data = await res.json()
-                  if (!res.ok) {
-                    alert(data.error || "Có lỗi xảy ra khi gửi báo cáo")
-                  } else {
-                    alert("Báo cáo đã gửi!")
-                  }
-                } catch (err) {
-                  console.error(err)
-                  alert("Có lỗi xảy ra khi gửi báo cáo")
-                }
+              onClick={() => {
+                setShowReportModal(true)
               }}
               className="text-yellow-500 hover:text-yellow-400 transition-all duration-300"
             >
               <Image src="/icons/report.svg" alt="Báo cáo" width={24} height={24} />
             </button>
+            <ReportModal
+              isOpen={showReportModal}
+              onClose={() => setShowReportModal(false)}
+              blogId={blogId}
+            />
 
           </div>
         </div>

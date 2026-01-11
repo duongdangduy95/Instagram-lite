@@ -353,4 +353,5 @@ enum NotificationType {
   COMMENT_POST
   SHARE_POST
   MESSAGE
+  BLOG_DELETED
 }

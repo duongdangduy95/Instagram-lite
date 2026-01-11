@@ -33,6 +33,7 @@ if (cached) {
       where: { id: userId },
       include: {
         blogs: {
+          where: { isdeleted: false },
           include: {
             _count: { select: { likes: true, comments: true } },
             likes: { select: { userId: true } },
@@ -53,6 +54,7 @@ if (cached) {
         likes: {
           include: {
             blog: {
+              where: { isdeleted: false },
               include: {
                 _count: { select: { likes: true, comments: true } },
                 likes: { select: { userId: true } },
@@ -87,7 +89,7 @@ if (cached) {
 
     const userWithMappedBlogs = {
       ...user,
-      blogs: user.blogs.map((blog) => ({
+      blogs: user.blogs.filter(blog => !blog.isdeleted).map((blog) => ({
         ...blog,
         imageUrls: blog.imageUrls || [],
       })),

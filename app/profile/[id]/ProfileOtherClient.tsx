@@ -54,9 +54,18 @@ export default function ProfileOtherClient(props: {
   const [followersCount, setFollowersCount] = useState(user._count?.followers ?? 0)
   const followingCount = user._count?.following ?? 0
 
-  const myBlogs = useMemo(() => user.blogs ?? [], [user.blogs])
-  const originalBlogs = useMemo(() => myBlogs.filter((b) => !b.sharedFrom), [myBlogs])
-  const sharedBlogs = useMemo(() => myBlogs.filter((b) => !!b.sharedFrom), [myBlogs])
+  const myBlogs = useMemo(() => (user.blogs ?? []).filter(b => !b.isdeleted), [user.blogs])
+
+  const originalBlogs = useMemo(
+    () => myBlogs.filter((b) => !b.sharedFrom || b.sharedFrom.isdeleted === false),
+    [myBlogs]
+  )
+
+  const sharedBlogs = useMemo(
+    () => myBlogs.filter((b) => b.sharedFrom && !b.sharedFrom.isdeleted),
+    [myBlogs]
+  )
+
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [chatTargetUserId, setChatTargetUserId] = useState<string | null>(null)
 

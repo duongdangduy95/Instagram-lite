@@ -47,6 +47,7 @@ export default function Navigation() {
     try {
       const res = await fetch('/api/notifications')
       const data = await res.json()
+      console.log('Fetched notifications:', data)
       // Bỏ thông báo tin nhắn khỏi nút Thông báo
       setNotifications((Array.isArray(data) ? data : []).filter((n: any) => n?.type !== 'MESSAGE'))
     } catch (err) {
@@ -191,6 +192,10 @@ export default function Navigation() {
         href = `/blog/${n.blog?.id}`
         text = `đã chia sẻ bài viết của bạn`
         break
+      case 'BLOG_DELETED':
+        href = `/home`  
+        text = `đã xóa 1 bài của bạn`  
+        break
       default:
         text = 'Thông báo mới'
     }
@@ -278,7 +283,7 @@ export default function Navigation() {
                   )}
                   {!loadingNotif && notifications.map(n => {
                     const { href, text } = getNotifLinkAndText(n)
-                  const actorName = n?.actor?.username || n?.actor?.fullname || 'User'
+                    const actorName = n.type === 'BLOG_DELETED' ? 'Quản trị viên' : (n?.actor?.username || n?.actor?.fullname || 'User')
                     return (
                       <Link
                         key={n.id}
@@ -301,8 +306,9 @@ export default function Navigation() {
                       <div className="flex items-start gap-3">
                         {/* Avatar */}
                         <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
-                          {n?.actor?.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element
+                          {n.type === 'BLOG_DELETED' ? (
+                            <span className="text-white font-bold text-sm">Q</span>
+                          ) : n?.actor?.image ? (
                             <img src={n.actor.image} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <span className="text-white font-bold text-sm">
@@ -310,6 +316,7 @@ export default function Navigation() {
                             </span>
                           )}
                         </div>
+
 
                         <div className="min-w-0 flex-1">
                           <div className="text-white leading-snug">

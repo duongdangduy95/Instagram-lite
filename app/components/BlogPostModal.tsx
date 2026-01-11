@@ -12,6 +12,7 @@ import RenderCaption from '@/app/components/RenderCaption'
 import { usePathname, useRouter } from 'next/navigation'
 import ShareModal from '@/app/components/ShareModal'
 import ExpandableCaption from '@/app/components/ExpandableCaption'
+import ReportModal from '@/app/components/ReportModal'
 
 
 type BlogAuthor = {
@@ -69,6 +70,7 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
   const [showOptions, setShowOptions] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const composerRef = useRef<HTMLInputElement>(null)
+  const [showReportModal, setShowReportModal] = useState(false)
 
   const dialogRef = useRef<HTMLDivElement>(null)
   // Lưu ý: mobile + desktop đều render đồng thời (chỉ khác CSS md:hidden/hidden md:*),
@@ -566,57 +568,78 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                   </button>
                 </div>
 
-                <button
-                  onClick={async () => {
-                    if (!currentUser) {
-                      router.push('/login')
-                      return
-                    }
-                    const prevSaved = saved
-                    const newSaved = !prevSaved
-                    setSaved(newSaved)
-                    try {
-                      const res = await fetch(`/api/blog/${blog.id}/save`, {
-                        method: 'POST',
-                        credentials: 'include',
-                      })
-                      if (!res.ok) {
+                <div className="flex items-center gap-4">
+                  {/* Save */}
+                  <button
+                    onClick={async () => {
+                      if (!currentUser) {
+                        router.push('/login')
+                        return
+                      }
+                      const prevSaved = saved
+                      const newSaved = !prevSaved
+                      setSaved(newSaved)
+                      try {
+                        const res = await fetch(`/api/blog/${blog.id}/save`, {
+                          method: 'POST',
+                          credentials: 'include',
+                        })
+                        if (!res.ok) {
+                          setSaved(prevSaved)
+                          window.dispatchEvent(
+                            new CustomEvent('blog:save-change', {
+                              detail: { blogId: blog.id, saved: prevSaved },
+                            })
+                          )
+                          return
+                        }
+                        const data = await res.json()
+                        const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
+                        setSaved(finalSaved)
+                        window.dispatchEvent(
+                          new CustomEvent('blog:save-change', {
+                            detail: { blogId: blog.id, saved: finalSaved },
+                          })
+                        )
+                      } catch {
                         setSaved(prevSaved)
                         window.dispatchEvent(
                           new CustomEvent('blog:save-change', {
                             detail: { blogId: blog.id, saved: prevSaved },
                           })
                         )
-                        return
                       }
-                      const data = await res.json()
-                      const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
-                      setSaved(finalSaved)
-                      // Dispatch event to sync with home feed
-                      window.dispatchEvent(
-                        new CustomEvent('blog:save-change', {
-                          detail: { blogId: blog.id, saved: finalSaved },
-                        })
-                      )
-                    } catch {
-                      setSaved(prevSaved)
-                      window.dispatchEvent(
-                        new CustomEvent('blog:save-change', {
-                          detail: { blogId: blog.id, saved: prevSaved },
-                        })
-                      )
-                    }
-                  }}
-                  className="text-gray-200 hover:text-white"
-                  aria-label="Lưu"
-                >
-                  <Image
-                    src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
-                    alt="Lưu"
-                    width={22}
-                    height={22}
+                    }}
+                    className="text-gray-200 hover:text-white"
+                    aria-label="Lưu"
+                  >
+                    <Image
+                      src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
+                      alt="Lưu"
+                      width={22}
+                      height={22}
+                    />
+                  </button>
+
+                  {/* Report */}
+                  <button
+                    onClick={() => {
+                      setShowReportModal(true)
+                    }}
+                    className="text-yellow-500 hover:text-yellow-400 transition-all duration-300"
+                    aria-label="Báo cáo"
+                  >
+                    <Image src="/icons/report.svg" alt="Báo cáo" width={24} height={24} />
+                  </button>
+
+                  {/* Modal */}
+                  <ReportModal
+                    isOpen={showReportModal}
+                    onClose={() => setShowReportModal(false)}
+                    blogId={blogId}
                   />
-                </button>
+                </div>
+                
               </div>
 
               {/* 5. Comment Composer (pinned bottom) */}
@@ -928,58 +951,77 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                         <Image src="/icons/share.svg" alt="Chia sẻ" width={22} height={22} />
                       </button>
                     </div>
-
-                    <button
-                      onClick={async () => {
-                        if (!currentUser) {
-                          router.push('/login')
-                          return
-                        }
-                        const prevSaved = saved
-                        const newSaved = !prevSaved
-                        setSaved(newSaved)
-                        try {
-                          const res = await fetch(`/api/blog/${blog.id}/save`, {
-                            method: 'POST',
-                            credentials: 'include',
-                          })
-                          if (!res.ok) {
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={async () => {
+                          if (!currentUser) {
+                            router.push('/login')
+                            return
+                          }
+                          const prevSaved = saved
+                          const newSaved = !prevSaved
+                          setSaved(newSaved)
+                          try {
+                            const res = await fetch(`/api/blog/${blog.id}/save`, {
+                              method: 'POST',
+                              credentials: 'include',
+                            })
+                            if (!res.ok) {
+                              setSaved(prevSaved)
+                              window.dispatchEvent(
+                                new CustomEvent('blog:save-change', {
+                                  detail: { blogId: blog.id, saved: prevSaved },
+                                })
+                              )
+                              return
+                            }
+                            const data = await res.json()
+                            const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
+                            setSaved(finalSaved)
+                            // Dispatch event to sync with home feed
+                            window.dispatchEvent(
+                              new CustomEvent('blog:save-change', {
+                                detail: { blogId: blog.id, saved: finalSaved },
+                              })
+                            )
+                          } catch {
                             setSaved(prevSaved)
                             window.dispatchEvent(
                               new CustomEvent('blog:save-change', {
                                 detail: { blogId: blog.id, saved: prevSaved },
                               })
                             )
-                            return
                           }
-                          const data = await res.json()
-                          const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
-                          setSaved(finalSaved)
-                          // Dispatch event to sync with home feed
-                          window.dispatchEvent(
-                            new CustomEvent('blog:save-change', {
-                              detail: { blogId: blog.id, saved: finalSaved },
-                            })
-                          )
-                        } catch {
-                          setSaved(prevSaved)
-                          window.dispatchEvent(
-                            new CustomEvent('blog:save-change', {
-                              detail: { blogId: blog.id, saved: prevSaved },
-                            })
-                          )
-                        }
-                      }}
-                      className="text-gray-200 hover:text-white"
-                      aria-label="Lưu"
-                    >
-                      <Image
-                        src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
-                        alt="Lưu"
-                        width={22}
-                        height={22}
+                        }}
+                        className="text-gray-200 hover:text-white"
+                        aria-label="Lưu"
+                      >
+                        <Image
+                          src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
+                          alt="Lưu"
+                          width={22}
+                          height={22}
+                        />
+                      </button>
+
+                      {/* Report */}
+                      <button
+                        onClick={() => {
+                          setShowReportModal(true)
+                        }}
+                        className="text-yellow-500 hover:text-yellow-400 transition-all duration-300"
+                        aria-label="Báo cáo"
+                      >
+                        <Image src="/icons/report.svg" alt="Báo cáo" width={24} height={24} />
+                      </button>
+
+                      {/* Modal */}
+                      <ReportModal
+                        isOpen={showReportModal}
+                        onClose={() => setShowReportModal(false)}
+                        blogId={blogId}
                       />
-                    </button>
+                    </div>
                   </div>
 
                   {/* Composer pinned bottom */}

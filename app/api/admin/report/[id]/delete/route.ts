@@ -34,6 +34,29 @@ export async function POST(
     data: { isdeleted: true },
   })
 
+
+    // Lấy blog để xác định owner
+  const blog = await prisma.blog.findUnique({
+    where: { id: report.blogid },
+    select: { id: true, authorId: true },
+  })
+
+  if (blog) {
+    await prisma.notification.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: blog.authorId,        
+        actorId: blog.authorId,     
+        type: 'BLOG_DELETED',
+        blogId: blog.id,
+        isRead: false,
+        createdAt: new Date(),
+      },
+    })
+  }
+
+
+
   // Update report status
   await prisma.report.update({
     where: { id: report.id },
