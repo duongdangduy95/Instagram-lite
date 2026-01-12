@@ -185,27 +185,25 @@ export default function Navigation() {
         text = `đã thích bài viết của bạn`
         break
       case 'COMMENT_POST': {
-  const name = n.actor.fullname || n.actor.username
-
-  if (n.parentCommentId) {
-    // 🔥 REPLY COMMENT
-    href = `/blog/${n.blog?.id}?comment=${n.commentId}`
-    text = `${name} đã trả lời bình luận của bạn`
-  } else {
-    // 🟢 COMMENT BÀI VIẾT
-    href = `/blog/${n.blog?.id}?comment=${n.commentId}`
-    text = `${name} đã bình luận bài viết của bạn`
-  }
-  break
-}
-
+        // 🟢 COMMENT BÀI VIẾT
+        href = `/blog/${n.blog?.id}?comment=${n.commentId}`
+        const name = n.actor.fullname || n.actor.username
+        text = `${name} đã bình luận bài viết của bạn`
+        break
+      }
+      case 'REPLY_COMMENT': {
+        // 🔥 REPLY COMMENT - đã nhắc đến bạn trong một bình luận
+        href = `/blog/${n.blog?.id}?comment=${n.commentId}`
+        text = `đã nhắc đến bạn trong một bình luận`
+        break
+      }
       case 'SHARE_POST':
         href = `/blog/${n.blog?.id}`
         text = `đã chia sẻ bài viết của bạn`
         break
       case 'BLOG_DELETED':
-        href = `/home`  
-        text = `đã xóa 1 bài của bạn`  
+        href = `#`  
+        text = `Admin đã xóa 1 bài viết của bạn`  
         break
       default:
         text = 'Thông báo mới'
@@ -277,29 +275,38 @@ export default function Navigation() {
 
               {notifOpen && (
                 <div className="absolute right-0 top-12 w-[min(92vw,360px)] max-h-[70vh] overflow-y-auto scrollbar-win bg-[#0B0E11] border border-gray-800 rounded-lg shadow-xl z-50">
-                  {!loadingNotif && notifications.some(n => !n.isRead) && (
-                    <div className="sticky top-0 z-10 bg-[#0B0E11]/95 backdrop-blur border-b border-gray-800 px-4 py-2 flex items-center justify-end">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          markAllNotificationsRead()
-                        }}
-                        className="text-xs font-semibold text-[#7565E6] hover:text-[#877EFF] transition-colors p-2"
-                      >
-                        Đánh dấu tất cả đã đọc
-                      </button>
-                    </div>
-                  )}
                   {loadingNotif && <div className="p-4 text-gray-300">Đang tải...</div>}
                   {!loadingNotif && notifications.length === 0 && (
                     <div className="p-4 text-gray-300">Chưa có thông báo</div>
                   )}
                   {!loadingNotif && notifications.map(n => {
                     const { href, text } = getNotifLinkAndText(n)
-                    console.log('Notification type:', n.type)
-                    const actorName = n.type === 'BLOG_DELETED' ? 'Quản trị viên' : (n?.actor?.username || n?.actor?.fullname || 'User')
-                    console.log('Chosen actorName:', actorName, 'Actor image:', n?.actor?.image)
+                    const actorName = n?.actor?.username || n?.actor?.fullname || 'User'
+                    const isReplyComment = n.type === 'REPLY_COMMENT'
+                    const isBlogDeleted = n.type === 'BLOG_DELETED'
+                    
+                    // BLOG_DELETED: không có link, không có avatar, chỉ text
+                    if (isBlogDeleted) {
+                      return (
+                        <div
+                          key={n.id}
+                          className={`block px-4 py-3 text-sm border-b border-gray-800 ${!n.isRead ? 'bg-[#212227]' : ''}`}
+                        >
+                          <div className="text-white leading-snug">
+                            <span className="text-gray-300 font-normal">{text}</span>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className="text-gray-400 text-xs" suppressHydrationWarning>
+                              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                            </span>
+                            {!n.isRead && (
+                              <span className="w-2.5 h-2.5 bg-[#7565E6] rounded-full flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                      )
+                    }
+                    
                     return (
                       <Link
                         key={n.id}
@@ -321,9 +328,7 @@ export default function Navigation() {
                         <div className="flex items-start gap-3">
                           {/* Avatar */}
                           <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
-                            {n.type === 'BLOG_DELETED' ? (
-                              <span className="text-white font-bold text-sm">Q</span>
-                            ) : n?.actor?.image ? (
+                            {n?.actor?.image ? (
                               <img src={n.actor.image} alt="" className="w-full h-full object-cover" />
                             ) : (
                               <span className="text-white font-bold text-sm">
@@ -334,8 +339,14 @@ export default function Navigation() {
 
                           <div className="min-w-0 flex-1">
                             <div className="text-white leading-snug">
-                              <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
-                              <span className="text-gray-300 font-normal">{text}</span>
+                              {isReplyComment ? (
+                                <span className="text-gray-300 font-normal">{text}</span>
+                              ) : (
+                                <>
+                                  <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
+                                  <span className="text-gray-300 font-normal">{text}</span>
+                                </>
+                              )}
                             </div>
                             <div className="mt-1 flex items-center gap-2">
                               <span className="text-gray-400 text-xs" suppressHydrationWarning>
@@ -351,6 +362,20 @@ export default function Navigation() {
                       
                     )
                   })}
+                  {!loadingNotif && notifications.some(n => !n.isRead) && (
+                    <div className="sticky bottom-0 z-10 bg-[#0B0E11]/95 backdrop-blur border-t border-gray-800 px-4 py-2 flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          markAllNotificationsRead()
+                        }}
+                        className="text-xs font-semibold text-[#7565E6] hover:text-[#877EFF] transition-colors p-2"
+                      >
+                        Đánh dấu tất cả đã đọc
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -470,20 +495,6 @@ export default function Navigation() {
 
               {notifOpen && (
                 <div className="absolute left-full ml-2 bottom-0 lg:left-0 lg:ml-0 lg:bottom-12 w-80 max-h-96 overflow-y-auto scrollbar-win bg-[#0B0E11] border border-gray-800 rounded-lg shadow-xl z-50">
-                  {!loadingNotif && notifications.some(n => !n.isRead) && (
-                    <div className="sticky top-0 z-10 bg-[#0B0E11]/95 backdrop-blur border-b border-gray-800 px-4 py-2 flex items-center justify-end">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          markAllNotificationsRead()
-                        }}
-                        className="text-xs font-semibold text-[#7565E6] hover:text-[#877EFF] transition-colors p-2"
-                      >
-                        Đánh dấu tất cả đã đọc
-                      </button>
-                    </div>
-                  )}
                   {loadingNotif && <div className="p-4 text-gray-300">Đang tải...</div>}
                   {!loadingNotif && notifications.length === 0 && (
                     <div className="p-4 text-gray-300">Chưa có thông báo</div>
@@ -491,6 +502,7 @@ export default function Navigation() {
                   {!loadingNotif && notifications.map(n => {
                     const { href, text } = getNotifLinkAndText(n)
                     const actorName = n?.actor?.username || n?.actor?.fullname || 'User'
+                    const isReplyComment = n.type === 'REPLY_COMMENT'
                     return (
                       <Link
                         key={n.id}
@@ -549,6 +561,20 @@ export default function Navigation() {
 
                     )
                   })}
+                  {!loadingNotif && notifications.some(n => !n.isRead) && (
+                    <div className="sticky bottom-0 z-10 bg-[#0B0E11]/95 backdrop-blur border-t border-gray-800 px-4 py-2 flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          markAllNotificationsRead()
+                        }}
+                        className="text-xs font-semibold text-[#7565E6] hover:text-[#877EFF] transition-colors p-2"
+                      >
+                        Đánh dấu tất cả đã đọc
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

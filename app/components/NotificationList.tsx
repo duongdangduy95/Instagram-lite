@@ -12,6 +12,8 @@ type NotificationItem = {
   actor: { id: string; fullname: string; username: string; image?: string | null }
   blog?: { id: string } | null
   comment?: { id: string; blogId: string } | null
+  commentId?: string
+  parentCommentId?: string | null
   message?: { id: string; conversationId: string } | null
 }
 
@@ -23,11 +25,13 @@ export default function NotificationList() {
   const getLink = (n: NotificationItem) => {
     switch (n.type) {
       case 'FOLLOW': return `/profile/${n.actor.id}`
-      case 'NEW_POST': return n.blog ? `/post/${n.blog.id}` : '#'
+      case 'NEW_POST': return n.blog ? `/blog/${n.blog.id}` : '#'
       case 'LIKE_POST':
-      case 'COMMENT_POST':
       case 'SHARE_POST':
-        return n.comment ? `/post/${n.comment.blogId}` : n.blog ? `/post/${n.blog.id}` : '#'
+        return n.blog ? `/blog/${n.blog.id}` : '#'
+      case 'COMMENT_POST':
+      case 'REPLY_COMMENT':
+        return n.blog ? `/blog/${n.blog.id}${n.commentId ? `?comment=${n.commentId}` : ''}` : '#'
       default: return '#'
     }
   }
@@ -38,13 +42,36 @@ export default function NotificationList() {
       <ul>
         {list.map(n => {
           const actorName = n?.actor?.username || n?.actor?.fullname || 'User'
+          const isReplyComment = n.type === 'REPLY_COMMENT'
+          const isBlogDeleted = n.type === 'BLOG_DELETED'
           const text =
             n.type === 'FOLLOW' ? 'đã theo dõi bạn'
             : n.type === 'NEW_POST' ? 'đã đăng bài mới'
             : n.type === 'LIKE_POST' ? 'đã thích bài viết của bạn'
             : n.type === 'COMMENT_POST' ? 'đã bình luận bài viết của bạn'
+            : n.type === 'REPLY_COMMENT' ? 'đã nhắc đến bạn trong một bình luận'
             : n.type === 'SHARE_POST' ? 'đã chia sẻ bài viết của bạn'
+            : n.type === 'BLOG_DELETED' ? 'Admin đã xóa 1 bài viết của bạn'
             : 'Thông báo mới'
+
+          // BLOG_DELETED: không có link, không có avatar, chỉ text
+          if (isBlogDeleted) {
+            return (
+              <li key={n.id} className={`p-2 border-b border-gray-800 ${n.isRead ? '' : 'bg-[#212227]'}`}>
+                <div className="text-sm min-w-0 flex-1">
+                  <div className="text-white leading-snug">
+                    <span className="text-gray-300 font-normal">{text}</span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-gray-400 text-xs">
+                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                    </span>
+                    {!n.isRead && <span className="w-2.5 h-2.5 bg-[#7565E6] rounded-full" />}
+                  </div>
+                </div>
+              </li>
+            )
+          }
 
           return (
           <li key={n.id} className={`p-2 border-b border-gray-800 ${n.isRead ? '' : 'bg-[#212227]'}`}>
@@ -59,8 +86,14 @@ export default function NotificationList() {
                 )}
                 <div className="text-sm min-w-0 flex-1">
                   <div className="text-white leading-snug">
-                    <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
-                    <span className="text-gray-300 font-normal">{text}</span>
+                    {isReplyComment ? (
+                      <span className="text-gray-300 font-normal">{text}</span>
+                    ) : (
+                      <>
+                        <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
+                        <span className="text-gray-300 font-normal">{text}</span>
+                      </>
+                    )}
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-gray-400 text-xs">
