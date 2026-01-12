@@ -111,11 +111,17 @@ export default function SettingsProfilePage() {
         if (res.status === 409) {
           // Backend trả msg chung; map theo field nếu có
           const msg = (data?.error as string) || 'Dữ liệu đã được sử dụng'
-          if ((msg || '').toLowerCase().includes('username')) setErrors((p) => ({ ...p, username: msg }))
-          else alert(msg)
+          if ((msg || '').toLowerCase().includes('username')) {
+            setErrors((p) => ({ ...p, username: msg }))
+          } else {
+            // Set vào errors thay vì alert
+            setErrors((p) => ({ ...p, _general: msg }))
+          }
           return
         }
-        alert(data?.error || 'Không thể cập nhật hồ sơ')
+        // Set lỗi vào state thay vì alert
+        const errorMsg = (data?.error as string) || 'Không thể cập nhật hồ sơ'
+        setErrors((p) => ({ ...p, _general: errorMsg }))
         return
       }
 
@@ -130,6 +136,7 @@ export default function SettingsProfilePage() {
 
       setAvatarFile(null)
       setAvatarPreview(data.image ?? null)
+      setErrors({}) // Clear errors khi thành công
 
       await update({ fullname: data.fullname ?? null, username: data.username ?? null, image: data.image ?? null })
       await refresh()
@@ -148,9 +155,10 @@ export default function SettingsProfilePage() {
         )
       }
 
-      alert('Cập nhật hồ sơ thành công!')
+      // Bỏ alert thành công - user có thể thấy thay đổi ngay lập tức
     } catch {
-      alert('Có lỗi xảy ra. Vui lòng thử lại.')
+      // Set lỗi vào state thay vì alert
+      setErrors((p) => ({ ...p, _general: 'Có lỗi xảy ra. Vui lòng thử lại.' }))
     } finally {
       setSaving(false)
     }
@@ -264,6 +272,13 @@ export default function SettingsProfilePage() {
                 {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
               </div>
             </div>
+
+            {/* Hiển thị lỗi chung nếu có */}
+            {errors._general && (
+              <div className="mt-6 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                {errors._general}
+              </div>
+            )}
 
             <div className="flex items-center gap-3 mt-8">
               <button

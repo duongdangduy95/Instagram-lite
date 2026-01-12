@@ -149,7 +149,15 @@ export default function CreateBlogForm({ onSuccess, onCancel }: Props) {
         if (onSuccess) onSuccess()
         else router.push('/home')
       } else {
-        alert('Đăng bài thất bại')
+        // Parse error message từ server
+        try {
+          const errorData = await res.json()
+          const errorMessage = errorData?.error || 'Đăng bài thất bại'
+          alert(errorMessage)
+        } catch {
+          // Nếu không parse được JSON, dùng message mặc định
+          alert('Đăng bài thất bại. Vui lòng thử lại sau.')
+        }
       }
     } finally {
       setLoading(false)
