@@ -174,27 +174,57 @@ export default async function HomePage() {
 
   /* =====================
      SERIALIZE DATE (đảm bảo dates là string cho cả cache hit và miss)
+     VÀ ĐẢM BẢO MUSIC ĐƯỢC PARSE ĐÚNG
   ====================== */
-  const blogsDto: BlogDTO[] = blogs.map((b) => ({
-    ...b,
-    createdAt: typeof b.createdAt === 'string' 
-      ? b.createdAt 
-      : (b.createdAt instanceof Date ? b.createdAt.toISOString() : new Date(b.createdAt).toISOString()),
-    isSaved: !!(currentUserId && (b.savedBy?.length ?? 0) > 0),
-    sharedFrom: b.sharedFrom
-      ? {
-          ...b.sharedFrom,
-          createdAt: typeof b.sharedFrom.createdAt === 'string'
-            ? b.sharedFrom.createdAt
-            : (b.sharedFrom.createdAt instanceof Date 
-                ? b.sharedFrom.createdAt.toISOString() 
-                : new Date(b.sharedFrom.createdAt).toISOString()),
+  const blogsDto: BlogDTO[] = blogs.map((b) => {
+    // Parse music nếu là string (từ cache hoặc database)
+    let parsedMusic = b.music
+    if (parsedMusic && typeof parsedMusic === 'string') {
+      try {
+        parsedMusic = JSON.parse(parsedMusic)
+      } catch (e) {
+        console.error('Failed to parse music JSON:', e, { blogId: b.id, music: parsedMusic })
+        parsedMusic = null
+      }
+    }
+
+    // Parse sharedFrom music nếu có
+    let parsedSharedFrom = b.sharedFrom
+    if (parsedSharedFrom) {
+      let parsedSharedMusic = parsedSharedFrom.music
+      if (parsedSharedMusic && typeof parsedSharedMusic === 'string') {
+        try {
+          parsedSharedMusic = JSON.parse(parsedSharedMusic)
+        } catch (e) {
+          console.error('Failed to parse sharedFrom music JSON:', e, { blogId: b.id, music: parsedSharedMusic })
+          parsedSharedMusic = null
         }
-      : null,
-  }))
+      }
+
+      parsedSharedFrom = {
+        ...parsedSharedFrom,
+        createdAt: typeof parsedSharedFrom.createdAt === 'string'
+          ? parsedSharedFrom.createdAt
+          : (parsedSharedFrom.createdAt instanceof Date 
+              ? parsedSharedFrom.createdAt.toISOString() 
+              : new Date(parsedSharedFrom.createdAt).toISOString()),
+        music: parsedSharedMusic,
+      }
+    }
+
+    return {
+      ...b,
+      createdAt: typeof b.createdAt === 'string' 
+        ? b.createdAt 
+        : (b.createdAt instanceof Date ? b.createdAt.toISOString() : new Date(b.createdAt).toISOString()),
+      isSaved: !!(currentUserId && (b.savedBy?.length ?? 0) > 0),
+      music: parsedMusic,
+      sharedFrom: parsedSharedFrom,
+    }
+  })
 
   return (
-    <div className="min-h-screen bg-[#0B0E11]">
+    <div className="min-h-screen bg-[#0B0E11]" suppressHydrationWarning>
       <Navigation />
       <HomeClient
         blogs={blogsDto}

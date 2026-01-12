@@ -202,10 +202,10 @@ export default function HomeClient(props: {
   }
 
   return (
-    <div className="ml-0 md:ml-20 lg:ml-64 pt-14 md:pt-0 pb-20 md:pb-0 grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-0">
+    <div className="ml-0 md:ml-20 lg:ml-64 pt-14 md:pt-0 pb-20 md:pb-0 grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-0" suppressHydrationWarning>
       {/* Main Content - Cột giữa */}
       <main className="flex justify-center px-4 py-4">
-        <div className="w-full max-w-xl space-y-4">
+        <div className="w-full max-w-xl space-y-4" suppressHydrationWarning>
           {children}
           <BlogFeed
             blogs={blogs}

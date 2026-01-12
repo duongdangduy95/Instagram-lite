@@ -150,16 +150,50 @@ export async function GET(req: Request) {
     const savedSet = new Set(saved.map((s) => s.blogId))
     const followSet = new Set(follows.map((f) => f.followingId))
 
-    // 3️⃣ MERGE DỮ LIỆU
-    const result = feed.map((b) => ({
-      ...b,
-      liked: likedSet.has(b.id),
-      isSaved: savedSet.has(b.id),
-      author: {
-        ...b.author,
-        isFollowing: followSet.has(b.author.id),
-      },
-    }))
+    // 3️⃣ MERGE DỮ LIỆU VÀ PARSE MUSIC
+    const result = feed.map((b) => {
+      // Parse music nếu là string (từ cache hoặc database)
+      let parsedMusic = b.music
+      if (parsedMusic && typeof parsedMusic === 'string') {
+        try {
+          parsedMusic = JSON.parse(parsedMusic)
+        } catch (e) {
+          console.error('Failed to parse music JSON in API:', e, { blogId: b.id, music: parsedMusic })
+          parsedMusic = null
+        }
+      }
+
+      // Parse sharedFrom music nếu có
+      let parsedSharedFrom = b.sharedFrom
+      if (parsedSharedFrom) {
+        let parsedSharedMusic = parsedSharedFrom.music
+        if (parsedSharedMusic && typeof parsedSharedMusic === 'string') {
+          try {
+            parsedSharedMusic = JSON.parse(parsedSharedMusic)
+          } catch (e) {
+            console.error('Failed to parse sharedFrom music JSON in API:', e, { blogId: b.id, music: parsedSharedMusic })
+            parsedSharedMusic = null
+          }
+        }
+
+        parsedSharedFrom = {
+          ...parsedSharedFrom,
+          music: parsedSharedMusic,
+        }
+      }
+
+      return {
+        ...b,
+        liked: likedSet.has(b.id),
+        isSaved: savedSet.has(b.id),
+        music: parsedMusic,
+        sharedFrom: parsedSharedFrom,
+        author: {
+          ...b.author,
+          isFollowing: followSet.has(b.author.id),
+        },
+      }
+    })
 
     // Tính nextCursor từ result cuối cùng
     const nextCursor = result.length > 0 ? result[result.length - 1]?.id : null

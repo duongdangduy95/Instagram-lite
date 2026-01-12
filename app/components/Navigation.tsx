@@ -226,8 +226,8 @@ export default function Navigation() {
   return (
     <>
       {/* ============ MOBILE TOP BAR ============ */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-[#0B0E11]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0B0E11]/80 border-b border-gray-800 z-50">
-        <div className="h-full px-4 flex items-center justify-between">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-[#0B0E11]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0B0E11]/80 border-b border-gray-800 z-50" suppressHydrationWarning>
+        <div className="h-full px-4 flex items-center justify-between" suppressHydrationWarning>
           <Link href="/home" className="text-2xl font-light text-white" style={{ fontFamily: 'var(--font-logo), cursive' }}>
             InstaClone
           </Link>
@@ -318,33 +318,17 @@ export default function Navigation() {
                         className={`block px-4 py-3 text-sm border-b border-gray-800 hover:bg-gray-900/60 hover:text-white transition-colors ${!n.isRead ? 'bg-[#212227]' : ''
                           }`}
                       >
-                      <div className="flex items-start gap-3">
-                        {/* Avatar */}
-
-                        <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
-                          {n.type === 'BLOG_DELETED' ? (
-                            <span className="text-white font-bold text-sm">Q</span>
-                          ) : n?.actor?.image ? (
-                            <img src={n.actor.image} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-white font-bold text-sm">
-                              {(actorName || 'U').charAt(0).toUpperCase()}
-                            </span>
-                          )}
-                        </div>
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="text-white leading-snug">
-                            <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
-                            <span className="text-gray-300 font-normal">{text}</span>
-                          </div>
-                          <div className="mt-1 flex items-center gap-2">
-                            <span className="text-gray-400 text-xs">
-                              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
-                            </span>
-                            {!n.isRead && (
-                              <span className="w-2.5 h-2.5 bg-[#7565E6] rounded-full flex-shrink-0" />
+                        <div className="flex items-start gap-3">
+                          {/* Avatar */}
+                          <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
+                            {n.type === 'BLOG_DELETED' ? (
+                              <span className="text-white font-bold text-sm">Q</span>
+                            ) : n?.actor?.image ? (
+                              <img src={n.actor.image} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-white font-bold text-sm">
+                                {(actorName || 'U').charAt(0).toUpperCase()}
+                              </span>
                             )}
                           </div>
 
@@ -354,7 +338,7 @@ export default function Navigation() {
                               <span className="text-gray-300 font-normal">{text}</span>
                             </div>
                             <div className="mt-1 flex items-center gap-2">
-                              <span className="text-gray-400 text-xs">
+                              <span className="text-gray-400 text-xs" suppressHydrationWarning>
                                 {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                               </span>
                               {!n.isRead && (
@@ -375,8 +359,8 @@ export default function Navigation() {
       </div>
 
       {/* ============ TABLET/DESKTOP SIDEBAR ============ */}
-      <nav className="hidden md:block fixed left-0 top-0 h-full bg-[#0B0E11] border-r border-gray-800 z-50 w-20 lg:w-64">
-        <div className="flex flex-col h-full px-3 lg:px-4 py-6">
+      <nav className="hidden md:block fixed left-0 top-0 h-full bg-[#0B0E11] border-r border-gray-800 z-50 w-20 lg:w-64" suppressHydrationWarning>
+        <div className="flex flex-col h-full px-3 lg:px-4 py-6" suppressHydrationWarning>
           {/* Logo */}
           <Link href="/home" className="text-2xl font-light text-white mb-6 px-2 hidden lg:block" style={{ fontFamily: 'var(--font-logo), cursive' }}>
             InstaClone
@@ -551,7 +535,7 @@ export default function Navigation() {
                               <span className="text-gray-300 font-normal">{text}</span>
                             </div>
                             <div className="mt-1 flex items-center justify-between gap-2">
-                              <span className="text-gray-400 text-xs">
+                              <span className="text-gray-400 text-xs" suppressHydrationWarning>
                                 {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                               </span>
                               {!n.isRead && (
@@ -609,8 +593,8 @@ export default function Navigation() {
       </nav>
 
       {/* ============ MOBILE BOTTOM NAV ============ */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#0B0E11]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0B0E11]/80 border-t border-gray-800 z-50">
-        <div className="h-full grid grid-cols-5">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#0B0E11]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0B0E11]/80 border-t border-gray-800 z-50" suppressHydrationWarning>
+        <div className="h-full grid grid-cols-5" suppressHydrationWarning>
           {/* Home */}
           <Link href="/home" className="flex items-center justify-center">
             <Image src="/icons/home.svg" alt="Trang chủ" width={24} height={24} />

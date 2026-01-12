@@ -1,6 +1,7 @@
 
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatTimeAgo } from '@/lib/formatTimeAgo'
@@ -21,6 +22,22 @@ export default function BlogFeed({
   followMap?: Record<string, boolean>
   onFollowChange?: (targetUserId: string, isFollowing: boolean, followersCount?: number) => void
 }) {
+  // Debug: Log music data từ blogs
+  useEffect(() => {
+    blogs.forEach((blog) => {
+      if (blog.music || blog.sharedFrom?.music) {
+        console.log('[BlogFeed] Blog music data:', {
+          blogId: blog.id,
+          hasMusic: !!blog.music,
+          hasSharedFromMusic: !!blog.sharedFrom?.music,
+          music: blog.music,
+          sharedFromMusic: blog.sharedFrom?.music,
+          displayBlog: blog.sharedFrom ?? blog
+        })
+      }
+    })
+  }, [blogs])
+
   return (
     <>
       {blogs.map((blog) => {
@@ -47,7 +64,7 @@ export default function BlogFeed({
             : ((isShared ? blog.author : displayBlog.author).followers?.length ?? 0) > 0
 
         return (
-          <div key={blog.id} className="bg-[#0B0E11] text-gray-100">
+          <div key={blog.id} className="bg-[#0B0E11] text-gray-100" suppressHydrationWarning>
 
             {/* ===== SHARE POST ===== */}
             {isShared ? (
