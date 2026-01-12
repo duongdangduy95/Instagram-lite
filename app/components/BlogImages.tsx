@@ -468,6 +468,9 @@ export default function BlogImages({
               className="block w-full h-full object-contain"
               sizes="(max-width: 768px) 100vw, 560px"
               loading="lazy"
+              // Supabase public URLs đôi khi fail qua Next Image Optimizer trên Vercel (/_next/image 400).
+              // Dùng unoptimized để load trực tiếp từ Supabase như <img>, tránh upstream image response invalid.
+              unoptimized
             />
           )}
         </div>
