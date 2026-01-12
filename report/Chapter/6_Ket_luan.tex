@@ -1,6 +1,42 @@
 \documentclass[main.tex]{subfiles}
 \begin{document}
-\section {Kết luận}
+\section{Kết luận}
+Dự án "Instagram-lite" đã hoàn thành mục tiêu xây dựng một ứng dụng mạng xã hội thu nhỏ nhưng đầy đủ các tính năng cốt lõi, áp dụng các công nghệ web hiện đại nhất hiện nay.
+
+Những kết quả chính đạt được bao gồm:
+\begin{itemize}
+    \item \textbf{Xây dựng kiến trúc Full-stack hiện đại:} Áp dụng thành công Next.js 15 với App Router, tận dụng sức mạnh của Server Components và Server Actions để tối ưu hóa hiệu năng và trải nghiệm người dùng (UX).
+    \item \textbf{Cơ chế xác thực bảo mật:} Tích hợp NextAuth.js để quản lý phiên đăng nhập an toàn, hỗ trợ đa dạng phương thức (Email/Password, OAuth) và cơ chế xác thực OTP qua email.
+    \item \textbf{Hệ thống Real-time ổn định:} Triển khai thành công tính năng nhắn tin và thông báo thời gian thực sử dụng Socket.io, giúp tăng cường tính tương tác gữa các người dùng.
+    \item \textbf{Quản lý dữ liệu hiệu quả:} Sử dụng toàn bộ hạ tầng cơ sở dữ liệu PostgreSQL trên nền tảng Supabase, kết hợp với Prisma ORM để thao tác dữ liệu an toàn. Tích hợp Redis (Upstash) để caching giúp tối ưu tốc độ.
+    \item \textbf{Giao diện người dùng (UI/UX) hoàn thiện:} Xây dựng giao diện responsive, thẩm mỹ với Tailwind CSS và các hiệu ứng mượt mà từ Framer Motion, hoạt động tốt trên cả máy tính và thiết bị di động.
+\end{itemize}
+
+Thông qua đồ án này, nhóm thực hiện đã nắm vững quy trình phát triển phần mềm hiện đại, từ khâu thiết kế CSDL, xây dựng API, đến tích hợp Frontend và Backend, cũng như cách sử dụng thành thạo các dịch vụ đám mây (Supabase, Upstash).
+
 \section{Hướng phát triển}
+Mặc dù đã đáp ứng các yêu cầu cơ bản, ứng dụng vẫn còn nhiều tiềm năng để mở rộng và nâng cấp trong tương lai:
+
+\begin{itemize}
+    \item \textbf{Nâng cấp tính năng đa phương tiện:}
+    \begin{itemize}
+        \item Bổ sung tính năng đăng tải Video và tạo Reels ngắn.
+        \item Thêm tính năng Story (tin biến mất sau 24h).
+        \item Tích hợp gọi thoại và gọi video (Voice/Video Call) sử dụng WebRTC.
+    \end{itemize}
+    
+    \item \textbf{Ứng dụng AI và Machine Learning:}
+    \begin{itemize}
+        \item Xây dựng thuật toán gợi ý nội dung (Recommendation System) cho trang Newsfeed dựa trên sở thích và hành vi người dùng.
+        \item Tự động kiểm duyệt nội dung (Content Moderation) để phát hiện hình ảnh hoặc bình luận không phù hợp.
+    \end{itemize}
+
+    \item \textbf{Nâng cao hạ tầng kỹ thuật:}
+    \begin{itemize}
+        \item Xây dựng phiên bản ứng dụng di động (Mobile App) sử dụng React Native, tận dụng lại hệ thống API hiện có.
+        \item Triển khai quy trình CI/CD tự động hóa việc kiểm thử và deploy.
+        \item Chuyển đổi sang kiến trúc Microservices nếu quy mô người dùng tăng lớn, tách biệt hoàn toàn service Chat, Notification và Core API.
+    \end{itemize}
+\end{itemize}
 
 \end{document}
