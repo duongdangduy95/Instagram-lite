@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 type Props = {
-  text: string
+  text?: string | null
   initialLines?: number
   showMoreLabel?: string
   showLessLabel?: string
@@ -17,6 +17,9 @@ export default function ExpandableCaption({
   showLessLabel = 'Thu gọn',
   maxCharsToClamp = 140,
 }: Props) {
+
+  if (!text) return null
+
   const [expanded, setExpanded] = useState(false)
 
   const shouldClamp = text.length > maxCharsToClamp

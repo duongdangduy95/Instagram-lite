@@ -13,7 +13,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export const redis = new Redis({
+const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 })
@@ -36,6 +36,10 @@ function sanitizeFileName(name: string) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9._-]/g, '_')
 }
+
+// File limits for messages (more lenient than blog posts)
+const MAX_MESSAGE_FILES = 10
+const MAX_MESSAGE_FILE_SIZE = 25 * 1024 * 1024 // 25MB per file (for messages, allow larger files)
 
 const messagesKey = (conversationId: string) =>
   `conversation:${conversationId}:messages`
@@ -188,6 +192,98 @@ export async function POST(req: Request) {
   const content = form.get('content')?.toString() || ''
   if (!targetUserId) return new Response('Missing targetUserId', { status: 400 })
 
+  // 📁 Lấy files từ formData (có thể có nhiều files với cùng key 'files')
+  const files: File[] = []
+  const filesFromForm = form.getAll('files')
+  for (const file of filesFromForm) {
+    if (file instanceof File) {
+      files.push(file)
+    }
+  }
+
+  // ✅ Validation: Message phải có ít nhất content hoặc files
+  const contentTrimmed = content.trim()
+  if (!contentTrimmed && files.length === 0) {
+    return NextResponse.json(
+      { error: 'Tin nhắn không được để trống. Vui lòng nhập nội dung hoặc đính kèm file.' },
+      { status: 400 }
+    )
+  }
+
+  // ✅ File validation: số lượng và size
+  if (files.length > MAX_MESSAGE_FILES) {
+    return NextResponse.json(
+      { error: `Chỉ được gửi tối đa ${MAX_MESSAGE_FILES} file.` },
+      { status: 400 }
+    )
+  }
+
+  // Validate từng file trước khi upload
+  const fileErrors: string[] = []
+  for (const file of files) {
+    if (file.size > MAX_MESSAGE_FILE_SIZE) {
+      const mb = (MAX_MESSAGE_FILE_SIZE / (1024 * 1024)).toFixed(0)
+      fileErrors.push(`File "${file.name}" vượt quá dung lượng cho phép (≤ ${mb}MB).`)
+    }
+  }
+
+  if (fileErrors.length > 0) {
+    return NextResponse.json(
+      { error: fileErrors.join(' ') },
+      { status: 400 }
+    )
+  }
+
+  // ☁️ Upload files lên Supabase nếu có
+  const fileUrls: string[] = []
+  const fileNames: string[] = []
+  const uploadErrors: string[] = []
+
+  if (files.length > 0) {
+    for (const file of files) {
+      try {
+        const buffer = Buffer.from(await file.arrayBuffer())
+        const ext = file.type?.split('/')[1] || file.name.split('.').pop() || 'bin'
+        const safeName = sanitizeFileName(file.name)
+        const fileName = `messages/${currentUserId}/${Date.now()}-${Math.random()}.${ext}`
+
+        const { error } = await supabase.storage
+          .from('instagram')
+          .upload(fileName, buffer, {
+            contentType: file.type || 'application/octet-stream',
+          })
+
+        if (error) {
+          console.error('File upload error:', error)
+          uploadErrors.push(`Không thể upload file "${file.name}".`)
+          // Tiếp tục với các file khác, không fail toàn bộ
+          continue
+        }
+
+        const { data } = supabase.storage
+          .from('instagram')
+          .getPublicUrl(fileName)
+
+        fileUrls.push(data.publicUrl)
+        fileNames.push(safeName)
+      } catch (error) {
+        console.error('Error processing file:', error)
+        uploadErrors.push(`Lỗi khi xử lý file "${file.name}".`)
+        // Tiếp tục với các file khác
+      }
+    }
+
+    // Nếu có files nhưng tất cả đều upload fail, và không có content → reject
+    if (fileUrls.length === 0 && !contentTrimmed) {
+      return NextResponse.json(
+        { error: uploadErrors.length > 0 
+          ? `Không thể upload file. ${uploadErrors.join(' ')}` 
+          : 'Không thể upload file. Vui lòng thử lại.' },
+        { status: 400 }
+      )
+    }
+  }
+
   const [a, b] = [currentUserId, targetUserId].sort()
   const lock1 = hashInt32(a)
   const lock2 = hashInt32(b)
@@ -220,14 +316,30 @@ export async function POST(req: Request) {
     return conv
   })
 
+  // ✅ Đảm bảo message có ít nhất content hoặc fileUrls
+  if (!contentTrimmed && fileUrls.length === 0) {
+    return NextResponse.json(
+      { error: 'Tin nhắn không được để trống. Vui lòng nhập nội dung hoặc đính kèm file.' },
+      { status: 400 }
+    )
+  }
+
   const message = await prisma.message.create({
     data: {
       conversationId: conversation.id,
       senderId: currentUserId,
-      content,
+      content: contentTrimmed, // Lưu trimmed content
+      fileUrls,
+      fileNames,
       status: 'SENT'
     }
   })
+
+  // Nếu có upload errors nhưng vẫn tạo được message (một số files thành công), 
+  // có thể log warning nhưng không fail request
+  if (uploadErrors.length > 0 && fileUrls.length > 0) {
+    console.warn('Some files failed to upload:', uploadErrors)
+  }
 
   await prisma.conversation.update({
     where: { id: conversation.id },

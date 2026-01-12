@@ -4,7 +4,8 @@ import { PrismaClient } from '@prisma/client'
 import { createClient } from '@supabase/supabase-js'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis } from '@/lib/redis'
+import { MAX_MEDIA_FILES, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from '@/lib/mediaValidation'
+import { bumpFeedVersion, bumpMeVersion } from '@/lib/cache'
 
 const prisma = new PrismaClient()
 
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
     // 📦 Lấy form data
     const form = await req.formData()
     const caption = form.get('caption') as string
+    const musicRaw = form.get('music')
     const files: File[] = []
 
     form.forEach((value, key) => {
@@ -37,9 +39,66 @@ export async function POST(req: Request) {
       }
     })
 
-    if (!caption || files.length === 0) {
+    // 🎵 Parse optional music (stored as JSON string)
+    let music: unknown = null
+    if (typeof musicRaw === 'string' && musicRaw.trim()) {
+      try {
+        music = JSON.parse(musicRaw)
+      } catch {
+        return NextResponse.json({ error: 'Music payload is invalid' }, { status: 400 })
+      }
+    }
+
+    // Validation: Cần có ít nhất caption hoặc files (giống client-side)
+    if ((!caption || !caption.trim()) && files.length === 0) {
       return NextResponse.json(
-        { error: 'Caption and at least one image are required' },
+        { error: 'Bài viết không được để trống. Vui lòng thêm nội dung hoặc hình ảnh.' },
+        { status: 400 }
+      )
+    }
+
+    if (files.length === 0) {
+      return NextResponse.json(
+        { error: 'Vui lòng thêm ít nhất một hình ảnh hoặc video.' },
+        { status: 400 }
+      )
+    }
+
+    // ✅ File validation (giống client-side để tránh bypass)
+    if (files.length > MAX_MEDIA_FILES) {
+      return NextResponse.json(
+        { error: `Chỉ được tối đa ${MAX_MEDIA_FILES} file.` },
+        { status: 400 }
+      )
+    }
+
+    // Validate từng file
+    for (const file of files) {
+      const isImage = file.type.startsWith('image/')
+      const isVideo = file.type.startsWith('video/')
+
+      if (!isImage && !isVideo) {
+        return NextResponse.json(
+          { error: `File "${file.name}" không phải ảnh/video hợp lệ.` },
+          { status: 400 }
+        )
+      }
+
+      const limit = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES
+      if (file.size > limit) {
+        const mb = (limit / (1024 * 1024)).toFixed(isVideo ? 0 : 1)
+        return NextResponse.json(
+          { error: `File "${file.name}" vượt quá dung lượng cho phép (${isVideo ? 'video' : 'ảnh'} ≤ ${mb}MB).` },
+          { status: 400 }
+        )
+      }
+    }
+
+    // ✅ Rule: music only allowed for image-only posts (no video)
+    const hasVideo = files.some((f) => (f.type || '').startsWith('video'))
+    if (music && hasVideo) {
+      return NextResponse.json(
+        { error: 'Không thể thêm nhạc cho bài đăng có video. Tính năng nhạc chỉ áp dụng cho post toàn ảnh.' },
         { status: 400 }
       )
     }
@@ -85,6 +144,7 @@ export async function POST(req: Request) {
         caption,
         imageUrls,
         authorId: userId,
+        ...(music ? { music: music as any } : {}),
       },
     })
 
@@ -131,7 +191,8 @@ export async function POST(req: Request) {
     }
 
     // 🧹 Invalidate Cache
-    await redis.del(`me:${userId}`)
+    await bumpMeVersion(userId)
+    await bumpFeedVersion()
 
     // ✅ Done
     return NextResponse.json({
@@ -140,8 +201,10 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     console.error('Create blog error:', error)
+    // Trả về error message chi tiết hơn nếu có thể
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create blog'
     return NextResponse.json(
-      { error: 'Failed to create blog' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

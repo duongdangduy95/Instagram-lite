@@ -15,12 +15,14 @@ interface Blog {
   caption: string
   imageUrls: string[]
   createdAt: string
+  isdeleted?: boolean
   likes: Array<{ userId: string }>
   sharedFrom?: {
     id: string
     caption: string
     imageUrls: string[]
     createdAt: string
+    isdeleted?: boolean
     author: {
       id: string
       fullname: string
@@ -78,7 +80,7 @@ export default function ProfilePage() {
       if (!data || data.error) return
 
       setUser(data)
-      setMyBlogs(data.blogs || [])
+      setMyBlogs((data.blogs || []).filter(b => !b.isdeleted))
       setLikedBlogs(data.likes?.map((like: Like) => like.blog).filter((b: Blog | null) => b !== null) || [])
     }
 
@@ -109,7 +111,7 @@ export default function ProfilePage() {
           const res = await fetch('/api/user/saved', { credentials: 'include' })
           const data = await res.json()
           if (Array.isArray(data)) {
-            setSavedBlogs(data.filter((b: Blog) => b && b.id))
+            setSavedBlogs(data.filter((b: Blog) => b && b.id && !b.isdeleted))
           }
         } catch (error) {
           console.error('Error fetching saved blogs:', error)
@@ -130,7 +132,7 @@ export default function ProfilePage() {
           .then(res => res.json())
           .then(data => {
             if (Array.isArray(data)) {
-              setSavedBlogs(data.filter((b: Blog) => b && b.id))
+              setSavedBlogs(data.filter((b: Blog) => b && b.id && !b.isdeleted))
             }
           })
           .catch(err => console.error('Error refetching saved blogs:', err))
@@ -186,8 +188,8 @@ export default function ProfilePage() {
   const followersCount = user._count?.followers || 0
   const followingCount = user._count?.following || 0
 
-  const originalBlogs = myBlogs.filter((b) => !b.sharedFrom)
-  const sharedBlogs = myBlogs.filter((b) => !!b.sharedFrom)
+  const originalBlogs = myBlogs.filter((b) => !b.sharedFrom && !b.isdeleted)
+  const sharedBlogs = myBlogs.filter((b) => !!b.sharedFrom && !b.isdeleted)
 
   return (
     <div className="min-h-screen bg-[#0B0E11] pt-14 md:pt-0 pb-20 md:pb-0">
@@ -429,13 +431,23 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-3 gap-1">
                   {sharedBlogs.map((blog) => {
                     const displayBlog = blog.sharedFrom ?? blog
+                    const isOriginalMissing = !!blog.sharedFrom && blog.sharedFrom.isdeleted === true
                     return (
                       <Link
                         key={blog.id}
                         href={`/blog/${blog.id}`}
                         className="aspect-square bg-gray-900 relative group overflow-hidden"
                       >
-                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (() => {
+                        {isOriginalMissing ? (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-center px-2 bg-gray-900">
+                            <div className="mb-2 h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center">
+                              <span className="text-lg">⛔</span>
+                            </div>
+                            <p className="text-xs text-gray-200 font-semibold leading-snug">
+                              Bài viết này không còn tồn tại
+                            </p>
+                          </div>
+                        ) : displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (() => {
                           const first = displayBlog.imageUrls[0]
                           const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|avif|svg)$/i.test(url)
                           const isVideo = (url: string) => /\.(mp4|mov|webm)$/i.test(url)

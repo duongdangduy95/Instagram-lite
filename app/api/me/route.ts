@@ -4,10 +4,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { redis } from '@/lib/redis'
+import { bumpMeVersion, getMeCacheKey } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
 
-const CACHE_TTL = 3000 // seconds
+const CACHE_TTL = 30 // TTL ngắn; realtime đến từ bumpMeVersion khi có mutation
 
 /* ======================= GET ME ======================= */
 export async function GET() {
@@ -18,14 +19,15 @@ export async function GET() {
   }
 
   const userId = session.user.id
-  const cacheKey = `me:${userId}`
+  const cacheKey = await getMeCacheKey(userId)
 
   try {
     // 🔥 1. Redis first
     const cached = await redis.get(cacheKey)
-if (cached) {
-  return NextResponse.json(cached)
-}
+    if (cached) {
+      const parsed = typeof cached === 'string' ? JSON.parse(cached) : cached
+      return NextResponse.json(parsed)
+    }
 
 
     // 🐢 2. DB fallback
@@ -33,6 +35,7 @@ if (cached) {
       where: { id: userId },
       include: {
         blogs: {
+          where: { isdeleted: false },
           include: {
             _count: { select: { likes: true, comments: true } },
             likes: { select: { userId: true } },
@@ -53,6 +56,7 @@ if (cached) {
         likes: {
           include: {
             blog: {
+              where: { isdeleted: false },
               include: {
                 _count: { select: { likes: true, comments: true } },
                 likes: { select: { userId: true } },
@@ -87,14 +91,14 @@ if (cached) {
 
     const userWithMappedBlogs = {
       ...user,
-      blogs: user.blogs.map((blog) => ({
+      blogs: user.blogs.filter(blog => !blog.isdeleted).map((blog) => ({
         ...blog,
         imageUrls: blog.imageUrls || [],
       })),
     }
 
     // ⚡ 3. Cache result
-    await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(userWithMappedBlogs))
+    await redis.set(cacheKey, JSON.stringify(userWithMappedBlogs), { ex: CACHE_TTL })
 
     return NextResponse.json(userWithMappedBlogs)
   } catch (e) {
@@ -217,8 +221,8 @@ export async function PATCH(req: Request) {
       })),
     }
 
-    // 🧹 Invalidate cache
-    await redis.del(`me:${userId}`)
+    // 🧹 Invalidate cache (versioning)
+    await bumpMeVersion(userId)
 
     return NextResponse.json(updatedUserWithMappedBlogs)
   } catch (error) {

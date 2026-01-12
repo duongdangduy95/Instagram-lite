@@ -6,9 +6,10 @@ import HomeClient from './HomeClient'
 import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
 import { Prisma } from '@prisma/client'
 import { redis } from '@/lib/redis'
+import { getFeedCacheKey } from '@/lib/cache'
 
 const FEED_LIMIT = 6
-const FEED_CACHE_TTL = 300 // 5 phút
+const FEED_CACHE_TTL = 60 // TTL ngắn + versioned keys => vừa nhanh vừa realtime
 
 // Lấy người dùng hiện tại từ NextAuth session
 async function getCurrentUser() {
@@ -63,7 +64,7 @@ export default async function HomePage() {
   /* =====================
      BLOG FEED (TỐI ƯU VỚI REDIS CACHE)
   ====================== */
-  const feedCacheKey = 'feed:initial:server'
+  const feedCacheKey = await getFeedCacheKey({ cursor: null, server: true })
   let blogs: any[] = []
 
   // 1️⃣ KIỂM TRA REDIS CACHE TRƯỚC
@@ -77,7 +78,7 @@ export default async function HomePage() {
         ? JSON.parse(cachedFeed) 
         : cachedFeed
       if (Array.isArray(parsed) && parsed.length > 0) {
-        blogs = parsed
+        blogs = parsed.filter(b => !b.isdeleted)
         cacheHit = true
       }
     }
@@ -105,6 +106,7 @@ export default async function HomePage() {
       id: true,
       caption: true,
       imageUrls: true,
+      music: true,
       createdAt: true,
       author: { select: authorSelect },
       _count: {
@@ -116,8 +118,10 @@ export default async function HomePage() {
       sharedFrom: {
         select: {
           id: true,
+          isdeleted: true,
           caption: true,
           imageUrls: true,
+          music: true,
           createdAt: true,
           author: { select: { id: true, fullname: true, username: true, image: true } },
           _count: { select: { likes: true, comments: true } },
@@ -139,6 +143,7 @@ export default async function HomePage() {
     }
 
     blogs = await prisma.blog.findMany({
+      where: { isdeleted: false },
       orderBy: { createdAt: 'desc' },
       take: FEED_LIMIT,
       select: blogSelect,
@@ -171,27 +176,57 @@ export default async function HomePage() {
 
   /* =====================
      SERIALIZE DATE (đảm bảo dates là string cho cả cache hit và miss)
+     VÀ ĐẢM BẢO MUSIC ĐƯỢC PARSE ĐÚNG
   ====================== */
-  const blogsDto: BlogDTO[] = blogs.map((b) => ({
-    ...b,
-    createdAt: typeof b.createdAt === 'string' 
-      ? b.createdAt 
-      : (b.createdAt instanceof Date ? b.createdAt.toISOString() : new Date(b.createdAt).toISOString()),
-    isSaved: !!(currentUserId && (b.savedBy?.length ?? 0) > 0),
-    sharedFrom: b.sharedFrom
-      ? {
-          ...b.sharedFrom,
-          createdAt: typeof b.sharedFrom.createdAt === 'string'
-            ? b.sharedFrom.createdAt
-            : (b.sharedFrom.createdAt instanceof Date 
-                ? b.sharedFrom.createdAt.toISOString() 
-                : new Date(b.sharedFrom.createdAt).toISOString()),
+  const blogsDto: BlogDTO[] = blogs.map((b) => {
+    // Parse music nếu là string (từ cache hoặc database)
+    let parsedMusic = b.music
+    if (parsedMusic && typeof parsedMusic === 'string') {
+      try {
+        parsedMusic = JSON.parse(parsedMusic)
+      } catch (e) {
+        console.error('Failed to parse music JSON:', e, { blogId: b.id, music: parsedMusic })
+        parsedMusic = null
+      }
+    }
+
+    // Parse sharedFrom music nếu có
+    let parsedSharedFrom = b.sharedFrom
+    if (parsedSharedFrom) {
+      let parsedSharedMusic = parsedSharedFrom.music
+      if (parsedSharedMusic && typeof parsedSharedMusic === 'string') {
+        try {
+          parsedSharedMusic = JSON.parse(parsedSharedMusic)
+        } catch (e) {
+          console.error('Failed to parse sharedFrom music JSON:', e, { blogId: b.id, music: parsedSharedMusic })
+          parsedSharedMusic = null
         }
-      : null,
-  }))
+      }
+
+      parsedSharedFrom = {
+        ...parsedSharedFrom,
+        createdAt: typeof parsedSharedFrom.createdAt === 'string'
+          ? parsedSharedFrom.createdAt
+          : (parsedSharedFrom.createdAt instanceof Date 
+              ? parsedSharedFrom.createdAt.toISOString() 
+              : new Date(parsedSharedFrom.createdAt).toISOString()),
+        music: parsedSharedMusic,
+      }
+    }
+
+    return {
+      ...b,
+      createdAt: typeof b.createdAt === 'string' 
+        ? b.createdAt 
+        : (b.createdAt instanceof Date ? b.createdAt.toISOString() : new Date(b.createdAt).toISOString()),
+      isSaved: !!(currentUserId && (b.savedBy?.length ?? 0) > 0),
+      music: parsedMusic,
+      sharedFrom: parsedSharedFrom,
+    }
+  })
 
   return (
-    <div className="min-h-screen bg-[#0B0E11]">
+    <div className="min-h-screen bg-[#0B0E11]" suppressHydrationWarning>
       <Navigation />
       <HomeClient
         blogs={blogsDto}

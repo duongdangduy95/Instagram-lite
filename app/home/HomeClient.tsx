@@ -65,11 +65,11 @@ export default function HomeClient(props: {
         prev.map((u) =>
           u.id === detail.userId
             ? {
-                ...u,
-                fullname: (detail.fullname ?? u.fullname) as string,
-                username: (detail.username ?? u.username) as string,
-                image: typeof detail.image !== 'undefined' ? detail.image : u.image,
-              }
+              ...u,
+              fullname: (detail.fullname ?? u.fullname) as string,
+              username: (detail.username ?? u.username) as string,
+              image: typeof detail.image !== 'undefined' ? detail.image : u.image,
+            }
             : u
         )
       )
@@ -147,7 +147,7 @@ export default function HomeClient(props: {
       }
 
       const newBlogs = await response.json()
-      
+
       if (!Array.isArray(newBlogs) || newBlogs.length === 0) {
         setHasMore(false)
         return
@@ -159,7 +159,7 @@ export default function HomeClient(props: {
         const uniqueNewBlogs = newBlogs.filter((b: BlogDTO) => !existingIds.has(b.id))
         return [...prev, ...uniqueNewBlogs]
       })
-      
+
       // If we got less than expected (PAGE_SIZE = 3), we might be at the end
       if (newBlogs.length < 3) {
         setHasMore(false)
@@ -202,10 +202,10 @@ export default function HomeClient(props: {
   }
 
   return (
-    <div className="ml-0 md:ml-20 lg:ml-64 pt-14 md:pt-0 pb-20 md:pb-0 grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-0">
+    <div className="ml-0 md:ml-20 lg:ml-64 pt-14 md:pt-0 pb-20 md:pb-0 grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-0" suppressHydrationWarning>
       {/* Main Content - Cột giữa */}
       <main className="flex justify-center px-4 py-4">
-        <div className="w-full max-w-xl space-y-4">
+        <div className="w-full max-w-xl space-y-4" suppressHydrationWarning>
           {children}
           <BlogFeed
             blogs={blogs}
@@ -213,7 +213,7 @@ export default function HomeClient(props: {
             followMap={followMap}
             onFollowChange={handleFollowChange}
           />
-          
+
           {/* Infinite Scroll Trigger */}
           {props.mode !== 'hashtag' && (
             <div ref={loadMoreRef} className="flex justify-center py-8">
@@ -228,22 +228,24 @@ export default function HomeClient(props: {
         </div>
       </main>
 
-      {/* USER LIST SIDE BAR */}
-      <aside className="hidden xl:block px-6 py-4 space-y-3 border-l border-gray-800 bg-[#0B0E11] sticky top-0 h-screen overflow-y-auto no-scrollbar">
-        <p className="text-gray-300 font-semibold mb-4 text-lg">Gợi ý theo dõi</p>
-        <div className="space-y-4">
-          {users.map((u) => (
-            <UserSuggestionItem
-              key={u.id}
-              user={u}
-              currentUserId={currentUser?.id || null}
-              isFollowingOverride={followMap[u.id]}
-              followersCountOverride={followersCountMap[u.id]}
-              onFollowChange={(isFollowing, followersCount) => handleFollowChange(u.id, isFollowing, followersCount)}
-            />
-          ))}
-        </div>
-      </aside>
+      {/* USER LIST SIDE BAR - Hidden on hashtag page */}
+      {props.mode !== 'hashtag' && (
+        <aside className="hidden xl:block px-6 py-4 space-y-3 border-l border-gray-800 bg-[#0B0E11] sticky top-0 h-screen overflow-y-auto no-scrollbar">
+          <p className="text-gray-300 font-semibold mb-4 text-lg">Gợi ý theo dõi</p>
+          <div className="space-y-4">
+            {users.map((u) => (
+              <UserSuggestionItem
+                key={u.id}
+                user={u}
+                currentUserId={currentUser?.id || null}
+                isFollowingOverride={followMap[u.id]}
+                followersCountOverride={followersCountMap[u.id]}
+                onFollowChange={(isFollowing, followersCount) => handleFollowChange(u.id, isFollowing, followersCount)}
+              />
+            ))}
+          </div>
+        </aside>
+      )}
     </div>
   )
 }

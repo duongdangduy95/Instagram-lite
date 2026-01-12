@@ -20,24 +20,53 @@ export default function ExplorePage() {
     const [isExploreLoading, setIsExploreLoading] = useState(false)
 
     const observer = useRef<IntersectionObserver | null>(null)
+    const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
     const { data: session } = useSession()
     const currentUser: CurrentUserSafe = session?.user?.id ? { id: session.user.id } : null
 
     // --- SEARCH LOGIC ---
-    const handleSearch = async () => {
-        if (!query.trim()) return
+    const handleSearch = useCallback(async () => {
+        if (!query.trim()) {
+            setSearchResults([])
+            return
+        }
         setSearchLoading(true)
         try {
-            const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+            const res = await fetch(`/api/search/blogs?q=${encodeURIComponent(query)}`)
+            if (!res.ok) {
+                throw new Error('Search failed')
+            }
             const data = await res.json()
-            setSearchResults(data as BlogDTO[])
+            setSearchResults(Array.isArray(data) ? data : [])
         } catch (error) {
             console.error("Search error:", error)
+            setSearchResults([])
         } finally {
             setSearchLoading(false)
         }
-    }
+    }, [query])
+
+    // Debounced search on query change
+    useEffect(() => {
+        if (debounceTimer.current) {
+            clearTimeout(debounceTimer.current)
+        }
+
+        if (query.trim()) {
+            debounceTimer.current = setTimeout(() => {
+                handleSearch()
+            }, 500) // 500ms debounce
+        } else {
+            setSearchResults([])
+        }
+
+        return () => {
+            if (debounceTimer.current) {
+                clearTimeout(debounceTimer.current)
+            }
+        }
+    }, [query, handleSearch])
 
     // --- EXPLORE FETCH LOGIC ---
     const fetchExploreBlogs = useCallback(async (currentCursor: string | null = null, limit: number = 9) => {
@@ -114,7 +143,15 @@ export default function ExplorePage() {
                                 <input
                                     value={query}
                                     onChange={e => setQuery(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault()
+                                            if (debounceTimer.current) {
+                                                clearTimeout(debounceTimer.current)
+                                            }
+                                            handleSearch()
+                                        }
+                                    }}
                                     placeholder="Tìm kiếm bài viết..."
                                     className="flex-1 bg-transparent border-none outline-none text-gray-100 placeholder-gray-500"
                                 />
@@ -131,7 +168,12 @@ export default function ExplorePage() {
                                 )}
 
                                 <button
-                                    onClick={handleSearch}
+                                    onClick={() => {
+                                        if (debounceTimer.current) {
+                                            clearTimeout(debounceTimer.current)
+                                        }
+                                        handleSearch()
+                                    }}
                                     disabled={searchLoading}
                                     className="ml-2 p-2 bg-[#7565E6] hover:bg-[#6455C2] text-white rounded-full transition-colors disabled:opacity-50"
                                 >

@@ -1,7 +1,31 @@
-import { withAuth } from "next-auth/middleware"
-import { NextResponse } from "next/server"
+import { withAuth, type NextRequestWithAuth } from "next-auth/middleware"
+import { NextFetchEvent, NextRequest, NextResponse } from "next/server"
 
-export const middleware = withAuth(
+function adminGate(req: NextRequest) {
+  const { pathname } = req.nextUrl
+  const token = req.cookies.get('admin_session')?.value
+
+  if (!pathname.startsWith('/admin')) return null
+
+  // Chưa login
+  if (!token) {
+    if (pathname !== '/admin/login') {
+      return NextResponse.redirect(new URL('/admin/login', req.url))
+    }
+    return NextResponse.next() // đang ở login page, token null → cho qua
+  }
+
+  // Đã login mà vào login page → redirect /admin
+  if (token && pathname === '/admin/login') {
+    return NextResponse.redirect(new URL('/admin', req.url))
+  }
+
+  return NextResponse.next()
+}
+
+
+
+const userAuth = withAuth(
   function middleware(req) {
     const isVerifyOTPPage = req.nextUrl.pathname === '/verify-otp'
     
@@ -44,6 +68,16 @@ export const middleware = withAuth(
   }
 )
 
+export function middleware(req: NextRequest, event: NextFetchEvent) {
+  // Nếu là admin → xử lý bằng cookie
+  const admin = adminGate(req)
+  if (admin) return admin
+
+  // Nếu không phải admin → chạy NextAuth
+  return userAuth(req as NextRequestWithAuth, event)
+}
+
+
 // Áp dụng middleware cho những route này
 export const config = {
   matcher: [
@@ -54,5 +88,6 @@ export const config = {
     "/search",
     "/user/:path*",
     "/verify-otp", // Giữ lại để xử lý logic emailVerified cho Google OAuth
+    "/admin/:path*",
   ],
 }

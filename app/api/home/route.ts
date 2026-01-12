@@ -3,9 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
+import { getFeedCacheKey } from '@/lib/cache'
 
 const PAGE_SIZE = 3
-const FEED_TTL = 300 // Tăng lên 60s để thấy rõ hiệu quả cache
+const FEED_TTL = 60 // TTL ngắn + versioned keys => vừa nhanh vừa realtime
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -17,8 +18,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const cursor = searchParams.get('cursor') // Cursor-based pagination
 
-  // Cache key theo cursor (hoặc 'initial' cho lần đầu)
-  const feedCacheKey = cursor ? `feed:cursor:${cursor}` : 'feed:initial'
+  // Cache key theo cursor + version (invalidate O(1) bằng bumpFeedVersion)
+  const feedCacheKey = await getFeedCacheKey({ cursor, server: false })
 
   try {
     let feed: any[] = []
@@ -33,10 +34,10 @@ export async function GET(req: Request) {
       
       // Backward compatibility: nếu là array cũ thì dùng trực tiếp
       if (Array.isArray(parsed)) {
-        feed = parsed
+        feed = parsed.filter(b => !b.isdeleted)
       } else if (parsed && typeof parsed === 'object' && 'feed' in parsed) {
         // Cấu trúc mới với nextCursor
-        feed = parsed.feed || []
+        feed = (parsed.feed || []).filter(b => !b.isdeleted)
       } else {
         feed = []
       }
@@ -52,10 +53,12 @@ export async function GET(req: Request) {
           skip: 1, // Bỏ qua post có id = cursor (vì đã có rồi)
         } : {}),
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        where: { isdeleted: false },
         select: {
           id: true,
           caption: true,
           imageUrls: true,
+          music: true,
           createdAt: true,
           author: {
             select: {
@@ -68,8 +71,10 @@ export async function GET(req: Request) {
           sharedFrom: {
             select: {
               id: true,
+              isdeleted: true,
               caption: true,
               imageUrls: true,
+              music: true,
               createdAt: true,
               author: {
                 select: {
@@ -106,9 +111,10 @@ export async function GET(req: Request) {
       }))
 
       // Lưu thêm metadata về next cursor vào cache
+      const feedForCache = feed.filter(b => !b.isdeleted)
       const cacheData = {
-        feed,
-        nextCursor: hasNextPage ? blogs[blogs.length - 1]?.id : null,
+        feed: feedForCache,
+        nextCursor: hasNextPage ? feedForCache[feedForCache.length - 1]?.id : null,
       }
 
       // LƯU VÀO REDIS (Dùng cấu trúc object cho options)
@@ -146,16 +152,50 @@ export async function GET(req: Request) {
     const savedSet = new Set(saved.map((s) => s.blogId))
     const followSet = new Set(follows.map((f) => f.followingId))
 
-    // 3️⃣ MERGE DỮ LIỆU
-    const result = feed.map((b) => ({
-      ...b,
-      liked: likedSet.has(b.id),
-      isSaved: savedSet.has(b.id),
-      author: {
-        ...b.author,
-        isFollowing: followSet.has(b.author.id),
-      },
-    }))
+    // 3️⃣ MERGE DỮ LIỆU VÀ PARSE MUSIC
+    const result = feed.map((b) => {
+      // Parse music nếu là string (từ cache hoặc database)
+      let parsedMusic = b.music
+      if (parsedMusic && typeof parsedMusic === 'string') {
+        try {
+          parsedMusic = JSON.parse(parsedMusic)
+        } catch (e) {
+          console.error('Failed to parse music JSON in API:', e, { blogId: b.id, music: parsedMusic })
+          parsedMusic = null
+        }
+      }
+
+      // Parse sharedFrom music nếu có
+      let parsedSharedFrom = b.sharedFrom
+      if (parsedSharedFrom) {
+        let parsedSharedMusic = parsedSharedFrom.music
+        if (parsedSharedMusic && typeof parsedSharedMusic === 'string') {
+          try {
+            parsedSharedMusic = JSON.parse(parsedSharedMusic)
+          } catch (e) {
+            console.error('Failed to parse sharedFrom music JSON in API:', e, { blogId: b.id, music: parsedSharedMusic })
+            parsedSharedMusic = null
+          }
+        }
+
+        parsedSharedFrom = {
+          ...parsedSharedFrom,
+          music: parsedSharedMusic,
+        }
+      }
+
+      return {
+        ...b,
+        liked: likedSet.has(b.id),
+        isSaved: savedSet.has(b.id),
+        music: parsedMusic,
+        sharedFrom: parsedSharedFrom,
+        author: {
+          ...b.author,
+          isFollowing: followSet.has(b.author.id),
+        },
+      }
+    })
 
     // Tính nextCursor từ result cuối cùng
     const nextCursor = result.length > 0 ? result[result.length - 1]?.id : null

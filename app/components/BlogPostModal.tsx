@@ -12,6 +12,7 @@ import RenderCaption from '@/app/components/RenderCaption'
 import { usePathname, useRouter } from 'next/navigation'
 import ShareModal from '@/app/components/ShareModal'
 import ExpandableCaption from '@/app/components/ExpandableCaption'
+import ReportModal from '@/app/components/ReportModal'
 
 
 type BlogAuthor = {
@@ -27,6 +28,15 @@ type BlogDetail = {
   id: string
   caption?: string | null
   imageUrls: string[]
+  music?: {
+    provider: 'deezer'
+    trackId: number
+    title: string
+    artist: string
+    previewUrl: string
+    coverUrl?: string | null
+    durationSec?: number | null
+  } | null
   createdAt: string
   hashtags?: string[]
   author: BlogAuthor
@@ -34,6 +44,15 @@ type BlogDetail = {
     id: string
     caption?: string | null
     imageUrls: string[]
+    music?: {
+      provider: 'deezer'
+      trackId: number
+      title: string
+      artist: string
+      previewUrl: string
+      coverUrl?: string | null
+      durationSec?: number | null
+    } | null
     createdAt: string
     author: BlogAuthor
     _count: BlogCounts
@@ -43,10 +62,11 @@ type BlogDetail = {
   _count: BlogCounts
 }
 
-export default function BlogPostModal({ blogId }: { blogId: string }) {
+export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: string, isAdmin?: boolean}) {
   const pathname = usePathname()
-  const isOpen = pathname.startsWith('/blog/') && !pathname.endsWith('/edit')
-
+  const isOpen =
+  (pathname.startsWith('/blog/') || pathname.startsWith('/admin/blog/')) &&
+  !pathname.endsWith('/edit')
 
 
 
@@ -68,6 +88,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
   const [showOptions, setShowOptions] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const composerRef = useRef<HTMLInputElement>(null)
+  const [showReportModal, setShowReportModal] = useState(false)
 
   const dialogRef = useRef<HTMLDivElement>(null)
   // Lưu ý: mobile + desktop đều render đồng thời (chỉ khác CSS md:hidden/hidden md:*),
@@ -102,6 +123,8 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
   // Lock background scroll while modal is open
   useEffect(() => {
     if (!isOpen) return
+    // Stop any preview playing in feed/background to avoid double audio when opening modal
+    window.dispatchEvent(new CustomEvent('music:stop'))
     const prevBodyOverflow = document.body.style.overflow
     const prevHtmlOverflow = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
@@ -123,6 +146,11 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
   useEffect(() => {
     let cancelled = false
+    setBlog(null)
+    setLoading(true)
+    setLiked(false)
+    setLikeCount(0)
+    setSaved(false)
     const load = async () => {
       setLoading(true)
       try {
@@ -246,6 +274,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
   const isShared = !!blog?.sharedFrom
   const displayBlog = blog?.sharedFrom ?? blog
+  const isOriginalMissing = !!blog?.sharedFrom && (blog.sharedFrom as any).isdeleted === true
 
   const handleSubmitComment = async () => {
     if (!blog) return
@@ -278,9 +307,9 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
     }
   }
 
-  if (!isOpen) {
-    return null
-  }
+  // if (!isOpen) {
+  //   return null
+  // }
 
   return (
     <div
@@ -439,47 +468,69 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
                     {/* Inner Card */}
                     <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900/40">
-                      {/* Media */}
-                      <Link href={`/blog/${displayBlog?.id}`} className="block" onClick={close}>
-                        <div className="bg-gray-900">
-                          {displayBlog && <BlogImages imageUrls={displayBlog.imageUrls} rounded={false} frameMode="aspect" />}
+                      {isOriginalMissing ? (
+                        <div className="p-8 text-center text-gray-300">
+                          <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
+                            <span className="text-xl">⛔</span>
+                          </div>
+                          <p className="font-semibold text-gray-100">Bài viết này không còn tồn tại</p>
+                          <p className="text-sm text-gray-400 mt-1">
+                            Bài gốc đã bị xoá bởi người dùng hoặc quản trị viên.
+                          </p>
                         </div>
-                      </Link>
-
-                      {/* Original Info + Caption */}
-                      <div className="px-4 py-3 border-t border-gray-800">
-                        <Link
-                          href={`/profile/${displayBlog?.author.id}`}
-                          onClick={(e) => { e.stopPropagation(); close() }}
-                          className="block mb-2"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
-                              {displayBlog?.author.image ? (
-                                <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={32} height={32} className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="font-bold text-white text-xs">
-                                  {displayBlog?.author.username.charAt(0).toUpperCase()}
-                                </span>
+                      ) : (
+                        <>
+                          {/* Media */}
+                          <Link href={`/blog/${displayBlog?.id}`} className="block" onClick={close}>
+                            <div className="bg-gray-900">
+                              {displayBlog && (
+                                <BlogImages
+                                  imageUrls={displayBlog.imageUrls}
+                                  music={(displayBlog as any).music ?? null}
+                                  musicKey={displayBlog.id}
+                                  rounded={false}
+                                  frameMode="aspect"
+                                />
                               )}
                             </div>
-                            <div>
-                              <p className="font-semibold text-gray-100 text-sm">
-                                {displayBlog?.author.username}
-                              </p>
-                              <p className="text-[10px] text-gray-400">
-                                {displayBlog && formatTimeAgo(displayBlog.createdAt)}
-                              </p>
-                            </div>
-                          </div>
-                        </Link>
+                          </Link>
 
-                        {displayBlog?.caption && (
-                          <div className="text-gray-200 text-sm whitespace-pre-wrap">
-                            <RenderCaption text={displayBlog.caption} />
+                          {/* Original Info + Caption */}
+                          <div className="px-4 py-3 border-t border-gray-800">
+                            <Link
+                              href={`/profile/${displayBlog?.author.id}`}
+                              onClick={(e) => { e.stopPropagation(); close() }}
+                              className="block mb-2"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                                  {displayBlog?.author.image ? (
+                                    <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={32} height={32} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="font-bold text-white text-xs">
+                                      {displayBlog?.author.username.charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-100 text-sm">
+                                    {displayBlog?.author.username}
+                                  </p>
+                                  <p className="text-[10px] text-gray-400">
+                                    {displayBlog && formatTimeAgo(displayBlog.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                            </Link>
+
+                            {displayBlog?.caption && (
+                              <div className="text-gray-200 text-sm whitespace-pre-wrap">
+                                <RenderCaption text={displayBlog.caption} />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -495,7 +546,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
 
                     {/* Image/Video */}
                     <div className="bg-[#0B0E11]">
-                      <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="aspect" />
+                      <BlogImages imageUrls={blog.imageUrls} music={(blog as any).music ?? null} musicKey={blog.id} rounded={false} frameMode="aspect" />
                     </div>
                   </>
                 )}
@@ -533,10 +584,14 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
               <div className="px-4 py-3 border-t border-gray-800 bg-[#212227] flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-4">
                   <button
-                    onClick={handleLike}
-                    className="flex items-center gap-2 text-gray-200 hover:text-white"
+                    onClick={isAdmin ? undefined : handleLike}
+                    disabled={isAdmin}
+                    className={`flex items-center gap-2 ${
+                      isAdmin ? "opacity-40 cursor-not-allowed" : "hover:text-white"
+                    }`}
                     aria-label="Thích"
                   >
+
                     <Image
                       src={liked ? '/icons/liked.svg' : '/icons/like.svg'}
                       alt="Thích"
@@ -547,65 +602,87 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                   </button>
 
                   <button
-                    onClick={handleShare}
-                    className="text-gray-200 hover:text-white"
+                    onClick={isAdmin ? undefined : handleShare}
+                    disabled={isAdmin}
+                    className={isAdmin ? "opacity-40 cursor-not-allowed" : ""}
                     aria-label="Chia sẻ"
                   >
                     <Image src="/icons/share.svg" alt="Chia sẻ" width={22} height={22} />
                   </button>
                 </div>
 
-                <button
-                  onClick={async () => {
-                    if (!currentUser) {
-                      router.push('/login')
-                      return
-                    }
-                    const prevSaved = saved
-                    const newSaved = !prevSaved
-                    setSaved(newSaved)
-                    try {
-                      const res = await fetch(`/api/blog/${blog.id}/save`, {
-                        method: 'POST',
-                        credentials: 'include',
-                      })
-                      if (!res.ok) {
+                <div className="flex items-center gap-4">
+                  {/* Save */}
+                  <button
+                    onClick={async () => {
+                      if (!currentUser) {
+                        router.push('/login')
+                        return
+                      }
+                      const prevSaved = saved
+                      const newSaved = !prevSaved
+                      setSaved(newSaved)
+                      try {
+                        const res = await fetch(`/api/blog/${blog.id}/save`, {
+                          method: 'POST',
+                          credentials: 'include',
+                        })
+                        if (!res.ok) {
+                          setSaved(prevSaved)
+                          window.dispatchEvent(
+                            new CustomEvent('blog:save-change', {
+                              detail: { blogId: blog.id, saved: prevSaved },
+                            })
+                          )
+                          return
+                        }
+                        const data = await res.json()
+                        const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
+                        setSaved(finalSaved)
+                        window.dispatchEvent(
+                          new CustomEvent('blog:save-change', {
+                            detail: { blogId: blog.id, saved: finalSaved },
+                          })
+                        )
+                      } catch {
                         setSaved(prevSaved)
                         window.dispatchEvent(
                           new CustomEvent('blog:save-change', {
                             detail: { blogId: blog.id, saved: prevSaved },
                           })
                         )
-                        return
                       }
-                      const data = await res.json()
-                      const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
-                      setSaved(finalSaved)
-                      // Dispatch event to sync with home feed
-                      window.dispatchEvent(
-                        new CustomEvent('blog:save-change', {
-                          detail: { blogId: blog.id, saved: finalSaved },
-                        })
-                      )
-                    } catch {
-                      setSaved(prevSaved)
-                      window.dispatchEvent(
-                        new CustomEvent('blog:save-change', {
-                          detail: { blogId: blog.id, saved: prevSaved },
-                        })
-                      )
-                    }
-                  }}
-                  className="text-gray-200 hover:text-white"
-                  aria-label="Lưu"
-                >
-                  <Image
-                    src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
-                    alt="Lưu"
-                    width={22}
-                    height={22}
+                    }}
+                    className="text-gray-200 hover:text-white"
+                    aria-label="Lưu"
+                  >
+                    <Image
+                      src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
+                      alt="Lưu"
+                      width={22}
+                      height={22}
+                    />
+                  </button>
+
+                  {/* Report */}
+                  <button
+                    onClick={() => {
+                      setShowReportModal(true)
+                    }}
+                    className="text-yellow-500 hover:text-yellow-400 transition-all duration-300"
+                    aria-label="Báo cáo"
+                  >
+                    <Image src="/icons/report.svg" alt="Báo cáo" width={24} height={24} />
+                  </button>
+
+                  {/* Modal */}
+                  <ReportModal
+                    isOpen={showReportModal}
+                    onClose={() => setShowReportModal(false)}
+                    blogId={blogId}
                   />
-                </button>
+                </div>
+                
               </div>
 
               {/* 5. Comment Composer (pinned bottom) */}
@@ -633,10 +710,10 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                     ref={composerRef}
                     value={composer}
                     onChange={(e) => setComposer(e.target.value)}
-                    placeholder="Bình luận..."
+                    placeholder={isAdmin ? "Admin không được bình luận" : "Bình luận..."}
                     className="flex-1 bg-transparent border-0 px-0 py-2 text-gray-100 placeholder-gray-500 focus:outline-none"
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (!isAdmin && e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
                         void handleSubmitComment()
                       }
@@ -645,7 +722,7 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                   />
                   <button
                     onClick={() => void handleSubmitComment()}
-                    disabled={posting || !composer.trim()}
+                    disabled={posting || !composer.trim() || isAdmin}
                     className="p-1.5 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <img
@@ -665,53 +742,77 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                 {isShared ? (
                   <div className="w-full h-full flex flex-col">
                     <div className="flex-1 flex flex-col border border-gray-800 bg-gray-900/40">
-                      {/* Media - Flex grow to fill available space, centered */}
-                      <Link
-                        href={`/blog/${displayBlog?.id}`}
-                        className="flex-1 bg-gray-900 flex items-center justify-center overflow-hidden min-h-0 relative group"
-                        onClick={close}
-                      >
-                        {displayBlog && <BlogImages imageUrls={displayBlog.imageUrls} rounded={false} frameMode="aspect" />}
-                      </Link>
-
-                      {/* Original Info + Caption - Fixed at bottom of left panel */}
-                      <div className="px-4 py-3 border-t border-gray-800 bg-[#0B0E11] flex-shrink-0">
-                        <Link
-                          href={`/profile/${displayBlog?.author.id}`}
-                          onClick={(e) => { e.stopPropagation() }}
-                          className="block mb-2"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
-                              {displayBlog?.author.image ? (
-                                <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={32} height={32} className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="font-bold text-white text-xs">
-                                  {displayBlog?.author.username.charAt(0).toUpperCase()}
-                                </span>
-                              )}
+                      {isOriginalMissing ? (
+                        <div className="flex-1 flex items-center justify-center p-8 text-center text-gray-300">
+                          <div>
+                            <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
+                              <span className="text-xl">⛔</span>
                             </div>
-                            <div>
-                              <p className="font-semibold text-gray-100 text-sm">
-                                {displayBlog?.author.username}
-                              </p>
-                              <p className="text-[10px] text-gray-400">
-                                {displayBlog && formatTimeAgo(displayBlog.createdAt)}
-                              </p>
-                            </div>
+                            <p className="font-semibold text-gray-100">Bài viết này không còn tồn tại</p>
+                            <p className="text-sm text-gray-400 mt-1">
+                              Bài gốc đã bị xoá bởi người dùng hoặc quản trị viên.
+                            </p>
                           </div>
-                        </Link>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Media - Flex grow to fill available space, centered */}
+                          <Link
+                            href={`/blog/${displayBlog?.id}`}
+                            className="flex-1 bg-gray-900 flex items-center justify-center overflow-hidden min-h-0 relative group"
+                            onClick={close}
+                          >
+                            {displayBlog && (
+                              <BlogImages
+                                imageUrls={displayBlog.imageUrls}
+                                music={(displayBlog as any).music ?? null}
+                                musicKey={displayBlog.id}
+                                rounded={false}
+                                frameMode="aspect"
+                              />
+                            )}
+                          </Link>
 
-                        {displayBlog?.caption && (
-                          <div className="text-gray-200 text-sm">
-                            <ExpandableCaption text={displayBlog.caption} initialLines={3} />
+                          {/* Original Info + Caption - Fixed at bottom of left panel */}
+                          <div className="px-4 py-3 border-t border-gray-800 bg-[#0B0E11] flex-shrink-0">
+                            <Link
+                              href={`/profile/${displayBlog?.author.id}`}
+                              onClick={(e) => { e.stopPropagation() }}
+                              className="block mb-2"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                                  {displayBlog?.author.image ? (
+                                    <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={32} height={32} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="font-bold text-white text-xs">
+                                      {displayBlog?.author.username.charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-100 text-sm">
+                                    {displayBlog?.author.username}
+                                  </p>
+                                  <p className="text-[10px] text-gray-400">
+                                    {displayBlog && formatTimeAgo(displayBlog.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                            </Link>
+
+                            {displayBlog?.caption && (
+                              <div className="text-gray-200 text-sm">
+                                <ExpandableCaption text={displayBlog.caption} initialLines={3} />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <BlogImages imageUrls={blog.imageUrls} rounded={false} frameMode="fill" />
+                  <BlogImages imageUrls={blog.imageUrls} music={(blog as any).music ?? null} musicKey={blog.id} rounded={false} frameMode="fill" />
                 )}
               </div>
 
@@ -917,58 +1018,77 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                         <Image src="/icons/share.svg" alt="Chia sẻ" width={22} height={22} />
                       </button>
                     </div>
-
-                    <button
-                      onClick={async () => {
-                        if (!currentUser) {
-                          router.push('/login')
-                          return
-                        }
-                        const prevSaved = saved
-                        const newSaved = !prevSaved
-                        setSaved(newSaved)
-                        try {
-                          const res = await fetch(`/api/blog/${blog.id}/save`, {
-                            method: 'POST',
-                            credentials: 'include',
-                          })
-                          if (!res.ok) {
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={async () => {
+                          if (!currentUser) {
+                            router.push('/login')
+                            return
+                          }
+                          const prevSaved = saved
+                          const newSaved = !prevSaved
+                          setSaved(newSaved)
+                          try {
+                            const res = await fetch(`/api/blog/${blog.id}/save`, {
+                              method: 'POST',
+                              credentials: 'include',
+                            })
+                            if (!res.ok) {
+                              setSaved(prevSaved)
+                              window.dispatchEvent(
+                                new CustomEvent('blog:save-change', {
+                                  detail: { blogId: blog.id, saved: prevSaved },
+                                })
+                              )
+                              return
+                            }
+                            const data = await res.json()
+                            const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
+                            setSaved(finalSaved)
+                            // Dispatch event to sync with home feed
+                            window.dispatchEvent(
+                              new CustomEvent('blog:save-change', {
+                                detail: { blogId: blog.id, saved: finalSaved },
+                              })
+                            )
+                          } catch {
                             setSaved(prevSaved)
                             window.dispatchEvent(
                               new CustomEvent('blog:save-change', {
                                 detail: { blogId: blog.id, saved: prevSaved },
                               })
                             )
-                            return
                           }
-                          const data = await res.json()
-                          const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
-                          setSaved(finalSaved)
-                          // Dispatch event to sync with home feed
-                          window.dispatchEvent(
-                            new CustomEvent('blog:save-change', {
-                              detail: { blogId: blog.id, saved: finalSaved },
-                            })
-                          )
-                        } catch {
-                          setSaved(prevSaved)
-                          window.dispatchEvent(
-                            new CustomEvent('blog:save-change', {
-                              detail: { blogId: blog.id, saved: prevSaved },
-                            })
-                          )
-                        }
-                      }}
-                      className="text-gray-200 hover:text-white"
-                      aria-label="Lưu"
-                    >
-                      <Image
-                        src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
-                        alt="Lưu"
-                        width={22}
-                        height={22}
+                        }}
+                        className="text-gray-200 hover:text-white"
+                        aria-label="Lưu"
+                      >
+                        <Image
+                          src={saved ? '/icons/saved.svg' : '/icons/save.svg'}
+                          alt="Lưu"
+                          width={22}
+                          height={22}
+                        />
+                      </button>
+
+                      {/* Report */}
+                      <button
+                        onClick={() => {
+                          setShowReportModal(true)
+                        }}
+                        className="text-yellow-500 hover:text-yellow-400 transition-all duration-300"
+                        aria-label="Báo cáo"
+                      >
+                        <Image src="/icons/report.svg" alt="Báo cáo" width={24} height={24} />
+                      </button>
+
+                      {/* Modal */}
+                      <ReportModal
+                        isOpen={showReportModal}
+                        onClose={() => setShowReportModal(false)}
+                        blogId={blogId}
                       />
-                    </button>
+                    </div>
                   </div>
 
                   {/* Composer pinned bottom */}
@@ -980,16 +1100,17 @@ export default function BlogPostModal({ blogId }: { blogId: string }) {
                       placeholder="Bình luận..."
                       className="flex-1 bg-transparent border-0 px-0 py-2 text-gray-100 placeholder-gray-500 focus:outline-none"
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
+                        if (!isAdmin && e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()
                           void handleSubmitComment()
                         }
                       }}
                       disabled={posting}
                     />
+
                     <button
                       onClick={() => void handleSubmitComment()}
-                      disabled={posting || !composer.trim()}
+                      disabled={posting || !composer.trim() || isAdmin}
                       className="p-1.5 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <img

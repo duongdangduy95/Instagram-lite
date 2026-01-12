@@ -17,6 +17,15 @@ interface Blog {
   caption?: string
   imageUrls: string[]
   hashtags: string[]
+  music?: {
+    provider: 'deezer'
+    trackId: number
+    title: string
+    artist: string
+    previewUrl: string
+    coverUrl?: string | null
+    durationSec?: number | null
+  } | null
   createdAt: string
   isSaved?: boolean
   author: {
@@ -30,6 +39,15 @@ interface Blog {
     caption?: string
     imageUrls: string[]
     hashtags: string[]
+    music?: {
+      provider: 'deezer'
+      trackId: number
+      title: string
+      artist: string
+      previewUrl: string
+      coverUrl?: string | null
+      durationSec?: number | null
+    } | null
     createdAt: string
     author: {
       id: string
@@ -118,6 +136,8 @@ export default function BlogDetailPage() {
 
   const isShared = !!blog.sharedFrom
   const displayBlog = blog.sharedFrom ?? blog
+  const isOriginalMissing = !!blog.sharedFrom && (blog.sharedFrom as any).isdeleted === true
+  const actionDisplayBlogId = isOriginalMissing ? blog.id : displayBlog.id
   const isCurrentUser = blog.author.id === currentUser?.id
   const isLiked = (blog.likes?.length ?? 0) > 0
 
@@ -251,57 +271,71 @@ export default function BlogDetailPage() {
               // Shared Post Layout: Inner Card
               <div className="px-4 py-4">
                 <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900/40">
-                  {/* Media */}
-                  <Link href={`/blog/${displayBlog.id}`} className="block">
-                    <div className="bg-gray-900">
-                      <BlogImages imageUrls={displayBlog.imageUrls} />
+                  {isOriginalMissing ? (
+                    <div className="p-10 text-center text-gray-300">
+                      <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
+                        <span className="text-xl">⛔</span>
+                      </div>
+                      <p className="font-semibold text-gray-100">Bài viết này không còn tồn tại</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Bài gốc đã bị xoá bởi người dùng hoặc quản trị viên.
+                      </p>
                     </div>
-                  </Link>
-
-                  {/* Original Info + Caption */}
-                  <div className="px-4 py-3 border-t border-gray-800">
-                    <Link
-                      href={displayBlog.author.id === currentUser?.id ? '/profile' : `/profile/${displayBlog.author.id}`}
-                      className="block mb-2"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
-                          {(displayBlog.author as any).image ? (
-                            <img src={(displayBlog.author as any).image} alt={displayBlog.author.username} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="font-bold text-white text-xs">
-                              {displayBlog.author.username.charAt(0).toUpperCase()}
-                            </span>
-                          )}
+                  ) : (
+                    <>
+                      {/* Media */}
+                      <Link href={`/blog/${displayBlog.id}`} className="block">
+                        <div className="bg-gray-900">
+                          <BlogImages imageUrls={displayBlog.imageUrls} music={(displayBlog as any).music ?? null} musicKey={displayBlog.id} />
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-100 text-sm">
-                            {displayBlog.author.username}
-                          </p>
-                          <p className="text-[10px] text-gray-400">
-                            {formatTimeAgo(new Date(displayBlog.createdAt))}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
+                      </Link>
 
-                    {displayBlog.caption && (
-                      <div className="text-gray-200 text-sm">
-                        <ExpandableCaption text={displayBlog.caption} initialLines={3} />
-                      </div>
-                    )}
+                      {/* Original Info + Caption */}
+                      <div className="px-4 py-3 border-t border-gray-800">
+                        <Link
+                          href={displayBlog.author.id === currentUser?.id ? '/profile' : `/profile/${displayBlog.author.id}`}
+                          className="block mb-2"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                              {(displayBlog.author as any).image ? (
+                                <img src={(displayBlog.author as any).image} alt={displayBlog.author.username} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="font-bold text-white text-xs">
+                                  {displayBlog.author.username.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-100 text-sm">
+                                {displayBlog.author.username}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                {formatTimeAgo(new Date(displayBlog.createdAt))}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
 
-                    {/* Hashtags inside card if shared */}
-                    {displayBlog.hashtags && displayBlog.hashtags.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {displayBlog.hashtags.map((tag, index) => (
-                          <span key={index} className="text-[#7565E6] text-xs font-medium">
-                            #{tag}
-                          </span>
-                        ))}
+                        {displayBlog.caption && (
+                          <div className="text-gray-200 text-sm">
+                            <ExpandableCaption text={displayBlog.caption} initialLines={3} />
+                          </div>
+                        )}
+
+                        {/* Hashtags inside card if shared */}
+                        {displayBlog.hashtags && displayBlog.hashtags.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {displayBlog.hashtags.map((tag, index) => (
+                              <span key={index} className="text-[#7565E6] text-xs font-medium">
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
@@ -325,7 +359,7 @@ export default function BlogDetailPage() {
 
                 <div className="px-4 pb-4">
                   <div className="rounded-lg overflow-hidden bg-gray-900">
-                    <BlogImages imageUrls={displayBlog.imageUrls} />
+                    <BlogImages imageUrls={displayBlog.imageUrls} music={(displayBlog as any).music ?? null} musicKey={displayBlog.id} />
                   </div>
                 </div>
               </>
@@ -334,7 +368,7 @@ export default function BlogDetailPage() {
             {/* Actions */}
             <BlogActions
               blogId={blog.id}
-              displayBlogId={displayBlog.id}
+              displayBlogId={actionDisplayBlogId}
               initialLikeCount={blog._count.likes}
               initialCommentCount={blog._count.comments}
               initialLiked={isLiked}

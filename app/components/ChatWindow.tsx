@@ -718,36 +718,44 @@ export default function ChatWindow({
                         className="bg-transparent outline-none w-full"
                       />
                     ) : (
-                      m.content && <p style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.content}</p>
-                    )}
-
-                    {m.fileUrls?.map((url, i) =>
-                      isImage(url) ? (
-                        <img
-                          key={i}
-                          src={url}
-                          alt=""
-                          className="mt-1 rounded"
-                          loading="lazy"
-                          onError={(e) => {
-                            // Retry 1 lần: đôi khi Supabase public URL vừa upload cần vài nhịp mới sẵn sàng
-                            const img = e.currentTarget
-                            if (img.dataset.retried) return
-                            img.dataset.retried = '1'
-                            const sep = url.includes('?') ? '&' : '?'
-                            img.src = `${url}${sep}t=${Date.now()}`
-                          }}
-                        />
-                      ) : (
-                        <a
-                          key={i}
-                          href={url}
-                          target="_blank"
-                          className="text-xs text-blue-300 block"
-                        >
-                          📎 {m.fileNames?.[i]}
-                        </a>
-                      )
+                      <>
+                        {m.content && <p style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.content}</p>}
+                        
+                        {m.fileUrls && m.fileUrls.length > 0 && m.fileUrls.map((url, i) =>
+                          isImage(url) ? (
+                            <img
+                              key={i}
+                              src={url}
+                              alt=""
+                              className={`${m.content ? 'mt-1' : ''} rounded max-w-full`}
+                              loading="lazy"
+                              onError={(e) => {
+                                // Retry 1 lần: đôi khi Supabase public URL vừa upload cần vài nhịp mới sẵn sàng
+                                const img = e.currentTarget
+                                if (img.dataset.retried) return
+                                img.dataset.retried = '1'
+                                const sep = url.includes('?') ? '&' : '?'
+                                img.src = `${url}${sep}t=${Date.now()}`
+                              }}
+                            />
+                          ) : (
+                            <a
+                              key={i}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`${m.content ? 'mt-1' : ''} text-xs text-blue-300 block hover:underline`}
+                            >
+                              📎 {m.fileNames?.[i] || 'File'}
+                            </a>
+                          )
+                        )}
+                        
+                        {/* Fallback: Nếu không có cả content và files (không nên xảy ra sau khi fix validation) */}
+                        {!m.content && (!m.fileUrls || m.fileUrls.length === 0) && (
+                          <p className="text-gray-400 italic text-xs">Tin nhắn rỗng</p>
+                        )}
+                      </>
                     )}
 
                     <div className="text-[10px] text-right mt-1 opacity-70 flex gap-1 justify-end items-center">

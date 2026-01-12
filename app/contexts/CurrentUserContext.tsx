@@ -57,35 +57,32 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
       return
     }
 
-    // Ưu tiên session, nhưng nếu session chưa có image thì vẫn fetch /api/me/basic để lấy avatar
+    // Set tạm từ session để UI có dữ liệu ngay (optimistic update)
     const cachedImage = cachedUserId === sessionUserId ? cachedUser?.image : null
-
     const fromSession: NonNullable<CurrentUserSafe> = {
       id: sessionUserId,
       fullname: sessionFullname,
       username: sessionUsername,
-      image: sessionImage ?? cachedImage ?? null,
+      // Tạm dùng session image hoặc cached image, nhưng sẽ được override bởi database image
+      image: cachedImage ?? sessionImage ?? null,
     }
 
-    // Set nhanh từ session để UI có dữ liệu ngay.
-    // Nếu đã có image thì có thể return luôn; nếu chưa có image, sẽ tiếp tục fetch để bổ sung.
+    // Set nhanh từ session/cache để UI có dữ liệu ngay
     if (fromSession.fullname || fromSession.username || fromSession.image) {
-      cachedUserId = sessionUserId
-      cachedUser = fromSession
-      inFlight = null
       setUser(fromSession)
-      if (fromSession.image) return
     }
 
-    // Fallback: gọi /api/me/basic (dedupe)
+    // Luôn fetch từ API để lấy image mới nhất từ database (ưu tiên database hơn session)
+    // Dedupe: nếu đang có request đang chạy thì đợi nó
     if (inFlight) {
       const u = await inFlight
-      // Merge: ưu tiên fullname/username từ session (nếu có), ưu tiên image từ API
+      // Merge: ưu tiên image từ database (u.image), fallback về session image nếu database không có
       const merged: CurrentUserSafe = u
         ? {
             id: u.id,
             fullname: fromSession.fullname ?? u.fullname ?? null,
             username: fromSession.username ?? u.username ?? null,
+            // ✅ ƯU TIÊN IMAGE TỪ DATABASE (u.image), chỉ dùng session image làm fallback
             image: u.image ?? fromSession.image ?? null,
           }
         : fromSession
@@ -95,15 +92,18 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
       return
     }
 
+    // Fetch từ API để lấy image mới nhất từ database
     inFlight = fetchMeBasic()
     const u = await inFlight
     inFlight = null
 
+    // Merge: ưu tiên image từ database (u.image), fallback về session image nếu database không có
     const merged: CurrentUserSafe = u
       ? {
           id: u.id,
           fullname: fromSession.fullname ?? u.fullname ?? null,
           username: fromSession.username ?? u.username ?? null,
+          // ✅ ƯU TIÊN IMAGE TỪ DATABASE (u.image), chỉ dùng session image làm fallback
           image: u.image ?? fromSession.image ?? null,
         }
       : fromSession

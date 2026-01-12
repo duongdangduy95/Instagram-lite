@@ -12,10 +12,10 @@ const cacheKey = (conversationId: string) =>
 ========================= */
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const userId = req.headers.get('x-user-id')
-  const conversationId = params.id
+  const { id: conversationId } = await params
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -63,9 +63,9 @@ export async function GET(
 ========================= */
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const conversationId = params.id
+  const { id: conversationId } = await params
   const { content, senderId } = await req.json()
 
   if (!content || !senderId) {

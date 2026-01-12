@@ -91,7 +91,10 @@ export function NotificationProvider({
       )
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+    return () => {
+      // cleanup trong useEffect không được trả về Promise
+      void supabase.removeChannel(channel)
+    }
   }, [userId])
 
   const addNotification = (n: Notification) => {

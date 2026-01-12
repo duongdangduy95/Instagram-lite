@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { createClient } from '@supabase/supabase-js'
 import { Prisma } from '@prisma/client'
 import { redis } from '@/lib/redis'
+import { bumpFeedVersion, bumpMeVersion } from '@/lib/cache'
 
 /* =========================
    UTILS
@@ -53,17 +54,22 @@ export async function GET(
   /* ===== REDIS CACHE ===== */
   const cached = await redis.get(cacheKey)
   if (cached) {
-    const blog = cached as any
+    const blog = (typeof cached === 'string' ? JSON.parse(cached) : cached) as any
 
-    return NextResponse.json({
-      ...blog,
-      isSaved: currentUserId
-        ? blog.savedUserIds?.includes(currentUserId)
-        : false,
-      liked: currentUserId
-        ? blog.likedUserIds?.includes(currentUserId)
-        : false,
-    })
+    // Backward compatibility: nếu cache cũ thiếu field mới (music) thì coi như cache miss
+    if (blog && typeof blog === 'object' && !('music' in blog)) {
+      // fallthrough to DB
+    } else {
+      return NextResponse.json({
+        ...blog,
+        isSaved: currentUserId
+          ? blog.savedUserIds?.includes(currentUserId)
+          : false,
+        liked: currentUserId
+          ? blog.likedUserIds?.includes(currentUserId)
+          : false,
+      })
+    }
   }
 
   try {
@@ -109,7 +115,7 @@ export async function GET(
       include,
     })
 
-    if (!blog) {
+    if (!blog || blog.isdeleted) {
       return NextResponse.json({ error: 'Blog not found' }, { status: 404 })
     }
 
@@ -119,7 +125,7 @@ export async function GET(
       savedUserIds: blog.savedBy.map(s => s.userId),
     }
 
-    await redis.set(cacheKey, cacheData, { ex: 6000 })
+    await redis.set(cacheKey, JSON.stringify(cacheData), { ex: 6000 })
 
     return NextResponse.json({
       ...cacheData,
@@ -173,6 +179,7 @@ export async function PATCH(
 
     const form = await req.formData()
     const caption = (form.get('caption') as string) || ''
+    const musicRaw = form.get('music')
 
     const existingImages: string[] = []
     form.forEach((value, key) => {
@@ -187,6 +194,29 @@ export async function PATCH(
         newFiles.push(value)
       }
     })
+
+    // 🎵 Parse optional music (stored as JSON string)
+    // - Not provided => keep existing music as-is (backward compatibility)
+    // - Provided empty string => clear music
+    // - Provided JSON => set music
+    let hasMusicField = false
+    let music: unknown = undefined
+    if (typeof musicRaw === 'string') {
+      hasMusicField = true
+      if (!musicRaw.trim()) {
+        music = null
+      } else {
+        try {
+          music = JSON.parse(musicRaw)
+        } catch {
+          return NextResponse.json({ error: 'Music payload is invalid' }, { status: 400 })
+        }
+      }
+    } else if (musicRaw !== null) {
+      // Unexpected type (e.g. File)
+      hasMusicField = true
+      music = null
+    }
 
     const newImageUrls: string[] = [...existingImages]
 
@@ -211,6 +241,24 @@ export async function PATCH(
         .getPublicUrl(fileName)
 
       newImageUrls.push(data.publicUrl)
+    }
+
+    // ✅ Rule: music only allowed for image-only posts (no video)
+    const isVideoUrl = (url: string) => /\.(mp4|mov|webm)$/i.test(url.split('?')[0] || '')
+    const hasVideoFinal =
+      existingImages.some(isVideoUrl) || newFiles.some((f) => (f.type || '').startsWith('video'))
+
+    if (hasVideoFinal) {
+      // If caller tries to set music while having video => reject.
+      // Otherwise force-clear music to keep rule consistent.
+      if (hasMusicField && music) {
+        return NextResponse.json(
+          { error: 'Không thể thêm nhạc cho bài đăng có video. Tính năng nhạc chỉ áp dụng cho post toàn ảnh.' },
+          { status: 400 }
+        )
+      }
+      music = null
+      hasMusicField = true
     }
 
     const newTags = extractHashtags(caption)
@@ -264,6 +312,7 @@ export async function PATCH(
       data: {
         caption,
         imageUrls: newImageUrls,
+        ...(hasMusicField ? { music: (music ?? null) as any } : {}),
       },
     })
 
@@ -299,14 +348,7 @@ export async function DELETE(
   }
 
   try {
-    const blog = await prisma.blog.findUnique({
-      where: { id: blogId },
-      include: {
-        blogHashtags: {
-          include: { hashtag: true },
-        },
-      },
-    })
+    const blog = await prisma.blog.findUnique({ where: { id: blogId } })
 
     if (!blog || blog.authorId !== userId) {
       return NextResponse.json(
@@ -315,41 +357,21 @@ export async function DELETE(
       )
     }
 
-    const bucketName = 'instagram'
-    const filesToDelete: string[] = []
+    // Soft delete để các bài share vẫn giữ được liên kết tới bài gốc (để hiển thị placeholder)
+    await prisma.blog.update({
+      where: { id: blogId },
+      data: {
+        isdeleted: true,
+        deletedat: new Date(),
+      },
+    })
 
-    for (const url of blog.imageUrls ?? []) {
-      try {
-        const pathname = new URL(url).pathname
-        const filePath = pathname.split(`/object/public/${bucketName}/`)[1]
-        if (filePath) filesToDelete.push(filePath)
-      } catch {}
-    }
-
-    if (filesToDelete.length > 0) {
-      await supabase.storage.from(bucketName).remove(filesToDelete)
-    }
-
-    for (const bh of blog.blogHashtags) {
-      const hashtagId = bh.hashtag.id
-      if (bh.hashtag.usage_count > 1) {
-        await prisma.hashtag.update({
-          where: { id: hashtagId },
-          data: { usage_count: { decrement: 1 } },
-        })
-      } else {
-        await prisma.hashtag.delete({ where: { id: hashtagId } })
-      }
-    }
-
-    await prisma.like.deleteMany({ where: { blogId } })
-    await prisma.comment.deleteMany({ where: { blogId } })
-    await prisma.savedPost.deleteMany({ where: { blogId } })
-    await prisma.blog.deleteMany({ where: { sharedFromId: blogId } })
-    await prisma.blog.delete({ where: { id: blogId } })
-
-    // ❌ CLEAR CACHE
+    // Clear cache
     await redis.del(BLOG_CACHE_KEY(blogId))
+
+    // Invalidate list caches (home feed + profile me) để UI update ngay, tránh stale
+    await bumpFeedVersion()
+    await bumpMeVersion(userId)
 
     return NextResponse.json({ message: 'Blog deleted successfully' })
   } catch (error) {
