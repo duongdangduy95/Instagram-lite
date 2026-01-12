@@ -3,9 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
+import { getFeedCacheKey } from '@/lib/cache'
 
 const PAGE_SIZE = 3
-const FEED_TTL = 300 // Tăng lên 60s để thấy rõ hiệu quả cache
+const FEED_TTL = 60 // TTL ngắn + versioned keys => vừa nhanh vừa realtime
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -17,8 +18,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const cursor = searchParams.get('cursor') // Cursor-based pagination
 
-  // Cache key theo cursor (hoặc 'initial' cho lần đầu)
-  const feedCacheKey = cursor ? `feed:cursor:${cursor}` : 'feed:initial'
+  // Cache key theo cursor + version (invalidate O(1) bằng bumpFeedVersion)
+  const feedCacheKey = await getFeedCacheKey({ cursor, server: false })
 
   try {
     let feed: any[] = []
@@ -70,6 +71,7 @@ export async function GET(req: Request) {
           sharedFrom: {
             select: {
               id: true,
+              isdeleted: true,
               caption: true,
               imageUrls: true,
               music: true,

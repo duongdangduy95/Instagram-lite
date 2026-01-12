@@ -100,7 +100,7 @@ export default async function HomePage() {
                 <Link href={`/blog/${blog.id}`}>
                   <div className="cursor-pointer">
                     <Image
-                      src={blog.imageUrl}
+                      src={blog.imageUrls?.[0] || '/icons/profile-placeholder.svg'}
                       alt={blog.caption || 'Blog image'}
                       width={600}
                       height={400}

@@ -6,9 +6,10 @@ import HomeClient from './HomeClient'
 import type { BlogDTO, CurrentUserSafe, SuggestUserDTO } from '@/types/dto'
 import { Prisma } from '@prisma/client'
 import { redis } from '@/lib/redis'
+import { getFeedCacheKey } from '@/lib/cache'
 
 const FEED_LIMIT = 6
-const FEED_CACHE_TTL = 300 // 5 phút
+const FEED_CACHE_TTL = 60 // TTL ngắn + versioned keys => vừa nhanh vừa realtime
 
 // Lấy người dùng hiện tại từ NextAuth session
 async function getCurrentUser() {
@@ -63,7 +64,7 @@ export default async function HomePage() {
   /* =====================
      BLOG FEED (TỐI ƯU VỚI REDIS CACHE)
   ====================== */
-  const feedCacheKey = 'feed:initial:server'
+  const feedCacheKey = await getFeedCacheKey({ cursor: null, server: true })
   let blogs: any[] = []
 
   // 1️⃣ KIỂM TRA REDIS CACHE TRƯỚC
@@ -117,6 +118,7 @@ export default async function HomePage() {
       sharedFrom: {
         select: {
           id: true,
+          isdeleted: true,
           caption: true,
           imageUrls: true,
           music: true,

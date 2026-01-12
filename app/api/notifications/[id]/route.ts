@@ -8,7 +8,7 @@ import { authOptions } from '@/lib/auth'
    ======================= */
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
 
@@ -17,7 +17,7 @@ export async function GET(
   }
 
   const userId = session.user.id
-  const notificationId = params.id
+  const { id: notificationId } = await params
 
   const notif = await prisma.notification.findUnique({
     where: { id: notificationId },
@@ -49,7 +49,7 @@ export async function GET(
    ======================= */
 export async function PATCH(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
 
@@ -58,7 +58,7 @@ export async function PATCH(
   }
 
   const userId = session.user.id
-  const notificationId = params.id
+  const { id: notificationId } = await params
 
   const notif = await prisma.notification.findUnique({
     where: { id: notificationId },

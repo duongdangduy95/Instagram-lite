@@ -1,18 +1,19 @@
-'use client';
-import { useState } from 'react';
-import ChatWindow from './ChatWindow';
+'use client'
 
+import { useRouter } from 'next/navigation'
+
+// Nút chat nổi: điều hướng sang trang Messages thay vì render ChatWindow placeholder
 export default function ChatButton() {
-  const [open, setOpen] = useState(false);
+  const router = useRouter()
 
   return (
-    <>
-      <button onClick={() => setOpen(!open)} className="fixed bottom-4 right-4 p-3 bg-blue-500 text-white rounded-full">
-        💬
-      </button>
-      {open && <ChatWindow targetUserId={''} onClose={function (): void {
-        throw new Error('Function not implemented.');
-      } } />}
-    </>
-  );
+    <button
+      onClick={() => router.push('/messages')}
+      className="fixed bottom-4 right-4 p-3 bg-blue-500 text-white rounded-full"
+      aria-label="Mở tin nhắn"
+      type="button"
+    >
+      💬
+    </button>
+  )
 }

@@ -4,26 +4,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
 
-export async function createNotification(notification: {
-  userId: string
-  actorId: string
-  type:
-    | 'FOLLOW'
-    | 'NEW_POST'
-    | 'LIKE_POST'
-    | 'COMMENT_POST'
-    | 'SHARE_POST'
-    | 'MESSAGE'
-  blogId?: string
-  commentId?: string
-  messageId?: string
-  conversationId?: string
-}) {
-  return prisma.notification.create({
-    data: notification
-  })
-}
-
 /* =====================================================
    📥 GET NOTIFICATIONS
    ===================================================== */

@@ -15,12 +15,14 @@ interface Blog {
   caption: string
   imageUrls: string[]
   createdAt: string
+  isdeleted?: boolean
   likes: Array<{ userId: string }>
   sharedFrom?: {
     id: string
     caption: string
     imageUrls: string[]
     createdAt: string
+    isdeleted?: boolean
     author: {
       id: string
       fullname: string
@@ -429,13 +431,23 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-3 gap-1">
                   {sharedBlogs.map((blog) => {
                     const displayBlog = blog.sharedFrom ?? blog
+                    const isOriginalMissing = !!blog.sharedFrom && blog.sharedFrom.isdeleted === true
                     return (
                       <Link
                         key={blog.id}
                         href={`/blog/${blog.id}`}
                         className="aspect-square bg-gray-900 relative group overflow-hidden"
                       >
-                        {displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (() => {
+                        {isOriginalMissing ? (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-center px-2 bg-gray-900">
+                            <div className="mb-2 h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center">
+                              <span className="text-lg">⛔</span>
+                            </div>
+                            <p className="text-xs text-gray-200 font-semibold leading-snug">
+                              Bài viết này không còn tồn tại
+                            </p>
+                          </div>
+                        ) : displayBlog.imageUrls && displayBlog.imageUrls.length > 0 && (() => {
                           const first = displayBlog.imageUrls[0]
                           const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|avif|svg)$/i.test(url)
                           const isVideo = (url: string) => /\.(mp4|mov|webm)$/i.test(url)

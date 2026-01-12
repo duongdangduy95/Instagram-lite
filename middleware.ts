@@ -1,5 +1,5 @@
-import { withAuth } from "next-auth/middleware"
-import { NextRequest, NextResponse } from "next/server"
+import { withAuth, type NextRequestWithAuth } from "next-auth/middleware"
+import { NextFetchEvent, NextRequest, NextResponse } from "next/server"
 
 function adminGate(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -68,13 +68,13 @@ const userAuth = withAuth(
   }
 )
 
-export function middleware(req: NextRequest) {
+export function middleware(req: NextRequest, event: NextFetchEvent) {
   // Nếu là admin → xử lý bằng cookie
   const admin = adminGate(req)
   if (admin) return admin
 
   // Nếu không phải admin → chạy NextAuth
-  return userAuth(req)
+  return userAuth(req as NextRequestWithAuth, event)
 }
 
 

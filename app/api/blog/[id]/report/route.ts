@@ -6,9 +6,12 @@ import crypto from "crypto"
 
 const prisma = new PrismaClient()
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id: blogId } = await Promise.resolve(params) 
+    const { id: blogId } = await params
     const { reason } = await req.json()
     if (!reason || reason.trim() === "") {
       return NextResponse.json({ error: "Reason required" }, { status: 400 })

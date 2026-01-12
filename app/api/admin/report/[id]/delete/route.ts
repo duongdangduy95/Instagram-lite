@@ -7,7 +7,7 @@ const prisma = new PrismaClient()
 
 export async function POST(
   req: Request,
-  context: { params: { id: string } } // Next.js sẽ cung cấp params dưới dạng Promise
+  context: { params: Promise<{ id: string }> } // Next.js 15: params là Promise
 ) {
   // ✅ await params trước khi dùng
   const { id: reportId } = await context.params

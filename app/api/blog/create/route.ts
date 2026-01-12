@@ -4,8 +4,8 @@ import { PrismaClient } from '@prisma/client'
 import { createClient } from '@supabase/supabase-js'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis } from '@/lib/redis'
 import { MAX_MEDIA_FILES, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from '@/lib/mediaValidation'
+import { bumpFeedVersion, bumpMeVersion } from '@/lib/cache'
 
 const prisma = new PrismaClient()
 
@@ -191,15 +191,8 @@ export async function POST(req: Request) {
     }
 
     // 🧹 Invalidate Cache
-    await redis.del(`me:${userId}`)
-    // Invalidate home feed cache (cả client và server-side)
-    await redis.del('feed:initial')
-    await redis.del('feed:initial:server')
-    // Invalidate cursor-based cache patterns (nếu có)
-    const keys = await redis.keys('feed:cursor:*')
-    if (keys.length > 0) {
-      await redis.del(...keys)
-    }
+    await bumpMeVersion(userId)
+    await bumpFeedVersion()
 
     // ✅ Done
     return NextResponse.json({

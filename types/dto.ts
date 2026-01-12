@@ -47,6 +47,7 @@ export type SharedFromDTO = {
   author: BlogAuthorDTO
   _count: BlogCountsDTO
   music?: BlogMusicDTO
+  isdeleted?: boolean
 } | null
 
 export type BlogDTO = {
@@ -60,6 +61,7 @@ export type BlogDTO = {
   sharedFrom?: SharedFromDTO
   isSaved?: boolean
   music?: BlogMusicDTO
+  isdeleted?: boolean
 }
 
 export type SuggestUserDTO = UserBasicDTO & {

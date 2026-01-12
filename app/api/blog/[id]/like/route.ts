@@ -7,7 +7,7 @@ import { authOptions } from '@/lib/auth'
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -15,7 +15,7 @@ export async function POST(
   }
 
   const userId = session.user.id
-  const blogId = params.id
+  const { id: blogId } = await params
 
   try {
     const blog = await prisma.blog.findUnique({

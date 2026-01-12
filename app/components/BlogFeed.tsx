@@ -43,6 +43,8 @@ export default function BlogFeed({
       {blogs.map((blog) => {
         const isShared = !!blog.sharedFrom
         const displayBlog = blog.sharedFrom ?? blog
+        const isOriginalMissing = !!blog.sharedFrom && blog.sharedFrom.isdeleted === true
+        const actionDisplayBlogId = isOriginalMissing ? blog.id : displayBlog.id
         const isCurrentUser = blog.author.id === currentUser?.id
         const isLiked = (blog.likes?.length ?? 0) > 0
 
@@ -112,39 +114,53 @@ export default function BlogFeed({
                 {/* CARD BÀI GỐC */}
                 <div className="px-4 pb-4">
                   <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900/40">
-                    {/* MEDIA TRƯỚC */}
-                    <Link href={`/blog/${displayBlog.id}`} className="block">
-                      <div className="bg-gray-900">
-                        <BlogImages imageUrls={displayBlog.imageUrls} music={displayBlog.music ?? null} musicKey={displayBlog.id} />
+                    {isOriginalMissing ? (
+                      <div className="p-6 text-center text-gray-300">
+                        <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-gray-800 flex items-center justify-center">
+                          <span className="text-xl">⛔</span>
+                        </div>
+                        <p className="font-semibold text-gray-100">Bài viết này không còn tồn tại</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          Bài gốc đã bị xoá bởi người dùng hoặc quản trị viên.
+                        </p>
                       </div>
-                    </Link>
-
-                    {/* TÊN + CAPTION GỐC ĐỂ DƯỚI */}
-                    <div className="px-4 py-3 border-t border-gray-800">
-                      {displayBlog.author && (
-                        <Link href={originalAuthorProfileHref} className="block">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-9 h-9 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
-                              {displayBlog.author.image ? (
-                                <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={36} height={36} className="object-cover w-full h-full" />
-                              ) : (
-                                <span className="font-bold">{displayBlog.author.username.charAt(0).toUpperCase()}</span>
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-semibold">{displayBlog.author.username}</p>
-                              <p className="text-xs text-gray-400">{formatTimeAgo(displayBlog.createdAt)}</p>
-                            </div>
+                    ) : (
+                      <>
+                        {/* MEDIA TRƯỚC */}
+                        <Link href={`/blog/${displayBlog.id}`} className="block">
+                          <div className="bg-gray-900">
+                            <BlogImages imageUrls={displayBlog.imageUrls} music={displayBlog.music ?? null} musicKey={displayBlog.id} />
                           </div>
                         </Link>
-                      )}
 
-                      {displayBlog.caption && (
-                        <div className="pt-2 text-gray-200">
-                          <ExpandableCaption text={displayBlog.caption} initialLines={1} />
+                        {/* TÊN + CAPTION GỐC ĐỂ DƯỚI */}
+                        <div className="px-4 py-3 border-t border-gray-800">
+                          {displayBlog.author && (
+                            <Link href={originalAuthorProfileHref} className="block">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-9 h-9 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                                  {displayBlog.author.image ? (
+                                    <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={36} height={36} className="object-cover w-full h-full" />
+                                  ) : (
+                                    <span className="font-bold">{displayBlog.author.username.charAt(0).toUpperCase()}</span>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-semibold">{displayBlog.author.username}</p>
+                                  <p className="text-xs text-gray-400">{formatTimeAgo(displayBlog.createdAt)}</p>
+                                </div>
+                              </div>
+                            </Link>
+                          )}
+
+                          {displayBlog.caption && (
+                            <div className="pt-2 text-gray-200">
+                              <ExpandableCaption text={displayBlog.caption} initialLines={1} />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </>
@@ -203,7 +219,7 @@ export default function BlogFeed({
             {/* ACTIONS */}
             <BlogActions
               blogId={blog.id}
-              displayBlogId={displayBlog.id}
+              displayBlogId={actionDisplayBlogId}
               initialLikeCount={blog._count.likes}
               initialCommentCount={blog._count.comments}
               initialLiked={isLiked}

@@ -274,6 +274,7 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
 
   const isShared = !!blog?.sharedFrom
   const displayBlog = blog?.sharedFrom ?? blog
+  const isOriginalMissing = !!blog?.sharedFrom && (blog.sharedFrom as any).isdeleted === true
 
   const handleSubmitComment = async () => {
     if (!blog) return
@@ -467,55 +468,69 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
 
                     {/* Inner Card */}
                     <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900/40">
-                      {/* Media */}
-                      <Link href={`/blog/${displayBlog?.id}`} className="block" onClick={close}>
-                        <div className="bg-gray-900">
-                          {displayBlog && (
-                            <BlogImages
-                              imageUrls={displayBlog.imageUrls}
-                              music={(displayBlog as any).music ?? null}
-                              musicKey={displayBlog.id}
-                              rounded={false}
-                              frameMode="aspect"
-                            />
-                          )}
+                      {isOriginalMissing ? (
+                        <div className="p-8 text-center text-gray-300">
+                          <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
+                            <span className="text-xl">⛔</span>
+                          </div>
+                          <p className="font-semibold text-gray-100">Bài viết này không còn tồn tại</p>
+                          <p className="text-sm text-gray-400 mt-1">
+                            Bài gốc đã bị xoá bởi người dùng hoặc quản trị viên.
+                          </p>
                         </div>
-                      </Link>
-
-                      {/* Original Info + Caption */}
-                      <div className="px-4 py-3 border-t border-gray-800">
-                        <Link
-                          href={`/profile/${displayBlog?.author.id}`}
-                          onClick={(e) => { e.stopPropagation(); close() }}
-                          className="block mb-2"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
-                              {displayBlog?.author.image ? (
-                                <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={32} height={32} className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="font-bold text-white text-xs">
-                                  {displayBlog?.author.username.charAt(0).toUpperCase()}
-                                </span>
+                      ) : (
+                        <>
+                          {/* Media */}
+                          <Link href={`/blog/${displayBlog?.id}`} className="block" onClick={close}>
+                            <div className="bg-gray-900">
+                              {displayBlog && (
+                                <BlogImages
+                                  imageUrls={displayBlog.imageUrls}
+                                  music={(displayBlog as any).music ?? null}
+                                  musicKey={displayBlog.id}
+                                  rounded={false}
+                                  frameMode="aspect"
+                                />
                               )}
                             </div>
-                            <div>
-                              <p className="font-semibold text-gray-100 text-sm">
-                                {displayBlog?.author.username}
-                              </p>
-                              <p className="text-[10px] text-gray-400">
-                                {displayBlog && formatTimeAgo(displayBlog.createdAt)}
-                              </p>
-                            </div>
-                          </div>
-                        </Link>
+                          </Link>
 
-                        {displayBlog?.caption && (
-                          <div className="text-gray-200 text-sm whitespace-pre-wrap">
-                            <RenderCaption text={displayBlog.caption} />
+                          {/* Original Info + Caption */}
+                          <div className="px-4 py-3 border-t border-gray-800">
+                            <Link
+                              href={`/profile/${displayBlog?.author.id}`}
+                              onClick={(e) => { e.stopPropagation(); close() }}
+                              className="block mb-2"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                                  {displayBlog?.author.image ? (
+                                    <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={32} height={32} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="font-bold text-white text-xs">
+                                      {displayBlog?.author.username.charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-100 text-sm">
+                                    {displayBlog?.author.username}
+                                  </p>
+                                  <p className="text-[10px] text-gray-400">
+                                    {displayBlog && formatTimeAgo(displayBlog.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                            </Link>
+
+                            {displayBlog?.caption && (
+                              <div className="text-gray-200 text-sm whitespace-pre-wrap">
+                                <RenderCaption text={displayBlog.caption} />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -727,57 +742,73 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                 {isShared ? (
                   <div className="w-full h-full flex flex-col">
                     <div className="flex-1 flex flex-col border border-gray-800 bg-gray-900/40">
-                      {/* Media - Flex grow to fill available space, centered */}
-                      <Link
-                        href={`/blog/${displayBlog?.id}`}
-                        className="flex-1 bg-gray-900 flex items-center justify-center overflow-hidden min-h-0 relative group"
-                        onClick={close}
-                      >
-                        {displayBlog && (
-                          <BlogImages
-                            imageUrls={displayBlog.imageUrls}
-                            music={(displayBlog as any).music ?? null}
-                            musicKey={displayBlog.id}
-                            rounded={false}
-                            frameMode="aspect"
-                          />
-                        )}
-                      </Link>
-
-                      {/* Original Info + Caption - Fixed at bottom of left panel */}
-                      <div className="px-4 py-3 border-t border-gray-800 bg-[#0B0E11] flex-shrink-0">
-                        <Link
-                          href={`/profile/${displayBlog?.author.id}`}
-                          onClick={(e) => { e.stopPropagation() }}
-                          className="block mb-2"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
-                              {displayBlog?.author.image ? (
-                                <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={32} height={32} className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="font-bold text-white text-xs">
-                                  {displayBlog?.author.username.charAt(0).toUpperCase()}
-                                </span>
-                              )}
+                      {isOriginalMissing ? (
+                        <div className="flex-1 flex items-center justify-center p-8 text-center text-gray-300">
+                          <div>
+                            <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-gray-900 flex items-center justify-center border border-gray-800">
+                              <span className="text-xl">⛔</span>
                             </div>
-                            <div>
-                              <p className="font-semibold text-gray-100 text-sm">
-                                {displayBlog?.author.username}
-                              </p>
-                              <p className="text-[10px] text-gray-400">
-                                {displayBlog && formatTimeAgo(displayBlog.createdAt)}
-                              </p>
-                            </div>
+                            <p className="font-semibold text-gray-100">Bài viết này không còn tồn tại</p>
+                            <p className="text-sm text-gray-400 mt-1">
+                              Bài gốc đã bị xoá bởi người dùng hoặc quản trị viên.
+                            </p>
                           </div>
-                        </Link>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Media - Flex grow to fill available space, centered */}
+                          <Link
+                            href={`/blog/${displayBlog?.id}`}
+                            className="flex-1 bg-gray-900 flex items-center justify-center overflow-hidden min-h-0 relative group"
+                            onClick={close}
+                          >
+                            {displayBlog && (
+                              <BlogImages
+                                imageUrls={displayBlog.imageUrls}
+                                music={(displayBlog as any).music ?? null}
+                                musicKey={displayBlog.id}
+                                rounded={false}
+                                frameMode="aspect"
+                              />
+                            )}
+                          </Link>
 
-                        {displayBlog?.caption && (
-                          <div className="text-gray-200 text-sm">
-                            <ExpandableCaption text={displayBlog.caption} initialLines={3} />
+                          {/* Original Info + Caption - Fixed at bottom of left panel */}
+                          <div className="px-4 py-3 border-t border-gray-800 bg-[#0B0E11] flex-shrink-0">
+                            <Link
+                              href={`/profile/${displayBlog?.author.id}`}
+                              onClick={(e) => { e.stopPropagation() }}
+                              className="block mb-2"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                                  {displayBlog?.author.image ? (
+                                    <Image src={displayBlog.author.image} alt={displayBlog.author.username} width={32} height={32} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="font-bold text-white text-xs">
+                                      {displayBlog?.author.username.charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-100 text-sm">
+                                    {displayBlog?.author.username}
+                                  </p>
+                                  <p className="text-[10px] text-gray-400">
+                                    {displayBlog && formatTimeAgo(displayBlog.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                            </Link>
+
+                            {displayBlog?.caption && (
+                              <div className="text-gray-200 text-sm">
+                                <ExpandableCaption text={displayBlog.caption} initialLines={3} />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : (

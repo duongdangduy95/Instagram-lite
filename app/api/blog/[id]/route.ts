@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { createClient } from '@supabase/supabase-js'
 import { Prisma } from '@prisma/client'
 import { redis } from '@/lib/redis'
+import { bumpFeedVersion, bumpMeVersion } from '@/lib/cache'
 
 /* =========================
    UTILS
@@ -114,7 +115,7 @@ export async function GET(
       include,
     })
 
-    if (!blog) {
+    if (!blog || blog.isdeleted) {
       return NextResponse.json({ error: 'Blog not found' }, { status: 404 })
     }
 
@@ -347,13 +348,7 @@ export async function DELETE(
   }
 
   try {
-    // Lấy blog kèm hashtags
-    const blog = await prisma.blog.findUnique({
-      where: { id: blogId },
-      include: {
-        blogHashtags: { include: { hashtag: true } },
-      },
-    })
+    const blog = await prisma.blog.findUnique({ where: { id: blogId } })
 
     if (!blog || blog.authorId !== userId) {
       return NextResponse.json(
@@ -362,62 +357,21 @@ export async function DELETE(
       )
     }
 
-    const bucketName = 'instagram'
-    const filesToDelete: string[] = []
-
-    // Xóa ảnh trên Supabase
-    for (const url of blog.imageUrls ?? []) {
-      try {
-        const pathname = new URL(url).pathname
-        const filePath = pathname.split(`/object/public/${bucketName}/`)[1]
-        if (filePath) filesToDelete.push(filePath)
-      } catch {}
-    }
-    if (filesToDelete.length > 0) {
-      await supabase.storage.from(bucketName).remove(filesToDelete)
-    }
-
-    // Xử lý hashtags
-    for (const bh of blog.blogHashtags) {
-      const hashtagId = bh.hashtag.id
-      if (bh.hashtag.usage_count > 1) {
-        await prisma.hashtag.update({
-          where: { id: hashtagId },
-          data: { usage_count: { decrement: 1 } },
-        })
-      } else {
-        await prisma.hashtag.delete({ where: { id: hashtagId } })
-      }
-    }
-
-    // Xóa các dữ liệu liên quan
-    await prisma.like.deleteMany({ where: { blogId } })
-
-    // Xóa comment + nested comment
-    const deleteCommentsRecursive = async (parentId: string) => {
-      const childComments = await prisma.comment.findMany({
-        where: { parentId },
-      })
-      for (const child of childComments) {
-        await deleteCommentsRecursive(child.id)
-      }
-      await prisma.comment.deleteMany({ where: { id: parentId } })
-    }
-
-    const topComments = await prisma.comment.findMany({
-      where: { blogId, parentId: null },
+    // Soft delete để các bài share vẫn giữ được liên kết tới bài gốc (để hiển thị placeholder)
+    await prisma.blog.update({
+      where: { id: blogId },
+      data: {
+        isdeleted: true,
+        deletedat: new Date(),
+      },
     })
-    for (const comment of topComments) {
-      await deleteCommentsRecursive(comment.id)
-    }
-
-    await prisma.savedPost.deleteMany({ where: { blogId } })
-
-    // Cuối cùng xóa blog chính
-    await prisma.blog.delete({ where: { id: blogId } })
 
     // Clear cache
     await redis.del(BLOG_CACHE_KEY(blogId))
+
+    // Invalidate list caches (home feed + profile me) để UI update ngay, tránh stale
+    await bumpFeedVersion()
+    await bumpMeVersion(userId)
 
     return NextResponse.json({ message: 'Blog deleted successfully' })
   } catch (error) {

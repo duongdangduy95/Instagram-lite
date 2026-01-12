@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createNotification } from '@/lib/notification'
 import { NotificationType } from '@prisma/client'
+import { bumpFeedVersion, bumpMeVersion } from '@/lib/cache'
 
 export async function POST(req: Request) {
   console.log('📥 SHARE API CALLED')
@@ -53,9 +54,12 @@ export async function POST(req: Request) {
   const sharedBlog = await prisma.blog.create({
     data: {
       caption: caption || '',
-      imageUrls: originalBlog.imageUrls,
-      hashtags: originalBlog.hashtags || [],
-      music: (originalBlog as any).music ?? null,
+      // IMPORTANT:
+      // Không copy media của bài gốc vào bài share để tránh mọi rủi ro "xoá nhầm" media gốc về sau.
+      // UI luôn render media từ `sharedFrom` (bài gốc). Nếu bài gốc bị xoá => show placeholder.
+      imageUrls: [],
+      hashtags: [],
+      music: null,
       authorId: userId,
       sharedFromId: originalBlog.id,
     },
@@ -72,6 +76,10 @@ export async function POST(req: Request) {
       blogId: originalBlog.id,         // bài gốc
     })
   }
+
+  // 🧹 Invalidate caches để profile/home thấy bài share ngay (tránh stale Redis)
+  await bumpMeVersion(userId)
+  await bumpFeedVersion()
 
   return NextResponse.json({
     success: true,
