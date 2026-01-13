@@ -152,6 +152,25 @@ export default function HomeClient(props: {
     return () => window.removeEventListener('blog:created', onCreated as EventListener)
   }, [])
 
+  // Khi user xóa bài viết, xóa ngay khỏi feed mà không cần F5
+  useEffect(() => {
+    const onDeleted = (e: Event) => {
+      const ce = e as CustomEvent<{ blogId: string }>
+      const detail = ce.detail
+      if (!detail?.blogId) return
+
+      // Optimistic update: Xóa bài khỏi local state ngay lập tức
+      // Xóa cả bài share (nếu sharedFrom.id = deletedBlogId) và bài thường (nếu id = deletedBlogId)
+      setBlogs((prev) => prev.filter((b) => {
+        // Xóa nếu chính nó bị xóa hoặc bài gốc của nó (sharedFrom) bị xóa
+        return b.id !== detail.blogId && b.sharedFrom?.id !== detail.blogId
+      }))
+    }
+
+    window.addEventListener('blog:deleted', onDeleted as EventListener)
+    return () => window.removeEventListener('blog:deleted', onDeleted as EventListener)
+  }, [])
+
   const loadMoreBlogs = useCallback(async () => {
     if (isLoading || !hasMore) return
 

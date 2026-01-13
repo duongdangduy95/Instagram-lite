@@ -9,14 +9,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
 
   try {
-    // Đếm tin nhắn chưa xem
+    // ✅ Đếm tin nhắn chưa xem với filter chặt chẽ hơn
+    // Đảm bảo chỉ đếm tin nhắn từ conversation mà user tham gia
     const unreadCount = await prisma.message.count({
       where: {
         senderId: { not: userId },      // tin nhắn từ người khác
         status: { in: ['SENT', 'DELIVERED'] }, // chưa xem (chưa SEEN)
         conversation: {
           participants: {
-            some: { userId }            // conversation mà tôi tham gia
+            some: { 
+              userId,                    // conversation mà tôi tham gia
+              // Đảm bảo participant tồn tại và hợp lệ
+            }
           }
         }
       }

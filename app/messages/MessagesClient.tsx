@@ -91,6 +91,9 @@ export default function MessagesClient() {
 
     setLoading(true)
     try {
+      // Dispatch event để Navigation refresh badge khi vào trang messages
+      window.dispatchEvent(new CustomEvent('messages:page-opened'))
+      
       const res = await fetch('/api/conversations', {
         headers: { Accept: 'application/json' },
         cache: 'no-store'
