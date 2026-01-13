@@ -64,9 +64,11 @@ type BlogDetail = {
 
 export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: string, isAdmin?: boolean}) {
   const pathname = usePathname()
-  const isOpen =
-  (pathname.startsWith('/blog/') || pathname.startsWith('/admin/blog/')) &&
-  !pathname.endsWith('/edit')
+  // Admin không cần modal post, chỉ cần trang detail
+  const isOpen = isAdmin 
+    ? false // Admin không mở modal
+    : (pathname.startsWith('/blog/') || pathname.startsWith('/admin/blog/')) &&
+      !pathname.endsWith('/edit')
 
 
 

@@ -129,6 +129,29 @@ export default function HomeClient(props: {
     return () => window.removeEventListener('blog:save-change', handleSaveChange as EventListener)
   }, [])
 
+  // Khi user tạo bài mới (CreateBlogForm dispatches blog:created),
+  // refetch page đầu để hiển thị ngay mà không cần F5.
+  useEffect(() => {
+    const onCreated = async () => {
+      try {
+        setIsLoading(true)
+        const res = await fetch('/api/home', { credentials: 'include' })
+        if (!res.ok) return
+        const fresh = await res.json()
+        if (!Array.isArray(fresh)) return
+        setBlogs(fresh)
+        setHasMore(true)
+      } catch (e) {
+        console.error('Failed to refresh home feed after create', e)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    window.addEventListener('blog:created', onCreated as EventListener)
+    return () => window.removeEventListener('blog:created', onCreated as EventListener)
+  }, [])
+
   const loadMoreBlogs = useCallback(async () => {
     if (isLoading || !hasMore) return
 

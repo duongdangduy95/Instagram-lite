@@ -26,11 +26,13 @@ interface Props {
   blogId: string;
   currentUser: CurrentUserSafe;
   onCommentAdded?: () => void;
+  onCommentDeleted?: () => void; // Callback khi xóa comment thành công
   onClose?: () => void;
   inline?: boolean;
   showComposer?: boolean;
   inlineScrollable?: boolean;
   reloadKey?: number;
+  isAdmin?: boolean; // Cho phép admin xóa comment
   // Dành cho màn có composer riêng (vd: BlogPostModal). Khi click "Trả lời",
   // component sẽ gọi callback này thay vì tự hiện composer nội bộ.
   onRequestReply?: (args: { parentId: string; username: string; fullname: string }) => void;
@@ -119,11 +121,13 @@ export default function CommentSection({
   blogId,
   currentUser,
   onCommentAdded,
+  onCommentDeleted,
   onClose,
   inline = false,
   showComposer = true,
   inlineScrollable = true,
   reloadKey,
+  isAdmin = false,
   onRequestReply,
 }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
@@ -285,6 +289,8 @@ export default function CommentSection({
                   )
                 }}
                 inline={true}
+                isAdmin={isAdmin}
+                onCommentDeleted={onCommentDeleted}
               />
             ))
           )}
@@ -370,6 +376,8 @@ export default function CommentSection({
                   removeCommentFromTree(prev, id)
                 )
               }}
+              isAdmin={isAdmin}
+              onCommentDeleted={onCommentDeleted}
             />
           ))}
         </div>
@@ -428,9 +436,11 @@ interface CommentItemProps {
   onUpdate: (id: string, content: string) => void;
   onDelete: (id: string) => void;
   inline?: boolean;
+  isAdmin?: boolean;
+  onCommentDeleted?: () => void;
 }
 
-function CommentItem({ comment, currentUser, onReply, onUpdate, onDelete, inline = false }: CommentItemProps) {
+function CommentItem({ comment, currentUser, onReply, onUpdate, onDelete, inline = false, isAdmin = false, onCommentDeleted }: CommentItemProps) {
   const [liked, setLiked] = useState(comment.liked || false)
   const [likeCount, setLikeCount] = useState(comment.likeCount || 0)
   const [likeAnimating, setLikeAnimating] = useState(false)
@@ -439,12 +449,13 @@ function CommentItem({ comment, currentUser, onReply, onUpdate, onDelete, inline
   const [showOptions, setShowOptions] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState(comment.content)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   const isCommentOwner = currentUser?.username === comment.author.username
   const isBlogOwner = currentUser?.id === comment.blogAuthorId
 
-  const canEdit = isCommentOwner
-  const canDelete = isCommentOwner || isBlogOwner
+  const canEdit = isCommentOwner && !isAdmin // Admin không thể edit
+  const canDelete = isCommentOwner || isBlogOwner || isAdmin // Admin có thể xóa mọi comment
 
 
 
@@ -573,36 +584,18 @@ function CommentItem({ comment, currentUser, onReply, onUpdate, onDelete, inline
 
                       {canDelete && (
                         <button
-                          onClick={async () => {
-                            if (!confirm('Xóa bình luận này?')) return
-
-                            try {
-                              const res = await fetch(`/api/blog/${comment.blogId}/comment`, {
-                                method: 'DELETE',
-                                headers: { 'Content-Type': 'application/json' },
-                                credentials: 'include',
-                                body: JSON.stringify({
-                                  commentId: comment.id,
-                                }),
-                              })
-
-
-                              onDelete(comment.id)
-                              if (!res.ok) throw new Error('Delete failed')
-
-                              
-                            } catch (err) {
-                              console.error(err)
-                              alert('Không thể xóa bình luận')
-                            } finally {
-                              setShowOptions(false)
-                            }
+                          onClick={(e) => {
+                            e.stopPropagation() // Ngăn event bubble lên parent
+                            setShowOptions(false)
+                            // Đợi dropdown đóng xong rồi mới hiện modal
+                            setTimeout(() => {
+                              setShowDeleteModal(true)
+                            }, 100)
                           }}
                           className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-800"
                         >
-                          Xóa bình luận
+                          {isAdmin ? 'Xóa bình luận' : 'Xóa bình luận'}
                         </button>
-
                       )}
                     </div>
                   )}
@@ -704,8 +697,69 @@ function CommentItem({ comment, currentUser, onReply, onUpdate, onDelete, inline
                 onUpdate={onUpdate}
                 onDelete={onDelete}
                 inline={true}
+                isAdmin={isAdmin}
+                onCommentDeleted={onCommentDeleted}
               />
             ))}
+          </div>
+        )}
+
+        {/* Delete Modal - Render bên ngoài dropdown để không bị ẩn */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" onClick={() => setShowDeleteModal(false)}>
+            <div 
+              className="bg-[#0B0E11] border border-gray-800 p-6 rounded-xl w-96 text-white"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-lg font-semibold mb-4">Xóa bình luận</h2>
+              <p className="text-gray-300 mb-6">Bạn có chắc chắn muốn xóa bình luận này?</p>
+              
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      // Dùng admin API nếu là admin, ngược lại dùng user API
+                      const apiUrl = isAdmin 
+                        ? `/api/admin/comment/${comment.id}/delete`
+                        : `/api/blog/${comment.blogId}/comment`
+                      
+                      const res = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        ...(isAdmin ? {} : {
+                          body: JSON.stringify({
+                            commentId: comment.id,
+                          }),
+                        }),
+                      })
+
+                      if (!res.ok) throw new Error('Delete failed')
+
+                      // Xóa comment khỏi UI
+                      onDelete(comment.id)
+                      
+                      // Gọi callback để cập nhật comment count
+                      onCommentDeleted?.()
+                      
+                      setShowDeleteModal(false)
+                    } catch (err) {
+                      console.error(err)
+                      alert('Không thể xóa bình luận')
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-600 rounded hover:bg-red-700 transition-colors"
+                >
+                  Xóa
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -749,8 +803,70 @@ function CommentItem({ comment, currentUser, onReply, onUpdate, onDelete, inline
               onReply={onReply}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              inline={true}
+              isAdmin={isAdmin}
+              onCommentDeleted={onCommentDeleted}
             />
           ))}
+        </div>
+      )}
+
+      {/* Delete Modal - Render bên ngoài để không bị ẩn */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" onClick={() => setShowDeleteModal(false)}>
+          <div 
+            className="bg-[#0B0E11] border border-gray-800 p-6 rounded-xl w-96 text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold mb-4">Xóa bình luận</h2>
+            <p className="text-gray-300 mb-6">Bạn có chắc chắn muốn xóa bình luận này?</p>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    // Dùng admin API nếu là admin, ngược lại dùng user API
+                    const apiUrl = isAdmin 
+                      ? `/api/admin/comment/${comment.id}/delete`
+                      : `/api/blog/${comment.blogId}/comment`
+                    
+                    const res = await fetch(apiUrl, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      ...(isAdmin ? {} : {
+                        body: JSON.stringify({
+                          commentId: comment.id,
+                        }),
+                      }),
+                    })
+
+                    if (!res.ok) throw new Error('Delete failed')
+
+                    // Xóa comment khỏi UI
+                    onDelete(comment.id)
+                    
+                    // Gọi callback để cập nhật comment count
+                    onCommentDeleted?.()
+                    
+                    setShowDeleteModal(false)
+                  } catch (err) {
+                    console.error(err)
+                    alert('Không thể xóa bình luận')
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 rounded hover:bg-red-700 transition-colors"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

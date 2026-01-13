@@ -503,6 +503,30 @@ export default function Navigation() {
                     const { href, text } = getNotifLinkAndText(n)
                     const actorName = n?.actor?.username || n?.actor?.fullname || 'User'
                     const isReplyComment = n.type === 'REPLY_COMMENT'
+                    const isBlogDeleted = n.type === 'BLOG_DELETED'
+                    
+                    // BLOG_DELETED: không có link, không có avatar, chỉ text
+                    if (isBlogDeleted) {
+                      return (
+                        <div
+                          key={n.id}
+                          className={`block px-4 py-3 text-sm border-b border-gray-800 ${!n.isRead ? 'bg-[#212227]' : ''}`}
+                        >
+                          <div className="text-white leading-snug">
+                            <span className="text-gray-300 font-normal">{text}</span>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className="text-gray-400 text-xs" suppressHydrationWarning>
+                              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                            </span>
+                            {!n.isRead && (
+                              <span className="w-2.5 h-2.5 bg-[#7565E6] rounded-full flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                      )
+                    }
+                    
                     return (
                       <Link
                         key={n.id}
@@ -543,8 +567,14 @@ export default function Navigation() {
 
                           <div className="min-w-0 flex-1">
                             <div className="text-white leading-snug">
-                              <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
-                              <span className="text-gray-300 font-normal">{text}</span>
+                              {isReplyComment ? (
+                                <span className="text-gray-300 font-normal">{text}</span>
+                              ) : (
+                                <>
+                                  <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
+                                  <span className="text-gray-300 font-normal">{text}</span>
+                                </>
+                              )}
                             </div>
                             <div className="mt-1 flex items-center justify-between gap-2">
                               <span className="text-gray-400 text-xs" suppressHydrationWarning>

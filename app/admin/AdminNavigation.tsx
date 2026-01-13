@@ -8,7 +8,8 @@ export default function AdminNavigation({
   onChange: (t: string) => void
 }) {
   const tabs = [
-    { id: "dashboard", label: "Trang chủ" },
+    { id: "home", label: "Trang chủ" },
+    { id: "dashboard", label: "Báo cáo" },
     { id: "history", label: "Lịch sử" },
     { id: "logout", label: "Đăng xuất", danger: true },
   ]

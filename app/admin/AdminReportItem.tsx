@@ -40,10 +40,10 @@ export default function AdminReportItem({
   }
 
   return (
-    <div className="bg-[#1B1F25] text-gray-100 border border-gray-700 rounded-xl p-4 hover:shadow-lg transition-shadow">
+    <div className="bg-[#11151B] text-gray-100 border border-gray-800 rounded-xl p-4 hover:shadow-lg transition-shadow">
       {/* Header */}
       <div className="flex justify-between items-center mb-2">
-        <p className="font-semibold">Reported by: {reporterUsername}</p>
+        <p className="font-semibold text-white">Reported by: {reporterUsername}</p>
         <span className="text-sm text-gray-400">Report ID: {reportId}</span>
       </div>
 
@@ -58,14 +58,14 @@ export default function AdminReportItem({
         <button
           onClick={() => handleAction("delete")}
           disabled={loadingAction === "delete"}
-          className="bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700 disabled:opacity-50"
+          className="bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
         >
           {loadingAction === "delete" ? "Processing..." : "Delete Blog"}
         </button>
         <button
           onClick={() => handleAction("reject")}
           disabled={loadingAction === "reject"}
-          className="bg-gray-600 text-white px-4 py-1 rounded hover:bg-gray-700 disabled:opacity-50"
+          className="bg-gray-600 text-white px-4 py-1 rounded hover:bg-gray-700 disabled:opacity-50 transition-colors"
         >
           {loadingAction === "reject" ? "Processing..." : "Reject"}
         </button>
