@@ -1,9 +1,9 @@
-import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import { redis } from "@/lib/redis"
 import { invalidateHomeFeed } from "@/lib/cache"
 import crypto from "crypto"
+import { verifyAdminSession } from "@/lib/admin-auth"
 
 const prisma = new PrismaClient()
 
@@ -30,20 +30,17 @@ async function deleteCommentRecursive(commentId: string) {
 }
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  // ✅ Verify admin session và check whitelist
+  const auth = await verifyAdminSession(req)
+  if (!auth.authorized) {
+    return auth.response!
+  }
+  
   const { id: commentId } = await context.params
-
-  const cookieStore = await cookies()
-  const token = cookieStore.get("admin_session")?.value
-
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  const session = await prisma.adminsession.findUnique({
-    where: { token },
-  })
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const { adminId } = auth.session!
 
   // Lấy comment để lấy blogId
   const comment = await prisma.comment.findUnique({
@@ -69,7 +66,7 @@ export async function POST(
   await prisma.adminactionlog.create({
     data: {
       id: crypto.randomUUID(),
-      adminid: session.adminid,
+      adminid: adminId,
       action: "DELETE_COMMENT",
       blogid: comment.blogId,
     },

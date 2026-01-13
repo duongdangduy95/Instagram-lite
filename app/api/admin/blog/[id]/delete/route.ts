@@ -1,26 +1,23 @@
-import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import crypto from "crypto"
 import { invalidateHomeFeed } from "@/lib/cache"
+import { verifyAdminSession } from "@/lib/admin-auth"
 
 const prisma = new PrismaClient()
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  // ✅ Verify admin session và check whitelist
+  const auth = await verifyAdminSession(req)
+  if (!auth.authorized) {
+    return auth.response!
+  }
+  
   const { id: blogId } = await context.params
-
-  const cookieStore = await cookies()
-  const token = cookieStore.get("admin_session")?.value
-
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  const session = await prisma.adminsession.findUnique({
-    where: { token },
-  })
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const { adminId } = auth.session!
 
   // Kiểm tra blog có tồn tại không
   const blog = await prisma.blog.findUnique({
@@ -36,7 +33,7 @@ export async function POST(
     where: { id: blogId },
     data: { 
       isdeleted: true,
-      deletedbyadmin: session.adminid,
+      deletedbyadmin: adminId,
       deletedat: new Date(),
     },
   })
@@ -58,7 +55,7 @@ export async function POST(
   await prisma.adminactionlog.create({
     data: {
       id: crypto.randomUUID(),
-      adminid: session.adminid,
+      adminid: adminId,
       action: "DELETE_BLOG",
       blogid: blog.id,
     },

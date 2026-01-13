@@ -1,9 +1,16 @@
 import { PrismaClient } from "@prisma/client"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { verifyAdminSession } from "@/lib/admin-auth"
 
 const prisma = new PrismaClient()
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // ✅ Verify admin session và check whitelist
+  const auth = await verifyAdminSession(req)
+  if (!auth.authorized) {
+    return auth.response!
+  }
+  
   const reports = await prisma.report.findMany({
     where: { status: "PENDING" },
     include: {
