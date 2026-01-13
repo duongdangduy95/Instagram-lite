@@ -12,6 +12,8 @@ export default function ModalGate({ modal }: { modal: React.ReactNode }) {
     // Next có thể giữ state slot @modal => cần gate theo pathname để tránh modal "đè" lên màn khác.
     // Admin không cần modal
     if (pathname.startsWith('/admin/')) return false
+    // Không render modal khi ở trang edit
+    if (pathname.includes('/edit')) return false
     return /^\/blog(?:\/|$)/.test(pathname)
   }, [pathname])
 

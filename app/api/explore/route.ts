@@ -13,7 +13,10 @@ export async function GET(req: Request) {
             take: limit + 1, // Take one extra to check if there are more
             cursor: cursor ? { id: cursor } : undefined,
             skip: cursor ? 1 : 0,
-            where: { sharedFromId: null },
+            where: { 
+                sharedFromId: null,
+                isdeleted: false // Không hiển thị bài đã bị xóa
+            },
             orderBy: { id: 'desc' },
             select: {
                 id: true,

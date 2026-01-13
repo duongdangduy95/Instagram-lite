@@ -454,7 +454,7 @@ export default function EditBlogPage() {
           </button>
 
           <button
-            onClick={() => router.push(`/blog/${id}`)}
+            onClick={() => router.push('/home')}
             className="px-4 py-2 bg-gray-700 rounded-lg"
           >
             Hủy
