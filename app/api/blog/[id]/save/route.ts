@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { bumpMeVersion } from '@/lib/cache'
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -37,6 +38,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             })
             saved = true
         }
+
+        // Invalidate cache saved list của user
+        await bumpMeVersion(userId)
 
         return NextResponse.json({ saved })
     } catch (error) {
