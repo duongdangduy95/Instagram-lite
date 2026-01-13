@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { bumpFeedVersion, bumpMeVersion } from '@/lib/cache'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createNotification } from '@/lib/notification'
@@ -58,6 +59,10 @@ export async function POST(
       type: NotificationType.FOLLOW,
     })
 
+    // Invalidate cache: home feed + me cache
+    await bumpFeedVersion()
+    await bumpMeVersion(userId)
+
     return NextResponse.json({ 
       message: 'Follow thành công',
       followersCount 
@@ -97,6 +102,10 @@ export async function DELETE(
         where: { followingId: targetUserId },
       }),
     ])
+
+    // Invalidate cache: home feed + me cache
+    await bumpFeedVersion()
+    await bumpMeVersion(userId)
 
     return NextResponse.json({ 
       message: 'Unfollow thành công',

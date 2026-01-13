@@ -243,6 +243,18 @@ export default function HomeClient(props: {
     }
   }
 
+  // Nghe sự kiện global user:follow-change (vd: follow từ trang profile)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ targetUserId: string; isFollowing: boolean; followersCount?: number }>).detail
+      if (!detail?.targetUserId) return
+      handleFollowChange(detail.targetUserId, detail.isFollowing, detail.followersCount)
+    }
+
+    window.addEventListener('user:follow-change', handler as EventListener)
+    return () => window.removeEventListener('user:follow-change', handler as EventListener)
+  }, [])
+
   return (
     <div className="ml-0 md:ml-20 lg:ml-64 pt-14 md:pt-0 pb-20 md:pb-0 grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-0" suppressHydrationWarning>
       {/* Main Content - Cột giữa */}
