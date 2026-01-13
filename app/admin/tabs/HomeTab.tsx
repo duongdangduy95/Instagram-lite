@@ -43,11 +43,17 @@ export default function HomeTab() {
 
   const loadBlogs = async (nextCursor: string | null = null) => {
     try {
+      // Dùng API admin thay vì /api/home (vì admin không có user session)
       const url = nextCursor 
-        ? `/api/home?cursor=${nextCursor}`
-        : '/api/home'
-      const res = await fetch(url)
-      if (!res.ok) return
+        ? `/api/admin/blogs?cursor=${nextCursor}`
+        : '/api/admin/blogs'
+      const res = await fetch(url, {
+        credentials: 'include' // Cần để gửi admin_session cookie
+      })
+      if (!res.ok) {
+        console.error('Failed to load blogs:', res.status, res.statusText)
+        return
+      }
       
       const data = await res.json()
       if (Array.isArray(data)) {
@@ -63,7 +69,7 @@ export default function HomeTab() {
         }
       }
     } catch (e) {
-      console.error("Home feed fetch failed", e)
+      console.error("Admin blogs fetch failed", e)
     } finally {
       setLoading(false)
     }
