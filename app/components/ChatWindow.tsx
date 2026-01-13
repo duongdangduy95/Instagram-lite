@@ -110,6 +110,17 @@ export default function ChatWindow({
         handleVisibility
       )
   }, [])
+    useEffect(() => {
+  if (!socketRef.current) return
+  if (!convIdRef.current) return
+
+  socketRef.current.emit(
+    "join_conversation",
+    convIdRef.current
+  )
+
+  console.log("✅ Joined conversation:", convIdRef.current)
+}, [convIdRef.current])
 
   /* ================= MARK SEEN ================= */
   const markSeen = async () => {
@@ -361,7 +372,14 @@ export default function ChatWindow({
 
   /* ================= SOCKET TYPING ================= */
   useEffect(() => {
-    socketRef.current = io('http://localhost:4000')
+    socketRef.current = io(
+  process.env.NEXT_PUBLIC_SOCKET_URL!,
+  {
+    transports: ['websocket'],
+    reconnection: true
+  }
+)
+
 
     socketRef.current.on(
       'typing',
