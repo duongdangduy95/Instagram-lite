@@ -107,7 +107,7 @@ export const authOptions: AuthOptions = {
             const emailHtml = generateOTPEmail(otp, newUser.username)
             await sendEmail({
               to: user.email!,
-              subject: 'Xác thực email - Instagram Lite',
+              subject: 'Xác thực email - InstaClone',
               html: emailHtml
             })
 

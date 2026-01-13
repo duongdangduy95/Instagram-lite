@@ -129,6 +129,38 @@ export default function HomeClient(props: {
     return () => window.removeEventListener('blog:save-change', handleSaveChange as EventListener)
   }, [])
 
+  // Listen for like/unlike events from modal/feed khác để sync với home feed
+  useEffect(() => {
+    const handleLikeChange = (e: Event) => {
+      const ce = e as CustomEvent<{ blogId: string; liked: boolean; likeCount: number }>
+      const detail = ce.detail
+      if (!detail?.blogId || typeof detail.likeCount !== 'number') return
+
+      // Update like count và liked state cho blog tương ứng
+      setBlogs((prev) =>
+        prev.map((b) => {
+          // Match by blogId (for normal posts) or displayBlogId (for shared posts)
+          if (b.id === detail.blogId || (b.sharedFrom && b.sharedFrom.id === detail.blogId)) {
+            return {
+              ...b,
+              _count: {
+                ...b._count,
+                likes: detail.likeCount,
+              },
+              // Cập nhật cờ liked theo currentUser
+              liked: detail.liked,
+              likes: detail.liked ? [{ userId: currentUser?.id || '' }] : [],
+            }
+          }
+          return b
+        })
+      )
+    }
+
+    window.addEventListener('blog:like-change', handleLikeChange as EventListener)
+    return () => window.removeEventListener('blog:like-change', handleLikeChange as EventListener)
+  }, [currentUser?.id])
+
   // Khi user tạo bài mới (CreateBlogForm dispatches blog:created),
   // refetch page đầu để hiển thị ngay mà không cần F5.
   useEffect(() => {
@@ -174,12 +206,16 @@ export default function HomeClient(props: {
   const loadMoreBlogs = useCallback(async () => {
     if (isLoading || !hasMore) return
 
-    if (props.mode === 'hashtag') return
-
     setIsLoading(true)
     try {
       const lastBlogId = blogs[blogs.length - 1]?.id
-      const response = await fetch(`/api/home?cursor=${lastBlogId}`, {
+      
+      // Nếu là hashtag mode, gọi API hashtag thay vì API home
+      const apiUrl = props.mode === 'hashtag' && props.hashtagName
+        ? `/api/hashtag/${props.hashtagName}/blogs?cursor=${lastBlogId}&limit=10`
+        : `/api/home?cursor=${lastBlogId}`
+      
+      const response = await fetch(apiUrl, {
         credentials: 'include',
       })
 

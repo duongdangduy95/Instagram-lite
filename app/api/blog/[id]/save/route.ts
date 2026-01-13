@@ -3,6 +3,7 @@ import { bumpMeVersion } from '@/lib/cache'
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { redis } from '@/lib/redis'
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions)
@@ -41,6 +42,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
         // Invalidate cache saved list của user
         await bumpMeVersion(userId)
+        
+        // Invalidate cache blog detail để modal sync đúng khi mở lại
+        await redis.del(`blog:detail:${blogId}`)
 
         return NextResponse.json({ saved })
     } catch (error) {

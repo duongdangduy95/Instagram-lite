@@ -107,7 +107,7 @@ export async function POST(req: Request) {
       const emailHtml = generateOTPEmail(otp, username)
       await sendEmail({
         to: email,
-        subject: 'Xác thực email - Instagram Lite',
+        subject: 'Xác thực email - InstaClone',
         html: emailHtml
       })
 

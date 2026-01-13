@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       const emailHtml = generatePasswordResetEmail(resetLink, user.username)
       await sendEmail({
         to: email,
-        subject: 'Đặt lại mật khẩu - Instagram Lite',
+        subject: 'Đặt lại mật khẩu - InstaClone',
         html: emailHtml
       })
       

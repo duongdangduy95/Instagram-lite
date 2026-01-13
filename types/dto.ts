@@ -60,6 +60,7 @@ export type BlogDTO = {
   _count: BlogCountsDTO
   sharedFrom?: SharedFromDTO
   isSaved?: boolean
+  liked?: boolean
   music?: BlogMusicDTO
   isdeleted?: boolean
 }

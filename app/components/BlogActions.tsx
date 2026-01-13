@@ -116,21 +116,51 @@ export default function BlogActions({
 
       if (response.ok) {
         const data = await response.json()
-        // Chỉ cập nhật nếu response khác với optimistic update
-        if (data.liked !== newLiked) {
-          setLiked(data.liked)
-          setLikeCount(data.liked ? likeCount + 1 : likeCount - 1)
-        }
+        // Dùng likeCount từ server để đảm bảo chính xác
+        const serverLiked = typeof data?.liked === 'boolean' ? data.liked : newLiked
+        const serverLikeCount = typeof data?.likeCount === 'number' ? data.likeCount : newCount
+        
+        setLiked(serverLiked)
+        setLikeCount(serverLikeCount)
+        
+        // Dispatch event để modal sync với feed
+        window.dispatchEvent(
+          new CustomEvent('blog:like-change', {
+            detail: {
+              blogId,
+              liked: serverLiked,
+              likeCount: serverLikeCount,
+            },
+          })
+        )
       } else {
         // Rollback nếu có lỗi
         setLiked(previousLiked)
         setLikeCount(previousCount)
+        window.dispatchEvent(
+          new CustomEvent('blog:like-change', {
+            detail: {
+              blogId,
+              liked: previousLiked,
+              likeCount: previousCount,
+            },
+          })
+        )
         console.error('Like failed')
       }
     } catch (error) {
       // Rollback nếu có lỗi
       setLiked(previousLiked)
       setLikeCount(previousCount)
+      window.dispatchEvent(
+        new CustomEvent('blog:like-change', {
+          detail: {
+            blogId,
+            liked: previousLiked,
+            likeCount: previousCount,
+          },
+        })
+      )
       console.error('Like error:', error)
     } finally {
       setLoading(false)
@@ -161,24 +191,40 @@ export default function BlogActions({
 
       if (response.ok) {
         const data = await response.json()
-        if (data.saved !== newSaved) {
-          setSaved(data.saved)
-        }
-        // Dispatch event to notify profile page to refresh saved posts
+        const serverSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
+        setSaved(serverSaved)
+        
+        // Dispatch event với displayBlogId để sync với feed (vì feed hiển thị bài gốc)
+        // Nhưng cũng dispatch với blogId để sync với bài share nếu có
         window.dispatchEvent(
           new CustomEvent('blog:save-change', {
-            detail: { blogId, saved: data.saved },
+            detail: { blogId: displayBlogId, saved: serverSaved },
           })
         )
+        // Nếu là bài share, cũng dispatch với blogId của bài share
+        if (displayBlogId !== blogId) {
+          window.dispatchEvent(
+            new CustomEvent('blog:save-change', {
+              detail: { blogId, saved: serverSaved },
+            })
+          )
+        }
       } else {
         // Rollback
         setSaved(previousSaved)
         console.error('Save failed')
         window.dispatchEvent(
           new CustomEvent('blog:save-change', {
-            detail: { blogId, saved: previousSaved },
+            detail: { blogId: displayBlogId, saved: previousSaved },
           })
         )
+        if (displayBlogId !== blogId) {
+          window.dispatchEvent(
+            new CustomEvent('blog:save-change', {
+              detail: { blogId, saved: previousSaved },
+            })
+          )
+        }
       }
     } catch (error) {
       // Rollback
@@ -186,9 +232,16 @@ export default function BlogActions({
       console.error('Save error:', error)
       window.dispatchEvent(
         new CustomEvent('blog:save-change', {
-          detail: { blogId, saved: previousSaved },
+          detail: { blogId: displayBlogId, saved: previousSaved },
         })
       )
+      if (displayBlogId !== blogId) {
+        window.dispatchEvent(
+          new CustomEvent('blog:save-change', {
+            detail: { blogId, saved: previousSaved },
+          })
+        )
+      }
     }
   }
 

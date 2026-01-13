@@ -161,12 +161,14 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
           close()
           return
         }
-        const data = (await res.json()) as BlogDetail
+        const data = (await res.json()) as BlogDetail & { liked?: boolean; isSaved?: boolean }
         if (cancelled) return
         setBlog(data)
-        setLiked((data.likes?.length ?? 0) > 0)
+        // Liked: ưu tiên field `liked` (theo currentUser), fallback theo likes length
+        setLiked(typeof data.liked === 'boolean' ? data.liked : (data.likes?.length ?? 0) > 0)
         setLikeCount(data._count?.likes ?? 0)
-        setSaved((data.savedBy?.length ?? 0) > 0)
+        // Saved: ưu tiên field `isSaved`, fallback theo savedBy length
+        setSaved(typeof data.isSaved === 'boolean' ? data.isSaved : (data.savedBy?.length ?? 0) > 0)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -240,19 +242,21 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
         return
       }
       const data = await res.json()
-      if (typeof data?.liked === 'boolean' && data.liked !== nextLiked) {
-        setLiked(data.liked)
-        setLikeCount(data.liked ? prevCount + 1 : Math.max(0, prevCount - 1))
-        window.dispatchEvent(
-          new CustomEvent('blog:like-change', {
-            detail: {
-              blogId: blog.id,
-              liked: data.liked,
-              likeCount: data.liked ? prevCount + 1 : Math.max(0, prevCount - 1),
-            },
-          })
-        )
-      }
+      // Dùng likeCount từ server để đảm bảo chính xác
+      const serverLiked = typeof data?.liked === 'boolean' ? data.liked : nextLiked
+      const serverLikeCount = typeof data?.likeCount === 'number' ? data.likeCount : nextCount
+      
+      setLiked(serverLiked)
+      setLikeCount(serverLikeCount)
+      window.dispatchEvent(
+        new CustomEvent('blog:like-change', {
+          detail: {
+            blogId: blog.id,
+            liked: serverLiked,
+            likeCount: serverLikeCount,
+          },
+        })
+      )
     } catch {
       setLiked(prevLiked)
       setLikeCount(prevCount)
@@ -624,6 +628,10 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                       const prevSaved = saved
                       const newSaved = !prevSaved
                       setSaved(newSaved)
+                      
+                      // Xác định blogId để dispatch event (ưu tiên bài gốc nếu là share post)
+                      const eventBlogId = displayBlog?.id ?? blog.id
+                      
                       try {
                         const res = await fetch(`/api/blog/${blog.id}/save`, {
                           method: 'POST',
@@ -633,9 +641,17 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                           setSaved(prevSaved)
                           window.dispatchEvent(
                             new CustomEvent('blog:save-change', {
-                              detail: { blogId: blog.id, saved: prevSaved },
+                              detail: { blogId: eventBlogId, saved: prevSaved },
                             })
                           )
+                          // Nếu là bài share, cũng dispatch với blog.id
+                          if (blog.sharedFrom && eventBlogId !== blog.id) {
+                            window.dispatchEvent(
+                              new CustomEvent('blog:save-change', {
+                                detail: { blogId: blog.id, saved: prevSaved },
+                              })
+                            )
+                          }
                           return
                         }
                         const data = await res.json()
@@ -643,16 +659,32 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                         setSaved(finalSaved)
                         window.dispatchEvent(
                           new CustomEvent('blog:save-change', {
-                            detail: { blogId: blog.id, saved: finalSaved },
+                            detail: { blogId: eventBlogId, saved: finalSaved },
                           })
                         )
+                        // Nếu là bài share, cũng dispatch với blog.id
+                        if (blog.sharedFrom && eventBlogId !== blog.id) {
+                          window.dispatchEvent(
+                            new CustomEvent('blog:save-change', {
+                              detail: { blogId: blog.id, saved: finalSaved },
+                            })
+                          )
+                        }
                       } catch {
                         setSaved(prevSaved)
                         window.dispatchEvent(
                           new CustomEvent('blog:save-change', {
-                            detail: { blogId: blog.id, saved: prevSaved },
+                            detail: { blogId: eventBlogId, saved: prevSaved },
                           })
                         )
+                        // Nếu là bài share, cũng dispatch với blog.id
+                        if (blog.sharedFrom && eventBlogId !== blog.id) {
+                          window.dispatchEvent(
+                            new CustomEvent('blog:save-change', {
+                              detail: { blogId: blog.id, saved: prevSaved },
+                            })
+                          )
+                        }
                       }
                     }}
                     className="text-gray-200 hover:text-white"
@@ -1030,6 +1062,10 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                           const prevSaved = saved
                           const newSaved = !prevSaved
                           setSaved(newSaved)
+                          
+                          // Xác định blogId để dispatch event (ưu tiên bài gốc nếu là share post)
+                          const eventBlogId = displayBlog?.id ?? blog.id
+                          
                           try {
                             const res = await fetch(`/api/blog/${blog.id}/save`, {
                               method: 'POST',
@@ -1039,27 +1075,51 @@ export default function BlogPostModal({ blogId, isAdmin = false, }: { blogId: st
                               setSaved(prevSaved)
                               window.dispatchEvent(
                                 new CustomEvent('blog:save-change', {
-                                  detail: { blogId: blog.id, saved: prevSaved },
+                                  detail: { blogId: eventBlogId, saved: prevSaved },
                                 })
                               )
+                              // Nếu là bài share, cũng dispatch với blog.id
+                              if (blog.sharedFrom && eventBlogId !== blog.id) {
+                                window.dispatchEvent(
+                                  new CustomEvent('blog:save-change', {
+                                    detail: { blogId: blog.id, saved: prevSaved },
+                                  })
+                                )
+                              }
                               return
                             }
                             const data = await res.json()
                             const finalSaved = typeof data?.saved === 'boolean' ? data.saved : newSaved
                             setSaved(finalSaved)
-                            // Dispatch event to sync with home feed
+                            // Dispatch event to sync with home feed (ưu tiên bài gốc)
                             window.dispatchEvent(
                               new CustomEvent('blog:save-change', {
-                                detail: { blogId: blog.id, saved: finalSaved },
+                                detail: { blogId: eventBlogId, saved: finalSaved },
                               })
                             )
+                            // Nếu là bài share, cũng dispatch với blog.id
+                            if (blog.sharedFrom && eventBlogId !== blog.id) {
+                              window.dispatchEvent(
+                                new CustomEvent('blog:save-change', {
+                                  detail: { blogId: blog.id, saved: finalSaved },
+                                })
+                              )
+                            }
                           } catch {
                             setSaved(prevSaved)
                             window.dispatchEvent(
                               new CustomEvent('blog:save-change', {
-                                detail: { blogId: blog.id, saved: prevSaved },
+                                detail: { blogId: eventBlogId, saved: prevSaved },
                               })
                             )
+                            // Nếu là bài share, cũng dispatch với blog.id
+                            if (blog.sharedFrom && eventBlogId !== blog.id) {
+                              window.dispatchEvent(
+                                new CustomEvent('blog:save-change', {
+                                  detail: { blogId: blog.id, saved: prevSaved },
+                                })
+                              )
+                            }
                           }
                         }}
                         className="text-gray-200 hover:text-white"
