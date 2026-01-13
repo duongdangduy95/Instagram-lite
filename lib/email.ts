@@ -211,22 +211,23 @@ export function generateOTPEmail(otp: string, username: string): string {
           margin-bottom: 20px;
         }
         .otp-box {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background-color: #f5f5f5;
           border-radius: 12px;
           padding: 30px;
           text-align: center;
           margin: 30px 0;
+          border: 1px solid #e0e0e0;
         }
         .otp-code {
-          font-size: 48px;
+          font-size: 32px;
           font-weight: 700;
-          color: #ffffff;
-          letter-spacing: 8px;
+          color: #222222;
+          letter-spacing: 6px;
           margin: 0;
           font-family: 'Courier New', monospace;
         }
         .otp-label {
-          color: rgba(255, 255, 255, 0.9);
+          color: #555555;
           font-size: 14px;
           margin-top: 10px;
           text-transform: uppercase;
@@ -273,9 +274,9 @@ export function generateOTPEmail(otp: string, username: string): string {
           
           <p>Cảm ơn bạn đã đăng ký tài khoản Instagram Lite! Để hoàn tất quá trình đăng ký, vui lòng xác thực địa chỉ email của bạn bằng mã OTP bên dưới:</p>
           
-          <div class="otp-box">
-            <div class="otp-label">MÃ XÁC THỰC</div>
-            <p class="otp-code">${otp}</p>
+          <div class="otp-box" style="background-color:#f5f5f5;border-radius:12px;padding:30px;text-align:center;margin:30px 0;border:1px solid #e0e0e0;">
+            <div class="otp-label" style="color:#555555;font-size:14px;margin-top:10px;text-transform:uppercase;letter-spacing:2px;">MÃ XÁC THỰC</div>
+            <p class="otp-code" style="font-size:32px;font-weight:700;color:#222222;letter-spacing:6px;margin:12px 0 0;font-family:'Courier New',monospace;display:inline-block;">${otp}</p>
           </div>
           
           <div class="info">
