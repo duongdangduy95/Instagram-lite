@@ -1,37 +1,146 @@
 \documentclass[main.tex]{subfiles}
 \begin{document}
 \section{Phân tích yêu cầu hệ thống}
-\subsection{Yêu cầu chức năng}
+
+\subsection{Xác định tác nhân (Actors)}
+Hệ thống được thiết kế phục vụ hai nhóm tác nhân chính:
 \begin{itemize}
-    \item Nhóm yêu cầu người dùng:
-    \begin{itemize}
-        \item 
-    \end{itemize}
-    \item Nhóm yêu cầu quản trị viên: 
-    \begin{itemize}
-        \item
+    \item \textbf{Khách (Guest):} Người dùng chưa đăng nhập vào hệ thống. Quyền hạn bị hạn chế, chỉ có thể thực hiện các thao tác cơ bản như Đăng ký, Đăng nhập hoặc xem các trang công khai (nếu được cấu hình).
+    \item \textbf{Thành viên (Authenticated User):} Người dùng đã có tài khoản và đăng nhập thành công. Có toàn quyền sử dụng các tính năng mạng xã hội của hệ thống.
 \end{itemize}
 
-\end{itemize}
-\subsection{Yêu cầu phi chức năng}
-Hệ thống cần đáp ứng các yêu cầu phi chức năng sau:
+\subsection{Yêu cầu chức năng}
+Dựa trên hiện trạng mã nguồn, các yêu cầu chức năng được phân rã theo phân hệ như sau:
+
+\subsubsection{Phân hệ Quản lý tài khoản (Authentication)}
 \begin{itemize}
-    \item Hiệu năng: Hệ thống cần đáp ứng nhanh chóng các yêu cầu từ người dùng, đặc biệt là trong việc tải hình ảnh và video.
-    \item Bảo mật: Đảm bảo an toàn thông tin người dùng, bao gồm việc mã hóa mật khẩu và bảo vệ dữ liệu cá nhân. Hệ thống cần có các biện pháp phòng chống tấn công mạng như SQL Injection, XSS, CSRF.
-    \item Khả năng mở rộng: Hệ thống cần được thiết kế để dễ dàng mở rộng khi số lượng người dùng tăng lên.
-    \item Tính sẵn sàng: Hệ thống cần hoạt động liên tục với thời gian chết tối thiểu.
-    \item Tính thân thiện với người dùng: Giao diện người dùng cần trực quan và dễ sử dụng.
+    \item \textbf{Đăng ký (Sign up):} Cho phép người dùng tạo tài khoản mới bằng email. Hệ thống kiểm tra tính duy nhất của email và yêu cầu xác thực qua mã OTP gửi về email.
+    \item \textbf{Đăng nhập (Sign in):} Hỗ trợ đăng nhập bằng Email/Mật khẩu hoặc tài khoản Google (OAuth 2.0).
+    \item \textbf{Quên mật khẩu:} Quy trình gửi liên kết hoặc mã OTP để đặt lại mật khẩu khi người dùng quên.
+    \item \textbf{Cập nhật thông tin (Update Profile):} Cho phép người dùng thay đổi ảnh đại diện (Avatar), tên hiển thị (Display Name), và tiểu sử (Bio).
+\end{itemize}
+
+\subsubsection{Phân hệ Mạng xã hội (Social Features)}
+\begin{itemize}
+    \item \textbf{Quản lý bài viết (Blog/Post):}
+        \begin{itemize}
+            \item Tạo bài viết mới với nội dung văn bản và hình ảnh (hỗ trợ upload nhiều ảnh).
+            \item Hiển thị danh sách bài viết trên Newsfeed theo thời gian thực (từ mới đến cũ).
+            \item Lưu bài viết vào danh sách yêu thích cá nhân (Saved Posts).
+        \end{itemize}
+    \item \textbf{Tương tác (Interaction):}
+        \begin{itemize}
+            \item Thả tim (Like) hoặc bỏ tim bài viết và bình luận.
+            \item Bình luận (Comment) và trả lời bình luận (Reply) tại các bài viết.
+            \item Chia sẻ (Share) bài viết công khai.
+        \end{itemize}
+    \item \textbf{Kết nối người dùng (Follow System):}
+        \begin{itemize}
+            \item Theo dõi (Follow) và Hủy theo dõi (Unfollow) người dùng khác.
+            \item Xem danh sách người theo dõi mình (Followers) và người mình đang theo dõi (Following).
+        \end{itemize}
+\end{itemize}
+
+\subsubsection{Phân hệ Giao tiếp và Thông báo}
+\begin{itemize}
+    \item \textbf{Tin nhắn (Messaging):}
+        \begin{itemize}
+            \item Gửi và nhận tin nhắn văn bản, hình ảnh trong thời gian thực (Real-time).
+            \item Hiển thị trạng thái "Đang nhập..." (Typing indicator).
+            \item Hiển thị danh sách các đoạn hội thoại gần đây.
+        \end{itemize}
+    \item \textbf{Thông báo (Notifications):}
+        \begin{itemize}
+            \item Nhận thông báo khi có người Like, Comment vào bài viết của mình.
+            \item Nhận thông báo khi có người mới theo dõi.
+            \item Thông báo được cập nhật tức thì không cần tải lại trang.
+        \end{itemize}
+\end{itemize}
+
+\subsubsection{Phân hệ Tìm kiếm \& Khám phá}
+\begin{itemize}
+    \item \textbf{Tìm kiếm (Search):} Tìm kiếm người dùng theo tên đăng nhập hoặc tên hiển thị. Tìm kiếm bài viết thông qua Hashtag.
+    \item \textbf{Khám phá (Explore):} Gợi ý các bài viết nổi bật hoặc ngẫu nhiên từ cộng đồng để tăng tính tương tác.
+\end{itemize}
+
+\subsection{Yêu cầu phi chức năng}
+\begin{itemize}
+    \item \textbf{Hiệu năng:} Thời gian phản hồi cho các thao tác thông thường (like, comment) phải nhanh. Tính năng chat phải đạt độ trễ thấp (Real-time).
+    \item \textbf{Bảo mật:} Mật khẩu người dùng phải được mã hóa. API phải có cơ chế xác thực (Authentication) và phân quyền (Authorization) chặt chẽ. Phải có biện pháp chống tấn công phổ biến (SQL injection, XSS, CSRF ...).
+    \item \textbf{Giao diện:} Thiết kế Responsive, hiển thị tốt trên cả Desktop, Tablet và Mobile.
 \end{itemize}
 
 \section{Mô hình hóa hệ thống}
 \subsection{Biểu đồ Use case tổng quan}
+
+
 \subsection{Đặc tả Use case chi tiết}
-\subsection{Biểu đồ trình tự} % chọn một số chức năng chính để vẽ biểu đồ trình tự
+
+
 
 \section{Thiết kế cơ sở dữ liệu}
+Hệ thống lưu trữ dữ liệu với các bảng chính sau:
+
 
 \section{Thiết kế kiến trúc hệ thống và API}
+
 \subsection{Kiến trúc tổng thể}
-\subsection{Thiết kế API}
+Hệ thống được xây dựng theo kiến trúc \textbf{Monolithic Modular} trên nền tảng \textbf{Next.js App Router}, kết hợp với các dịch vụ Microservices bổ trợ (Database, Cache, Storage).
+
+\begin{itemize}
+    \item \textbf{Client Layer (Frontend):}
+    \begin{itemize}
+        \item Được xây dựng bằng React Server Components (RSC) mặc định để tối ưu SEO và tải trang ban đầu.
+        \item Client Components (`use client`) được sử dụng cho các tương tác người dùng (Form, Buttons, Chat UI).
+        \item Giao tiếp với Backend thông qua Server Actions (cho đột biến dữ liệu) và API Routes (cho truy vấn dữ liệu).
+    \end{itemize}
+    \item \textbf{Server Layer (Backend):}
+    \begin{itemize}
+        \item **Next.js Route Handlers**: Xử lý các yêu cầu API RESTful.
+        \item **Middleware**: Kiểm soát quyền truy cập và bảo vệ route dựa trên NextAuth Session.
+        \item **Socket Server**: Module xử lý kết nối WebSocket thời gian thực, chạy song song với HTTP Server.
+    \end{itemize}
+    \item \textbf{Data Layer (Persistance):}
+    \begin{itemize}
+        \item **Supabase (PostgreSQL)**: Dịch vụ cơ sở dữ liệu đám mây chính, lưu trữ toàn bộ các bảng dữ liệu, được truy xuất thông qua Prisma ORM.
+        \item **Redis (Upstash)**: Lưu trữ tạm thời Session, Cache API response.
+        \item **Supabase Storage**: Dịch vụ lưu trữ đối tượng cho hình ảnh/media.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Thiết kế API (RESTful Endpoints)}
+Hệ thống cung cấp các nhóm API chính đặt tại thư mục `app/api/`:
+
+\begin{itemize}
+    \item \textbf{Authentication API:}
+    \begin{itemize}
+        \item `POST /api/signup`: Đăng ký tài khoản mới.
+        \item `POST /api/login`: Xử lý đăng nhập.
+        \item `POST /api/auth/[...nextauth]`: Các endpoints xác thực của NextAuth.js.
+    \end{itemize}
+    
+    \item \textbf{User API:}
+    \begin{itemize}
+        \item `GET /api/me`: Lấy thông tin người dùng hiện tại (Session).
+        \item `GET /api/user/[id]`: Lấy profile công khai của người dùng khác.
+        \item `POST /api/follow`: Thực hiện hành động Follow/Unfollow.
+        \item `PUT /api/user`: Cập nhật thông tin profile.
+    \end{itemize}
+    
+    \item \textbf{Content API (Blog/Post):}
+    \begin{itemize}
+        \item `GET /api/home`: Lấy danh sách bài viết cho trang chủ (có phân trang).
+        \item `GET /api/explore`: Lấy danh sách bài viết gợi ý.
+        \item `POST /api/blog`: Tạo bài viết mới.
+        \item `GET /api/search`: Tìm kiếm người dùng và Hashtag.
+    \end{itemize}
+    
+    \item \textbf{Messaging \& Notification API:}
+    \begin{itemize}
+        \item `GET /api/conversations`: Lấy danh sách các cuộc hội thoại.
+        \item `GET /api/messages`: Lấy chi tiết tin nhắn trong hội thoại.
+        \item `GET /api/notifications`: Lấy danh sách thông báo mới.
+    \end{itemize}
+\end{itemize}
 
 \end{document}

@@ -1,7 +1,70 @@
 \documentclass[main.tex]{subfiles}
 \begin{document}
-\section{Môi trường cài đặt}
-\section{Xây dựng các chức năng chính}
-\section{Quy trình triển khai hệ thống}
+\section{Môi trường phát triển}
+\subsection{Yêu cầu phần cứng và phần mềm}
+\begin{itemize}
+    \item Hệ điều hành: Windows/macOS/Linux.
+    \item Node.js: Phiên bản 18.x trở lên (khuyến nghị 20.x).
+    \item Cơ sở dữ liệu: PostgreSQL 14+.
+    \item Trình duyệt: Chrome/Firefox/Edge phiên bản mới nhất.
+\end{itemize}
+
+\subsection{Công cụ hỗ trợ}
+\begin{itemize}
+    \item \textbf{Visual Studio Code}: Trình soạn thảo mã nguồn chính với các extension hỗ trợ (ESLint, Prettier, Tailwind CSS IntelliSense).
+    \item \textbf{Git \& GitHub}: Quản lý phiên bản mã nguồn.
+    \item \textbf{Postman/Insomnia}: Công cụ kiểm thử API.
+    \item \textbf{Prisma Studio}: Công cụ giao diện (GUI) để xem và quản lý dữ liệu trực tiếp.
+\end{itemize}
+
+\section{Quy trình xây dựng hệ thống}
+\subsection{Khởi tạo và Cấu hình dự án}
+\begin{itemize}
+    \item Khởi tạo dự án Next.js 15 với TypeScript và Tailwind CSS.
+    \item Thiết lập cấu hình biến môi trường (\texttt{.env}) bao gồm: URL cơ sở dữ liệu, khóa bí mật NextAuth, API key của các dịch vụ bên thứ ba (Supabase, Upstash).
+\end{itemize}
+
+\subsection{Xây dựng Cơ sở dữ liệu}
+\begin{itemize}
+    \item Định nghĩa Schema models trong file \texttt{schema.prisma} (User, Blog, Comment, Follow...).
+    \item Thực hiện Migration để đồng bộ cấu trúc bảng vào PostgreSQL.
+    \item Tạo các Seed data mẫu (nếu có) để phục vụ kiểm thử.
+\end{itemize}
+
+\subsection{Phát triển Frontend (Client-side)}
+\begin{itemize}
+    \item \textbf{Component Design}: Chia nhỏ giao diện thành các components tái sử dụng (Button, Input, Avatar, PostCard...).
+    \item \textbf{Routing \& Layouts}: Cấu hình File-based Routing trong thư mục \texttt{app/}, sử dụng Layout để duy trì trạng thái của Sidebar/Header qua các trang.
+    \item \textbf{State Management}: Sử dụng React Context (\texttt{CurrentUserContext}) để quản lý thông tin người dùng toàn cục và React Hooks cho logic cục bộ.
+    \item \textbf{Styling}: Áp dụng Tailwind CSS để thiết kế giao diện Responsive.
+\end{itemize}
+
+\subsection{Phát triển Backend (Server-side)}
+\begin{itemize}
+    \item \textbf{API Routes}: Xây dựng các RESTful endpoints (Route Handlers) để xử lý logic nghiệp vụ (CRUD bài viết, tương tác người dùng).
+    \item \textbf{Server Actions}: Sử dụng Server Actions cho các tác vụ form submission (Đăng ký, Đăng nhập) giúp giảm tải JS gửi về client.
+    \item \textbf{Middleware}: Cài đặt lớp bảo vệ route, kiểm tra token xác thực trước khi cho phép truy cập tài nguyên bảo mật.
+\end{itemize}
+
+\subsection{Tích hợp Real-time với Socket.io}
+\begin{itemize}
+    \item Cấu hình Socket Server độc lập hoặc tích hợp vào API route.
+    \item Xử lý sự kiện kết nối, gửi/nhận tin nhắn (events \texttt{send-message}, \texttt{new-message}).
+    \item Quản lý trạng thái online/offline của người dùng.
+\end{itemize}
+
+\section{Triển khai (Deployment)}
+\subsection{Quy trình Build}
+\begin{itemize}
+    \item Chạy lệnh \texttt{npm run build} để biên dịch mã nguồn Next.js sang bản production tối ưu.
+    \item Kiểm tra các vấn đề về Type checking và Linting trong quá trình build.
+\end{itemize}
+
+\subsection{Môi trường Production}
+\begin{itemize}
+    \item Triển khai mã nguồn Frontend/Backend lên nền tảng Vercel (được tối ưu cho Next.js).
+    \item Cấu hình biến môi trường trên dashboard của Vercel.
+    \item Kết nối tên miền (Domain) và cấu hình SSL/HTTPS.
+\end{itemize}
 
 \end{document}
