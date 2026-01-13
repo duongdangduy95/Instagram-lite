@@ -232,8 +232,12 @@ export default function BlogDetailPage() {
                             const confirmDelete = confirm('Bạn có chắc muốn xóa bài viết này không?')
                             if (!confirmDelete) return
 
-                            await fetch(`/api/blog/${blog.id}`, { method: 'DELETE' })
-                            router.back()
+                            const res = await fetch(`/api/blog/${blog.id}`, { method: 'DELETE', credentials: 'include' })
+                            if (res.ok) {
+                              // Dispatch event để home feed cập nhật ngay lập tức
+                              window.dispatchEvent(new CustomEvent('blog:deleted', { detail: { blogId: blog.id } }))
+                              router.back()
+                            }
                           }}
                           className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10"
                         >

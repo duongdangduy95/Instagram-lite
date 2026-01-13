@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 
@@ -9,9 +9,40 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checkingWhitelist, setCheckingWhitelist] = useState(true)
+  const [whitelistError, setWhitelistError] = useState('')
   const router = useRouter()
 
+  // Check whitelist khi component mount
+  useEffect(() => {
+    const checkWhitelist = async () => {
+      try {
+        const res = await fetch('/api/admin/check-whitelist')
+        const data = await res.json()
+        
+        if (!res.ok || !data.allowed) {
+          setWhitelistError('Access denied. Your IP is not whitelisted.')
+          setCheckingWhitelist(false)
+          return
+        }
+        
+        setCheckingWhitelist(false)
+      } catch (err) {
+        // Nếu có lỗi khi check, vẫn cho phép (fail-open)
+        console.error('Error checking whitelist:', err)
+        setCheckingWhitelist(false)
+      }
+    }
+    
+    checkWhitelist()
+  }, [])
+
   const submit = async () => {
+    // Không cho submit nếu whitelist error
+    if (whitelistError) {
+      return
+    }
+    
     setLoading(true)
     setError('')
 
@@ -22,12 +53,32 @@ export default function AdminLogin() {
     })
 
     if (!res.ok) {
-      setError('Sai tài khoản hoặc mật khẩu')
+      const data = await res.json().catch(() => ({}))
+      // Nếu là lỗi 403 (whitelist), hiển thị thông báo tương ứng
+      if (res.status === 403) {
+        setError('Access denied. Your IP is not whitelisted.')
+      } else {
+        setError('Sai tài khoản hoặc mật khẩu')
+      }
     } else {
       router.push('/admin')
     }
 
     setLoading(false)
+  }
+
+  // Hiển thị loading khi đang check whitelist
+  if (checkingWhitelist) {
+    return (
+      <div className="min-h-screen bg-[#0f0c29] bg-gradient-to-br from-gray-900 via-[#1a103c] to-gray-900 relative flex items-center justify-center overflow-hidden">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-red-600 to-purple-600 flex items-center justify-center shadow-lg shadow-red-500/30">
+            <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+          </div>
+          <p className="text-gray-400">Đang kiểm tra quyền truy cập...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -84,8 +135,24 @@ export default function AdminLogin() {
             />
           </div>
 
+          {/* WHITELIST ERROR */}
+          {whitelistError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg p-3 mb-4"
+            >
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>{whitelistError}</span>
+              </div>
+            </motion.div>
+          )}
+
           {/* ERROR */}
-          {error && (
+          {error && !whitelistError && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -100,7 +167,7 @@ export default function AdminLogin() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             onClick={submit}
-            disabled={loading || !username || !password}
+            disabled={loading || !username || !password || !!whitelistError}
             className="w-full py-3.5 rounded-xl font-bold bg-gradient-to-r from-red-600 to-purple-600 text-white shadow-lg shadow-red-500/30 hover:from-red-500 hover:to-purple-500 transition disabled:opacity-50"
           >
             {loading ? "Đang đăng nhập..." : "Đăng nhập Admin"}

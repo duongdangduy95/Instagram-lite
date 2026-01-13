@@ -59,6 +59,7 @@ export default async function HashtagPage({ params }: PageProps) {
           },
         },
       },
+      isdeleted: false, // Chỉ lấy bài chưa bị xóa
     },
     select: {
       id: true,
@@ -80,6 +81,7 @@ export default async function HashtagPage({ params }: PageProps) {
       sharedFrom: {
         select: {
           id: true,
+          isdeleted: true,
           caption: true,
           imageUrls: true,
           music: true,
@@ -88,27 +90,73 @@ export default async function HashtagPage({ params }: PageProps) {
           _count: { select: { likes: true, comments: true } },
         },
       },
-      likes: currentUser
-        ? { select: { userId: true }, where: { userId: currentUser.id } }
-        : undefined,
       _count: { select: { likes: true, comments: true } },
     },
     orderBy: { createdAt: 'desc' },
+    take: 10, // Giới hạn số lượng ban đầu
   })
 
-  // ===== SERIALIZE DATE =====
-  const blogsDto: BlogDTO[] = blogs.map((b) => ({
-    ...b,
-    music: b.music as BlogDTO['music'],
-    createdAt: b.createdAt.toISOString(),
-    sharedFrom: b.sharedFrom
-      ? {
+  // ===== LOAD TRẠNG THÁI CÁ NHÂN (Like, Save) - GIỐNG API HOME =====
+  const blogIds = blogs.map((b) => b.id)
+  const [likes, saved] = await Promise.all([
+    currentUser
+      ? prisma.like.findMany({
+          where: { userId: currentUser.id, blogId: { in: blogIds } },
+          select: { blogId: true },
+        })
+      : Promise.resolve([]),
+    currentUser
+      ? prisma.savedPost.findMany({
+          where: { userId: currentUser.id, blogId: { in: blogIds } },
+          select: { blogId: true },
+        })
+      : Promise.resolve([]),
+  ])
+
+  const likedSet = new Set(likes.map((l) => l.blogId))
+  const savedSet = new Set(saved.map((s) => s.blogId))
+
+  // ===== SERIALIZE DATE VÀ MERGE TRẠNG THÁI =====
+  const blogsDto: BlogDTO[] = blogs.map((b) => {
+    // Parse music nếu là string
+    let parsedMusic = b.music as BlogDTO['music']
+    if (parsedMusic && typeof parsedMusic === 'string') {
+      try {
+        parsedMusic = JSON.parse(parsedMusic)
+      } catch {
+        parsedMusic = null
+      }
+    }
+
+    // Parse sharedFrom music nếu có
+    let parsedSharedFrom: BlogDTO['sharedFrom'] = null
+    if (b.sharedFrom) {
+      let parsedSharedMusic = b.sharedFrom.music
+      if (parsedSharedMusic && typeof parsedSharedMusic === 'string') {
+        try {
+          parsedSharedMusic = JSON.parse(parsedSharedMusic)
+        } catch {
+          parsedSharedMusic = null
+        }
+      }
+
+      parsedSharedFrom = {
         ...b.sharedFrom,
-        music: b.sharedFrom.music as BlogDTO['music'],
+        music: parsedSharedMusic as BlogDTO['music'],
         createdAt: b.sharedFrom.createdAt.toISOString(),
       }
-      : null,
-  }))
+    }
+
+    return {
+      ...b,
+      music: parsedMusic,
+      createdAt: b.createdAt.toISOString(),
+      sharedFrom: parsedSharedFrom,
+      // Set liked và isSaved giống API home
+      liked: currentUser ? likedSet.has(b.id) : false,
+      isSaved: currentUser ? savedSet.has(b.id) : false,
+    } as BlogDTO
+  })
 
   return (
     <div className="min-h-screen bg-[#0B0E11] text-white">

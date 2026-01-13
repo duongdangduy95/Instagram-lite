@@ -81,15 +81,22 @@ export async function POST(req: NextRequest) {
       data: { password: hashedPassword }
     })
 
-    // Delete used token
-    await prisma.verificationToken.delete({
-      where: {
-        identifier_token: {
-          identifier: email,
-          token: token
+    // Delete used token (bọc trong try-catch để tránh lỗi nếu token đã bị xóa)
+    // Không throw error vì mật khẩu đã đổi thành công rồi
+    try {
+      await prisma.verificationToken.delete({
+        where: {
+          identifier_token: {
+            identifier: email,
+            token: token
+          }
         }
-      }
-    })
+      })
+    } catch (deleteError: any) {
+      // Token có thể đã bị xóa trước đó (do double-click hoặc race condition)
+      // Không cần throw error vì mật khẩu đã đổi thành công
+      console.warn('Could not delete verification token (may already be deleted):', deleteError?.message)
+    }
 
     return NextResponse.json({
       message: 'Đặt lại mật khẩu thành công'

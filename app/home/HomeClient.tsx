@@ -129,15 +129,93 @@ export default function HomeClient(props: {
     return () => window.removeEventListener('blog:save-change', handleSaveChange as EventListener)
   }, [])
 
+  // Listen for like/unlike events from modal/feed khác để sync với home feed
+  useEffect(() => {
+    const handleLikeChange = (e: Event) => {
+      const ce = e as CustomEvent<{ blogId: string; liked: boolean; likeCount: number }>
+      const detail = ce.detail
+      if (!detail?.blogId || typeof detail.likeCount !== 'number') return
+
+      // Update like count và liked state cho blog tương ứng
+      setBlogs((prev) =>
+        prev.map((b) => {
+          // Match by blogId (for normal posts) or displayBlogId (for shared posts)
+          if (b.id === detail.blogId || (b.sharedFrom && b.sharedFrom.id === detail.blogId)) {
+            return {
+              ...b,
+              _count: {
+                ...b._count,
+                likes: detail.likeCount,
+              },
+              // Cập nhật cờ liked theo currentUser
+              liked: detail.liked,
+              likes: detail.liked ? [{ userId: currentUser?.id || '' }] : [],
+            }
+          }
+          return b
+        })
+      )
+    }
+
+    window.addEventListener('blog:like-change', handleLikeChange as EventListener)
+    return () => window.removeEventListener('blog:like-change', handleLikeChange as EventListener)
+  }, [currentUser?.id])
+
+  // Khi user tạo bài mới (CreateBlogForm dispatches blog:created),
+  // refetch page đầu để hiển thị ngay mà không cần F5.
+  useEffect(() => {
+    const onCreated = async () => {
+      try {
+        setIsLoading(true)
+        const res = await fetch('/api/home', { credentials: 'include' })
+        if (!res.ok) return
+        const fresh = await res.json()
+        if (!Array.isArray(fresh)) return
+        setBlogs(fresh)
+        setHasMore(true)
+      } catch (e) {
+        console.error('Failed to refresh home feed after create', e)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    window.addEventListener('blog:created', onCreated as EventListener)
+    return () => window.removeEventListener('blog:created', onCreated as EventListener)
+  }, [])
+
+  // Khi user xóa bài viết, xóa ngay khỏi feed mà không cần F5
+  useEffect(() => {
+    const onDeleted = (e: Event) => {
+      const ce = e as CustomEvent<{ blogId: string }>
+      const detail = ce.detail
+      if (!detail?.blogId) return
+
+      // Optimistic update: Xóa bài khỏi local state ngay lập tức
+      // Xóa cả bài share (nếu sharedFrom.id = deletedBlogId) và bài thường (nếu id = deletedBlogId)
+      setBlogs((prev) => prev.filter((b) => {
+        // Xóa nếu chính nó bị xóa hoặc bài gốc của nó (sharedFrom) bị xóa
+        return b.id !== detail.blogId && b.sharedFrom?.id !== detail.blogId
+      }))
+    }
+
+    window.addEventListener('blog:deleted', onDeleted as EventListener)
+    return () => window.removeEventListener('blog:deleted', onDeleted as EventListener)
+  }, [])
+
   const loadMoreBlogs = useCallback(async () => {
     if (isLoading || !hasMore) return
-
-    if (props.mode === 'hashtag') return
 
     setIsLoading(true)
     try {
       const lastBlogId = blogs[blogs.length - 1]?.id
-      const response = await fetch(`/api/home?cursor=${lastBlogId}`, {
+      
+      // Nếu là hashtag mode, gọi API hashtag thay vì API home
+      const apiUrl = props.mode === 'hashtag' && props.hashtagName
+        ? `/api/hashtag/${props.hashtagName}/blogs?cursor=${lastBlogId}&limit=10`
+        : `/api/home?cursor=${lastBlogId}`
+      
+      const response = await fetch(apiUrl, {
         credentials: 'include',
       })
 
@@ -200,6 +278,18 @@ export default function HomeClient(props: {
       setFollowersCountMap((prev) => ({ ...prev, [targetUserId]: followersCount }))
     }
   }
+
+  // Nghe sự kiện global user:follow-change (vd: follow từ trang profile)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ targetUserId: string; isFollowing: boolean; followersCount?: number }>).detail
+      if (!detail?.targetUserId) return
+      handleFollowChange(detail.targetUserId, detail.isFollowing, detail.followersCount)
+    }
+
+    window.addEventListener('user:follow-change', handler as EventListener)
+    return () => window.removeEventListener('user:follow-change', handler as EventListener)
+  }, [])
 
   return (
     <div className="ml-0 md:ml-20 lg:ml-64 pt-14 md:pt-0 pb-20 md:pb-0 grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-0" suppressHydrationWarning>

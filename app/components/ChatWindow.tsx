@@ -110,6 +110,17 @@ export default function ChatWindow({
         handleVisibility
       )
   }, [])
+    useEffect(() => {
+  if (!socketRef.current) return
+  if (!convIdRef.current) return
+
+  socketRef.current.emit(
+    "join_conversation",
+    convIdRef.current
+  )
+
+  console.log("✅ Joined conversation:", convIdRef.current)
+}, [convIdRef.current])
 
   /* ================= MARK SEEN ================= */
   const markSeen = async () => {
@@ -307,13 +318,20 @@ export default function ChatWindow({
 
               if (payload.eventType === 'DELETE') {
                 const msg = payload.old as Message
-                setMessages(prev =>
-                  (() => {
-                    const merged = prev.filter(m => m.id !== msg.id)
-                    messagesCacheRef.current.set(targetUserId, merged)
-                    return merged
-                  })()
-                )
+                if (!msg || !msg.id) {
+                  console.warn('DELETE event received but payload.old is invalid:', payload)
+                  return
+                }
+                
+                // Xóa message ngay lập tức khi nhận được event DELETE từ Supabase
+                setMessages(prev => {
+                  const hasMessage = prev.some(m => m.id === msg.id)
+                  if (!hasMessage) return prev // Message đã không còn trong state
+                  
+                  const merged = prev.filter(m => m.id !== msg.id)
+                  messagesCacheRef.current.set(targetUserId, merged)
+                  return merged
+                })
               }
             }
           )
@@ -361,7 +379,14 @@ export default function ChatWindow({
 
   /* ================= SOCKET TYPING ================= */
   useEffect(() => {
-    socketRef.current = io('http://localhost:4000')
+    socketRef.current = io(
+  process.env.NEXT_PUBLIC_SOCKET_URL!,
+  {
+    transports: ['websocket'],
+    reconnection: true
+  }
+)
+
 
     socketRef.current.on(
       'typing',
@@ -512,7 +537,20 @@ export default function ChatWindow({
               }
               if (payload.eventType === 'DELETE') {
                 const msg = payload.old as Message
-                setMessages(prev => prev.filter(m => m.id !== msg.id))
+                if (!msg || !msg.id) {
+                  console.warn('DELETE event received but payload.old is invalid:', payload)
+                  return
+                }
+                
+                // Xóa message ngay lập tức khi nhận được event DELETE từ Supabase
+                setMessages(prev => {
+                  const hasMessage = prev.some(m => m.id === msg.id)
+                  if (!hasMessage) return prev // Message đã không còn trong state
+                  
+                  const merged = prev.filter(m => m.id !== msg.id)
+                  messagesCacheRef.current.set(targetUserId, merged)
+                  return merged
+                })
               }
             }
           )
@@ -542,24 +580,88 @@ export default function ChatWindow({
 
   /* ================= EDIT / DELETE ================= */
   const updateMessage = async (id: string) => {
-    await fetch('/api/messages', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messageId: id,
-        content: editValue
+    // Optimistic update
+    const previousMessage = messages.find(m => m.id === id)
+    if (previousMessage) {
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === id
+            ? { ...m, content: editValue }
+            : m
+        )
+      )
+      messagesCacheRef.current.set(targetUserId, messages.map(m =>
+        m.id === id ? { ...m, content: editValue } : m
+      ))
+    }
+
+    try {
+      await fetch('/api/messages', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId: id,
+          content: editValue
+        })
       })
-    })
-    setEditingId(null)
-    setEditValue('')
+      setEditingId(null)
+      setEditValue('')
+    } catch (error) {
+      // Rollback on error
+      if (previousMessage) {
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === id ? previousMessage : m
+          )
+        )
+        messagesCacheRef.current.set(targetUserId, messages.map(m =>
+          m.id === id ? previousMessage : m
+        ))
+      }
+      console.error('Error updating message:', error)
+    }
   }
 
   const deleteMessage = async (id: string) => {
-    await fetch('/api/messages', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messageId: id })
-    })
+    // Optimistic update: Xóa message ngay lập tức
+    const messageToDelete = messages.find(m => m.id === id)
+    if (messageToDelete) {
+      setMessages(prev => prev.filter(m => m.id !== id))
+      const updatedMessages = messages.filter(m => m.id !== id)
+      messagesCacheRef.current.set(targetUserId, updatedMessages)
+    }
+
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: id })
+      })
+
+      if (!res.ok) {
+        // Rollback on error
+        if (messageToDelete) {
+          setMessages(prev => {
+            const merged = [...prev, messageToDelete]
+            merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+            messagesCacheRef.current.set(targetUserId, merged)
+            return merged
+          })
+        }
+        console.error('Error deleting message:', res.statusText)
+      }
+    } catch (error) {
+      // Rollback on error
+      if (messageToDelete) {
+        setMessages(prev => {
+          const merged = [...prev, messageToDelete]
+          merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          messagesCacheRef.current.set(targetUserId, merged)
+          return merged
+        })
+      }
+      console.error('Error deleting message:', error)
+    }
   }
 
   /* ================= UI ================= */

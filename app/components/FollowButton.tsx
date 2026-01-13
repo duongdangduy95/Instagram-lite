@@ -43,8 +43,25 @@ export default function FollowButton({
 
       if (response.ok) {
         const data = await response.json()
+        const followersCount = data.followersCount as number | undefined
+
         // Cập nhật followers count nếu có callback
-        onFollowChange?.(newIsFollowing, data.followersCount)
+        onFollowChange?.(newIsFollowing, followersCount)
+
+        // Phát sự kiện global để HomeClient (và nơi khác) sync trạng thái follow
+        try {
+          window.dispatchEvent(
+            new CustomEvent('user:follow-change', {
+              detail: {
+                targetUserId,
+                isFollowing: newIsFollowing,
+                followersCount,
+              },
+            }),
+          )
+        } catch {
+          // ignore
+        }
       } else {
         // Rollback nếu có lỗi
         setIsFollowing(previousIsFollowing)

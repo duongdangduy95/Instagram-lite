@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createClient } from '@supabase/supabase-js'
 import { Redis } from '@upstash/redis'
+import sharp from 'sharp'
 
 /* ==============================
    INIT CLIENTS
@@ -234,7 +235,7 @@ export async function POST(req: Request) {
     )
   }
 
-  // ☁️ Upload files lên Supabase nếu có
+  // ☁️ Upload files lên Supabase nếu có (nén ảnh trước khi upload)
   const fileUrls: string[] = []
   const fileNames: string[] = []
   const uploadErrors: string[] = []
@@ -243,14 +244,37 @@ export async function POST(req: Request) {
     for (const file of files) {
       try {
         const buffer = Buffer.from(await file.arrayBuffer())
-        const ext = file.type?.split('/')[1] || file.name.split('.').pop() || 'bin'
+        const isImage = (file.type || '').startsWith('image/')
+        const isGif = file.type === 'image/gif'
+
+        let uploadBuffer = buffer
+        let uploadExt = file.type?.split('/')[1] || file.name.split('.').pop() || 'bin'
+        let uploadContentType = file.type || 'application/octet-stream'
         const safeName = sanitizeFileName(file.name)
-        const fileName = `messages/${currentUserId}/${Date.now()}-${Math.random()}.${ext}`
+
+        // Nén ảnh (trừ GIF để giữ animation)
+        if (isImage && !isGif) {
+          const compressed = await sharp(buffer)
+            .resize({
+              width: 1280,
+              height: 1280,
+              fit: 'inside',
+              withoutEnlargement: true,
+            })
+            .webp({ quality: 80 })
+            .toBuffer()
+
+          uploadBuffer = compressed
+          uploadExt = 'webp'
+          uploadContentType = 'image/webp'
+        }
+
+        const fileName = `messages/${currentUserId}/${Date.now()}-${Math.random()}.${uploadExt}`
 
         const { error } = await supabase.storage
           .from('instagram')
-          .upload(fileName, buffer, {
-            contentType: file.type || 'application/octet-stream',
+          .upload(fileName, uploadBuffer, {
+            contentType: uploadContentType,
           })
 
         if (error) {

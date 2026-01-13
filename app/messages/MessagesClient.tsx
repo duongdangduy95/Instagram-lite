@@ -39,6 +39,7 @@ type ConversationsApiItem = {
 }
 
 type RealtimeMessageRow = {
+  id: string
   conversationId: string
   content: string
   createdAt: string
@@ -91,6 +92,9 @@ export default function MessagesClient() {
 
     setLoading(true)
     try {
+      // Dispatch event để Navigation refresh badge khi vào trang messages
+      window.dispatchEvent(new CustomEvent('messages:page-opened'))
+      
       const res = await fetch('/api/conversations', {
         headers: { Accept: 'application/json' },
         cache: 'no-store'
@@ -146,7 +150,7 @@ export default function MessagesClient() {
     }
   }, [currentUserId, fetchConversations])
 
-  // Setup realtime listener for new messages
+  // Setup realtime listener cho thay đổi tin nhắn (INSERT/UPDATE/DELETE)
   useEffect(() => {
     if (!currentUserId) return
 
@@ -163,67 +167,83 @@ export default function MessagesClient() {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'Message'
         },
         (payload) => {
-          const message = payload.new as unknown as RealtimeMessageRow
+          const eventType = payload.eventType
 
-          // Update conversations without full refetch for smoother UX
-          setConversations(prev => {
-            const updated = [...prev]
-            const convIndex = updated.findIndex(c => {
-              return c.conversationId === message.conversationId
+          // INSERT: update nhẹ conversation list (lastMessage, unreadCount, hasReplied)
+          if (eventType === 'INSERT') {
+            const message = payload.new as unknown as RealtimeMessageRow
+
+            setConversations(prev => {
+              const updated = [...prev]
+              const convIndex = updated.findIndex(c => {
+                return c.conversationId === message.conversationId
+              })
+
+              if (convIndex >= 0) {
+                // Update existing conversation
+                const conv = updated[convIndex]
+                const isFromCurrentUser = message.senderId === currentUserId
+                updated[convIndex] = {
+                  ...conv,
+                  lastMessage: {
+                    content: message.content,
+                    createdAt: message.createdAt,
+                    senderId: message.senderId
+                  },
+                  unreadCount: isFromCurrentUser ? 0 : (conv.unreadCount || 0) + 1,
+                  hasReplied: isFromCurrentUser ? true : (conv.hasReplied || false)
+                }
+
+                // Move to top
+                const [movedConv] = updated.splice(convIndex, 1)
+                updated.unshift(movedConv)
+              } else {
+                // New conversation - refetch để lấy đủ dữ liệu (avatar, follow, ...)
+                if (!isRefetching) {
+                  isRefetching = true
+                  fetchConversations().finally(() => {
+                    setTimeout(() => {
+                      isRefetching = false
+                    }, 1000)
+                  })
+                }
+              }
+
+              // Dedupe cứng theo conversationId/userId để tránh state phình nếu listener bị gọi lặp
+              const map = new Map<string, ConversationUser>()
+              for (const conv of updated) {
+                const key = conv.conversationId || conv.id
+                const existing = map.get(key)
+                if (
+                  !existing ||
+                  (conv.lastMessage &&
+                    (!existing.lastMessage ||
+                      new Date(conv.lastMessage.createdAt) >
+                      new Date(existing.lastMessage.createdAt)))
+                ) {
+                  map.set(key, conv)
+                }
+              }
+              return Array.from(map.values())
             })
 
-            if (convIndex >= 0) {
-              // Update existing conversation
-              const conv = updated[convIndex]
-              const isFromCurrentUser = message.senderId === currentUserId
-              updated[convIndex] = {
-                ...conv,
-                lastMessage: {
-                  content: message.content,
-                  createdAt: message.createdAt,
-                  senderId: message.senderId
-                },
-                unreadCount: isFromCurrentUser ? 0 : (conv.unreadCount || 0) + 1,
-                hasReplied: isFromCurrentUser ? true : (conv.hasReplied || false)
-              }
+            return
+          }
 
-              // Move to top
-              const [movedConv] = updated.splice(convIndex, 1)
-              updated.unshift(movedConv)
-            } else {
-              // New conversation - refetch to get full data
-              if (!isRefetching) {
-                isRefetching = true
-                fetchConversations().finally(() => {
-                  setTimeout(() => {
-                    isRefetching = false
-                  }, 1000)
-                })
-              }
-            }
-
-            // Dedupe cứng theo conversationId/userId để tránh state phình nếu listener bị gọi lặp
-            const map = new Map<string, ConversationUser>()
-            for (const conv of updated) {
-              const key = conv.conversationId || conv.id
-              const existing = map.get(key)
-              if (
-                !existing ||
-                (conv.lastMessage &&
-                  (!existing.lastMessage ||
-                    new Date(conv.lastMessage.createdAt) >
-                    new Date(existing.lastMessage.createdAt)))
-              ) {
-                map.set(key, conv)
-              }
-            }
-            return Array.from(map.values())
-          })
+          // UPDATE / DELETE: refetch conversations để cập nhật lastMessage và unreadCount realtime
+          if ((eventType === 'UPDATE' || eventType === 'DELETE') && !isRefetching) {
+            isRefetching = true
+            fetchConversations().finally(() => {
+              setTimeout(() => {
+                isRefetching = false
+              }, 1000)
+            })
+          }
         }
       )
       .subscribe()

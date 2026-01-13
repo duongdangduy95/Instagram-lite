@@ -1,27 +1,23 @@
-import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import crypto from "crypto"
+import { verifyAdminSession } from "@/lib/admin-auth"
 
 const prisma = new PrismaClient()
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> } // Next.js 15: params là Promise
 ) {
+  // ✅ Verify admin session và check whitelist
+  const auth = await verifyAdminSession(req)
+  if (!auth.authorized) {
+    return auth.response!
+  }
+  
   // ✅ await params trước khi dùng
   const { id: reportId } = await context.params
-
-  // ✅ cookies() là async
-  const cookieStore = await cookies()
-  const token = cookieStore.get("admin_session")?.value
-
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  const session = await prisma.adminsession.findUnique({
-    where: { token },
-  })
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const { adminId } = auth.session!
 
   const report = await prisma.report.findUnique({
     where: { id: reportId },
@@ -67,7 +63,7 @@ export async function POST(
   await prisma.adminactionlog.create({
     data: {
       id: crypto.randomUUID(),
-      adminid: session.adminid,
+      adminid: adminId,
       action: "DELETE_BLOG",
       blogid: report.blogid,
       reportid: report.id,

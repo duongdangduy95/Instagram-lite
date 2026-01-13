@@ -80,6 +80,15 @@ export default function Navigation() {
     // init count
     void fetchMessageBadge()
 
+    // Debounce cho refresh badge để tránh race condition
+    let refreshTimeout: NodeJS.Timeout | null = null
+    const debouncedRefresh = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout)
+      refreshTimeout = setTimeout(() => {
+        void fetchMessageBadge()
+      }, 500) // Delay 500ms để tránh refresh quá nhiều
+    }
+
     const channel = supabase
       .channel(`message-badge-${user.id}`)
       .on(
@@ -92,30 +101,57 @@ export default function Navigation() {
         payload => {
           const msg = payload.new as any
 
-          // ❗ chỉ cộng khi:
-          // - người nhận là mình
-          // - chưa SEEN
+          // ✅ Chỉ refresh badge từ API thay vì cộng trực tiếp
+          // Vì Supabase listener không thể filter theo conversation participants
+          // Refresh sau một delay để tránh race condition với initial fetch
           if (
             msg.senderId !== user.id &&
             msg.status === 'SENT'
           ) {
-            setMessageBadge(prev => prev + 1)
+            debouncedRefresh()
           }
         }
       )
       .subscribe()
 
-    // Listen "seen" event from ChatWindow to decrement badge
+    // Debounce cho event "seen" để tránh race condition khi có nhiều conversations
+    let seenTimeout: NodeJS.Timeout | null = null
+    let pendingSeenCount = 0
+    
     const onSeen = (e: Event) => {
       const seenCount = Number((e as CustomEvent)?.detail?.seenCount ?? 0)
       if (!Number.isFinite(seenCount) || seenCount <= 0) return
-      setMessageBadge(prev => Math.max(0, prev - seenCount))
+      
+      // Accumulate seen counts và refresh sau delay
+      pendingSeenCount += seenCount
+      
+      if (seenTimeout) clearTimeout(seenTimeout)
+      seenTimeout = setTimeout(() => {
+        // Refresh từ API để đảm bảo chính xác
+        void fetchMessageBadge()
+        pendingSeenCount = 0
+      }, 300) // Delay 300ms để batch nhiều seen events
     }
     window.addEventListener('messages:seen', onSeen as EventListener)
+
+    // Refresh badge khi vào trang messages (listen for custom event)
+    const onMessagesPageOpen = () => {
+      void fetchMessageBadge()
+    }
+    window.addEventListener('messages:page-opened', onMessagesPageOpen as EventListener)
+
+    // Sync lại badge định kỳ mỗi 30 giây để đảm bảo sync với server
+    const syncInterval = setInterval(() => {
+      void fetchMessageBadge()
+    }, 30000)
 
     return () => {
       supabase.removeChannel(channel)
       window.removeEventListener('messages:seen', onSeen as EventListener)
+      window.removeEventListener('messages:page-opened', onMessagesPageOpen as EventListener)
+      if (refreshTimeout) clearTimeout(refreshTimeout)
+      if (seenTimeout) clearTimeout(seenTimeout)
+      clearInterval(syncInterval)
     }
   }, [user?.id])
 
@@ -503,6 +539,30 @@ export default function Navigation() {
                     const { href, text } = getNotifLinkAndText(n)
                     const actorName = n?.actor?.username || n?.actor?.fullname || 'User'
                     const isReplyComment = n.type === 'REPLY_COMMENT'
+                    const isBlogDeleted = n.type === 'BLOG_DELETED'
+                    
+                    // BLOG_DELETED: không có link, không có avatar, chỉ text
+                    if (isBlogDeleted) {
+                      return (
+                        <div
+                          key={n.id}
+                          className={`block px-4 py-3 text-sm border-b border-gray-800 ${!n.isRead ? 'bg-[#212227]' : ''}`}
+                        >
+                          <div className="text-white leading-snug">
+                            <span className="text-gray-300 font-normal">{text}</span>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className="text-gray-400 text-xs" suppressHydrationWarning>
+                              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                            </span>
+                            {!n.isRead && (
+                              <span className="w-2.5 h-2.5 bg-[#7565E6] rounded-full flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                      )
+                    }
+                    
                     return (
                       <Link
                         key={n.id}
@@ -543,8 +603,14 @@ export default function Navigation() {
 
                           <div className="min-w-0 flex-1">
                             <div className="text-white leading-snug">
-                              <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
-                              <span className="text-gray-300 font-normal">{text}</span>
+                              {isReplyComment ? (
+                                <span className="text-gray-300 font-normal">{text}</span>
+                              ) : (
+                                <>
+                                  <span className={`${!n.isRead ? 'font-bold' : 'font-semibold'}`}>{actorName}</span>{' '}
+                                  <span className="text-gray-300 font-normal">{text}</span>
+                                </>
+                              )}
                             </div>
                             <div className="mt-1 flex items-center justify-between gap-2">
                               <span className="text-gray-400 text-xs" suppressHydrationWarning>

@@ -1,18 +1,27 @@
-// app/api/auth/login/route.ts
+// app/api/admin/login/route.ts
 export const runtime = "nodejs"
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
+import { checkAdminWhitelist } from '@/lib/admin-whitelist'
 
 const prisma = new PrismaClient()
 
-export async function POST(req: Request) {
-  
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    
     const { username, password } = body
+    
+    // ✅ CHECK WHITELIST TRƯỚC KHI XỬ LÝ LOGIN
+    const whitelistCheck = await checkAdminWhitelist(req, username)
+    if (!whitelistCheck.allowed) {
+      console.warn(`[Admin Login] Blocked: ${whitelistCheck.reason}`)
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      )
+    }
     
     const admin = await prisma.admin.findUnique({ where: { username } })
     

@@ -46,7 +46,8 @@ export default function BlogFeed({
         const isOriginalMissing = !!blog.sharedFrom && blog.sharedFrom.isdeleted === true
         const actionDisplayBlogId = isOriginalMissing ? blog.id : displayBlog.id
         const isCurrentUser = blog.author.id === currentUser?.id
-        const isLiked = (blog.likes?.length ?? 0) > 0
+        // Trạng thái like của current user: ưu tiên field `liked` từ API
+        const isLiked = (blog as any).liked ?? false
 
         const sharerProfileHref =
           blog.author.id === currentUser?.id ? '/profile' : `/profile/${blog.author.id}`

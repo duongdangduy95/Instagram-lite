@@ -1,12 +1,13 @@
 'use client'
 import { useState } from "react"
 import AdminNavigation from "./AdminNavigation"
+import HomeTab from "./tabs/HomeTab"
 import DashboardTab from "./tabs/DashboardTab"
 import HistoryTab from "./tabs/HistoryTab"
 import LogoutModal from "./LogoutModal"
 
 export default function AdminShell({ admin }: { admin: { id: string; username: string } }) {
-  const [tab, setTab] = useState("dashboard")
+  const [tab, setTab] = useState("home")
   const [showLogout, setShowLogout] = useState(false)
 
   return (
@@ -33,6 +34,7 @@ export default function AdminShell({ admin }: { admin: { id: string; username: s
         {/* Main */}
         <div className="flex justify-center">
           <div className="w-full max-w-[720px]">
+            {tab === "home" && <HomeTab />}
             {tab === "dashboard" && <DashboardTab />}
             {tab === "history" && <HistoryTab />}
           </div>

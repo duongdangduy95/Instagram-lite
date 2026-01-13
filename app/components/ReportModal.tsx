@@ -49,13 +49,13 @@ export default function ReportModal({ isOpen, onClose, blogId }: ReportModalProp
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
-      <div className="bg-gray-900 p-6 rounded-xl w-96 text-white">
+      <div className="bg-[#0B0E11] border border-gray-800 p-6 rounded-xl w-96 text-white">
         <h2 className="text-lg font-semibold mb-4">Báo cáo bài viết</h2>
 
         {!success ? (
           <>
             <textarea
-              className="w-full p-2 mb-2 text-black rounded"
+              className="w-full p-2 mb-2 bg-gray-800 border border-gray-700 text-white rounded placeholder:text-gray-400 focus:outline-none focus:border-gray-600"
               rows={4}
               placeholder="Nhập lý do báo cáo..."
               value={reason}
@@ -71,7 +71,7 @@ export default function ReportModal({ isOpen, onClose, blogId }: ReportModalProp
           <button
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600"
+            className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
           >
             {success ? 'Đóng' : 'Hủy'}
           </button>
@@ -79,7 +79,7 @@ export default function ReportModal({ isOpen, onClose, blogId }: ReportModalProp
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600"
+              className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
             >
               {loading ? 'Đang gửi...' : 'Gửi'}
             </button>

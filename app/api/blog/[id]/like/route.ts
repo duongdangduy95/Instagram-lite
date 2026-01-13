@@ -4,6 +4,8 @@ import { NotificationType } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { redis } from '@/lib/redis'
+import { bumpFeedVersion } from '@/lib/cache'
 
 export async function POST(
   req: Request,
@@ -31,26 +33,41 @@ export async function POST(
       where: { userId, blogId },
     })
 
+    let liked: boolean
     if (existingLike) {
       await prisma.like.delete({ where: { id: existingLike.id } })
-      return NextResponse.json({ liked: false })
+      liked = false
+    } else {
+      await prisma.like.create({
+        data: { userId, blogId },
+      })
+      liked = true
+
+      // 🔔 TẠO NOTIFICATION
+      if (blog.authorId !== userId) {
+        await createNotification({
+          userId: blog.authorId,
+          actorId: userId,
+          type: NotificationType.LIKE_POST,
+          blogId,
+        })
+      }
     }
 
-    await prisma.like.create({
-      data: { userId, blogId },
+    // Lấy likeCount từ database để đảm bảo chính xác
+    const likeCount = await prisma.like.count({
+      where: { blogId },
     })
 
-    // 🔔 TẠO NOTIFICATION
-    if (blog.authorId !== userId) {
-      await createNotification({
-        userId: blog.authorId,
-        actorId: userId,
-        type: NotificationType.LIKE_POST,
-        blogId,
-      })
-    }
+    // Invalidate cache chi tiết blog + home feed
+    await Promise.all([
+      redis.del(`blog:detail:${blogId}`),
+      bumpFeedVersion().catch((e) => {
+        console.error('bumpFeedVersion error after like:', e)
+      }),
+    ])
 
-    return NextResponse.json({ liked: true })
+    return NextResponse.json({ liked, likeCount })
   } catch (error) {
     console.error(error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })

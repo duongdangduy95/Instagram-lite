@@ -333,7 +333,7 @@ export default function SignupPage() {
                     <Link href="#" className="text-purple-400 hover:text-purple-300 underline font-medium">
                       Chính sách bảo mật
                     </Link>
-                    {' '} của Instagram Lite *
+                    {' '} của InstaClone *
                   </label>
                 </div>
 
