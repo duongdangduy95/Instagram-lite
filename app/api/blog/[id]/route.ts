@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createClient } from '@supabase/supabase-js'
+import sharp from 'sharp'
 import { Prisma } from '@prisma/client'
 import { redis } from '@/lib/redis'
 import { bumpFeedVersion, bumpMeVersion } from '@/lib/cache'
@@ -222,13 +223,36 @@ export async function PATCH(
 
     for (const file of newFiles) {
       const buffer = Buffer.from(await file.arrayBuffer())
-      const safeName = sanitizeFileName(file.name)
-      const fileName = `posts/${userId}/${Date.now()}-${safeName}`
+      const isImage = (file.type || '').startsWith('image/')
+      const isGif = file.type === 'image/gif'
+
+      let uploadBuffer = buffer
+      const baseName = sanitizeFileName(file.name.replace(/\.[^.]+$/, ''))
+      let uploadName = `${baseName}.${(file.type.split('/')[1] || 'jpg')}`
+      let uploadContentType = file.type
+
+      if (isImage && !isGif) {
+        const compressed = await sharp(buffer)
+          .resize({
+            width: 1280,
+            height: 1280,
+            fit: 'inside',
+            withoutEnlargement: true,
+          })
+          .webp({ quality: 80 })
+          .toBuffer()
+
+        uploadBuffer = compressed
+        uploadName = `${baseName}.webp`
+        uploadContentType = 'image/webp'
+      }
+
+      const fileName = `posts/${userId}/${Date.now()}-${uploadName}`
 
       const { error } = await supabase.storage
         .from('instagram')
-        .upload(fileName, buffer, {
-          contentType: file.type,
+        .upload(fileName, uploadBuffer, {
+          contentType: uploadContentType,
           upsert: false,
         })
 

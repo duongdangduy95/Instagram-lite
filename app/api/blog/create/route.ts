@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { MAX_MEDIA_FILES, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from '@/lib/mediaValidation'
 import { bumpFeedVersion, bumpMeVersion } from '@/lib/cache'
+import sharp from 'sharp'
 
 const prisma = new PrismaClient()
 
@@ -112,18 +113,42 @@ export async function POST(req: Request) {
       )
     )
 
-    // ☁️ Upload ảnh lên Supabase
+    // ☁️ Upload ảnh lên Supabase (nén ảnh trước khi upload)
     const imageUrls: string[] = []
 
     for (const file of files) {
-      const buffer = Buffer.from(await file.arrayBuffer())
-      const ext = file.type.split('/')[1] || 'jpg'
-      const fileName = `posts/${userId}/${Date.now()}-${Math.random()}.${ext}`
+      const arrayBuf = await file.arrayBuffer()
+      const buffer = Buffer.from(arrayBuf)
+      const isImage = (file.type || '').startsWith('image/')
+      const isGif = file.type === 'image/gif'
+
+      let uploadBuffer = buffer
+      let uploadExt = file.type.split('/')[1] || 'jpg'
+      let uploadContentType = file.type
+
+      // Nén ảnh (trừ GIF để tránh mất animation)
+      if (isImage && !isGif) {
+        const compressed = await (sharp as any)(buffer)
+          .resize({
+            width: 1280,
+            height: 1280,
+            fit: 'inside',
+            withoutEnlargement: true,
+          })
+          .webp({ quality: 80 })
+          .toBuffer()
+
+        uploadBuffer = compressed
+        uploadExt = 'webp'
+        uploadContentType = 'image/webp'
+      }
+
+      const fileName = `posts/${userId}/${Date.now()}-${Math.random()}.${uploadExt}`
 
       const { error } = await supabase.storage
         .from('instagram')
-        .upload(fileName, buffer, {
-          contentType: file.type,
+        .upload(fileName, uploadBuffer, {
+          contentType: uploadContentType,
         })
 
       if (error) {
