@@ -1,70 +1,97 @@
 \documentclass[main.tex]{subfiles}
 \begin{document}
 \section{Môi trường phát triển}
+
 \subsection{Yêu cầu phần cứng và phần mềm}
 \begin{itemize}
-    \item Hệ điều hành: Windows/macOS/Linux.
-    \item Node.js: Phiên bản 18.x trở lên (khuyến nghị 20.x).
-    \item Cơ sở dữ liệu: PostgreSQL 14+.
-    \item Trình duyệt: Chrome/Firefox/Edge phiên bản mới nhất.
+    \item \textbf{Hệ điều hành}: Windows 10+, macOS 10.15+, hoặc Linux.
+    \item \textbf{Node.js}: Phiên bản 18.x trở lên (khuyến nghị 20.x hoặc 22.x).
+    \item \textbf{Cơ sở dữ liệu}: PostgreSQL 14+ (sử dụng Supabase là dịch vụ quản lý PostgreSQL trên đám mây).
+    \item \textbf{Trình duyệt}: Chrome, Firefox, Edge, Safari phiên bản mới nhất (hỗ trợ WebSocket).
+    \item \textbf{RAM}: Tối thiểu 4GB, khuyến nghị 8GB.
+    \item \textbf{Dung lượng đĩa}: Tối thiểu 2GB cho dự án và các thư viện phụ thuộc.
 \end{itemize}
 
-\subsection{Công cụ hỗ trợ}
+\subsection{Công cụ hỗ trợ phát triển}
 \begin{itemize}
-    \item \textbf{Visual Studio Code}: Trình soạn thảo mã nguồn chính với các extension hỗ trợ (ESLint, Prettier, Tailwind CSS IntelliSense).
-    \item \textbf{Git \& GitHub}: Quản lý phiên bản mã nguồn.
-    \item \textbf{Postman/Insomnia}: Công cụ kiểm thử API.
-    \item \textbf{Prisma Studio}: Công cụ giao diện (GUI) để xem và quản lý dữ liệu trực tiếp.
+    \item \textbf{Visual Studio Code}: Trình soạn thảo mã nguồn với các extension hỗ trợ như Tailwind CSS IntelliSense, Prisma, GitLens giúp tăng cường khả năng lập trình.
+    \item \textbf{Git và GitHub}: Công cụ quản lý phiên bản mã nguồn, cho phép theo dõi lịch sử thay đổi và làm việc nhóm hiệu quả.
+    \item \textbf{Postman}: Công cụ kiểm thử các yêu cầu API (GET, POST, PATCH, DELETE) để đảm bảo các điểm cuối hoạt động đúng.
+    \item \textbf{Trello}: Công cụ quản lý dự án, theo dõi các công việc và tiến độ hoàn thành của nhóm phát triển.
+    \item \textbf{Google Cloud Console}: Nền tảng để lấy thông tin xác thực Google OAuth (Mã khách hàng, Bí mật khách hàng).
 \end{itemize}
 
 \section{Quy trình xây dựng hệ thống}
+
 \subsection{Khởi tạo và Cấu hình dự án}
 \begin{itemize}
-    \item Khởi tạo dự án Next.js 15 với TypeScript và Tailwind CSS.
-    \item Thiết lập cấu hình biến môi trường (\texttt{.env}) bao gồm: URL cơ sở dữ liệu, khóa bí mật NextAuth, API key của các dịch vụ bên thứ ba (Supabase, Upstash).
+    \item Tải dự án từ GitHub hoặc khởi tạo dự án Next.js 15 mới với lệnh \texttt{npx create-next-app@latest}.
+    \item Cài đặt tất cả các thư viện phụ thuộc bằng \texttt{npm install}.
+    \item Tạo file \texttt{.env.local} dựa trên \texttt{.env.example} và điền các biến môi trường gồm: NextAuth URL và mã bí mật, thông tin xác thực Google OAuth, các khóa Supabase, chuỗi kết nối cơ sở dữ liệu PostgreSQL, thông tin Redis từ Upstash, và cấu hình email SMTP.
 \end{itemize}
 
-\subsection{Xây dựng Cơ sở dữ liệu}
+\subsection{Xây dựng và Cấu hình Cơ sở dữ liệu}
 \begin{itemize}
-    \item Định nghĩa Schema models trong file \texttt{schema.prisma} (User, Blog, Comment, Follow...).
-    \item Thực hiện Migration để đồng bộ cấu trúc bảng vào PostgreSQL.
-    \item Tạo các Seed data mẫu (nếu có) để phục vụ kiểm thử.
+    \item Định nghĩa các mô hình dữ liệu trong file \texttt{prisma/schema.prisma} bao gồm 20+ bảng (Người dùng, Bài viết, Bình luận, Lượt thích, Theo dõi, Tin nhắn, Thông báo, Báo cáo, Nhật ký hành động quản trị viên).
+    \item Tạo PostgreSQL instance trên Supabase và lấy chuỗi kết nối để ghi vào biến DATABASE\_URL.
+    \item Chạy lệnh \texttt{npx prisma migrate dev} để tạo các bảng từ schema đã định nghĩa.
+    \item Tạo Prisma Client bằng \texttt{npx prisma generate} và kiểm tra bằng \texttt{npx prisma studio}.
 \end{itemize}
 
-\subsection{Phát triển Frontend (Client-side)}
+\subsection{Phát triển giao diện người dùng (Frontend)}
 \begin{itemize}
-    \item \textbf{Component Design}: Chia nhỏ giao diện thành các components tái sử dụng (Button, Input, Avatar, PostCard...).
-    \item \textbf{Routing \& Layouts}: Cấu hình File-based Routing trong thư mục \texttt{app/}, sử dụng Layout để duy trì trạng thái của Sidebar/Header qua các trang.
-    \item \textbf{State Management}: Sử dụng React Context (\texttt{CurrentUserContext}) để quản lý thông tin người dùng toàn cục và React Hooks cho logic cục bộ.
-    \item \textbf{Styling}: Áp dụng Tailwind CSS để thiết kế giao diện Responsive.
+    \item Sử dụng React Server Components mặc định để tối ưu hóa tìm kiếm trên công cụ tìm kiếm và tốc độ tải trang ban đầu.
+    \item Sử dụng Client Components cho các phần tương tác (biểu mẫu, nút bấm, cửa sổ hộp thoại, người nghe sự kiện thời gian thực).
+    \item Quản lý trạng thái với React Context để lưu thông tin người dùng hiện tại, các Hook (useState, useEffect) cho logic cục bộ, người nghe kênh Supabase Realtime để cập nhật tin nhắn và thông báo, và kết nối Socket.io cho chỉ báo đang gõ.
+    \item Thiết kế giao diện bằng Tailwind CSS 4 với chủ đề tùy chỉnh, hỗ trợ đáp ứng và các thiết bị khác nhau (di động, máy tính bảng, máy tính để bàn).
 \end{itemize}
 
-\subsection{Phát triển Backend (Server-side)}
+\subsection{Phát triển phần phía máy chủ (Backend)}
 \begin{itemize}
-    \item \textbf{API Routes}: Xây dựng các RESTful endpoints (Route Handlers) để xử lý logic nghiệp vụ (CRUD bài viết, tương tác người dùng).
-    \item \textbf{Server Actions}: Sử dụng Server Actions cho các tác vụ form submission (Đăng ký, Đăng nhập) giúp giảm tải JS gửi về client.
-    \item \textbf{Middleware}: Cài đặt lớp bảo vệ route, kiểm tra token xác thực trước khi cho phép truy cập tài nguyên bảo mật.
+    \item Xây dựng các điểm cuối API tuân theo phong cách RESTful tại \texttt{app/api/*} hỗ trợ các phương thức GET, POST, PATCH, DELETE với xử lý yêu cầu/phản hồi, xác thực lỗi và phản hồi an toàn kiểu.
+    \item Cài đặt middleware để kiểm tra phiên NextAuth trước khi truy cập các tuyến đường được bảo vệ, xác thực OTP qua email cho người dùng mới, và bảo vệ các tuyến đường của quản trị viên.
+    \item Triển khai xác thực bằng Email/Tên người dùng kết hợp với Mật khẩu (mã hóa với bcrypt), Google OAuth 2.0 (thông qua NextAuth.js), và Xác thực OTP 6 chữ số (thời hạn 10 phút).
+    \item Sử dụng Prisma ORM để truy vấn cơ sở dữ liệu an toàn và có kiểu dữ liệu xác định, bao gồm các hoạt động CRUD, các truy vấn với lọc, sắp xếp và phân trang, cũng như các truy vấn quan hệ (tác giả, bình luận, lượt thích, chia sẻ).
+    \item Sử dụng Redis (Upstash) để lưu trữ tạm thời nguồn cấp tin tức của người dùng, dữ liệu hồ sơ, kết quả tìm kiếm, và các khóa bộ nhớ cache có phiên bản để hỗ trợ vô hiệu hóa O(1).
 \end{itemize}
 
-\subsection{Tích hợp Real-time với Socket.io}
+\subsection{Tích hợp tính năng thời gian thực}
 \begin{itemize}
-    \item Cấu hình Socket Server độc lập hoặc tích hợp vào API route.
-    \item Xử lý sự kiện kết nối, gửi/nhận tin nhắn (events \texttt{send-message}, \texttt{new-message}).
-    \item Quản lý trạng thái online/offline của người dùng.
+    \item \textbf{Supabase Realtime}: Người nghe kênh trên bảng Tin nhắn để nhận tin nhắn mới tức thì, người nghe kênh trên bảng Thông báo để nhận cập nhật (lượt thích, bình luận, theo dõi) với khả năng bật/tắt bằng \texttt{supabase.removeChannel()}.
+    \item \textbf{Socket.io Server}: Máy chủ độc lập chạy trên cổng 4000 (khác với cổng Next.js 3000) để xử lý sự kiện chỉ báo đang gõ, phát sóng trạng thái gõ đến các máy khách đang lắng nghe, và quản lý kết nối/ngắt kết nối người dùng.
+    \item \textbf{Email}: Gửi mã OTP xác thực (đăng ký, quên mật khẩu), liên kết đặt lại mật khẩu thông qua Nodemailer, với khả năng mở rộng để gửi thông báo (người theo dõi mới, lượt thích mới, v.v.).
 \end{itemize}
 
-\section{Triển khai (Deployment)}
-\subsection{Quy trình Build}
+\section{Triển khai trên máy chủ}
+
+\subsection{Quy trình biên dịch}
 \begin{itemize}
-    \item Chạy lệnh \texttt{npm run build} để biên dịch mã nguồn Next.js sang bản production tối ưu.
-    \item Kiểm tra các vấn đề về Type checking và Linting trong quá trình build.
+    \item Chạy \texttt{npm run build} để biên dịch mã nguồn Next.js sang bản sản xuất được tối ưu hóa, tạo thư mục \texttt{.next/} chứa đầu ra sẵn sàng sản xuất.
+    \item Kiểm tra các lỗi kiểu dữ liệu và cảnh báo linting trong quá trình biên dịch.
+    \item Chạy \texttt{npm run start} để kiểm tra bản dựng cục bộ trước khi triển khai.
 \end{itemize}
 
-\subsection{Môi trường Production}
+\subsection{Triển khai trên nền tảng Vercel}
 \begin{itemize}
-    \item Triển khai mã nguồn Frontend/Backend lên nền tảng Vercel (được tối ưu cho Next.js).
-    \item Cấu hình biến môi trường trên dashboard của Vercel.
-    \item Kết nối tên miền (Domain) và cấu hình SSL/HTTPS.
+    \item \textbf{Bước 1 - Thiết lập GitHub}: Tạo kho lưu trữ GitHub, đẩy mã lên bằng \texttt{git push}.
+    \item \textbf{Bước 2 - Kết nối Vercel}: Truy cập vercel.com, đăng ký/đăng nhập bằng tài khoản GitHub, nhấn "Dự án mới" hoặc "Nhập dự án", chọn kho lưu trữ GitHub (Instagram-lite).
+    \item \textbf{Bước 3 - Nhập Biến môi trường}: Tại bảng điều khiển Vercel → Cài đặt dự án → Biến môi trường, thêm tất cả các biến từ \texttt{.env.local} bao gồm URL NextAuth (https://your-vercel-domain.vercel.app), mã bí mật NextAuth (tạo ngẫu nhiên, không dùng mã phát triển), thông tin xác thực Google, các khóa Supabase, chuỗi kết nối cơ sở dữ liệu, thông tin Redis, và thông tin email.
+    \item \textbf{Bước 4 - Triển khai}: Nhấn nút "Triển khai", Vercel tự động phát hiện dự án Next.js, chờ 2-5 phút để hoàn tất.
+    \item \textbf{Bước 5 - Xác minh}: Kiểm tra URL được cấp (https://instagram-lite-xxxxx.vercel.app), xem nhật ký triển khai nếu có lỗi, kiểm tra các tính năng chính (đăng ký, đăng nhập, tạo bài viết, tin nhắn).
+\end{itemize}
+
+\subsection{Triển khai máy chủ Socket và Cấu hình tên miền}
+\begin{itemize}
+    \item Triển khai \texttt{socket-server.js} trên Railway hoặc Render.com, đặt cổng = 4000, lệnh khởi động = \texttt{node socket-server.js}, cập nhật URL kết nối máy khách trong mã.
+    \item Vercel tự động cấp chứng chỉ SSL cho miền \texttt{*.vercel.app}, để thêm tên miền tùy chỉnh hãy vào Vercel → Cài đặt → Tên miền, cập nhật các bản ghi DNS từ nhà cung cấp đăng ký tên miền.
+    \item Chạy \texttt{npx prisma migrate deploy} để thực hiện migration sản xuất hoặc để Vercel tự động chạy nếu được cấu hình.
+\end{itemize}
+
+\subsection{Giám sát và Ghi nhật ký}
+\begin{itemize}
+    \item Xem nhật ký chức năng (tuyến API) tại bảng điều khiển Vercel → Tab Triển khai → Nhật ký, kiểm tra nhật ký xây dựng khi có lỗi.
+    \item Giám sát các truy vấn cơ sở dữ liệu, sự kiện thời gian thực từ Supabase, và tình trạng bộ nhớ cache từ Redis (Upstash).
+    \item Sử dụng Phân tích Vercel để theo dõi hiệu suất trang, phiên người dùng, và Bảng điều khiển trình duyệt (công cụ phát triển) để gỡ lỗi mã phía khách hàng.
 \end{itemize}
 
 \end{document}

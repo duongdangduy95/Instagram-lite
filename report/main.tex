@@ -31,7 +31,7 @@
 \usepackage{multirow} % Merge cells
 \usepackage{fancyhdr} % Cho phép tùy biến header và footer
 % \usepackage[natbib,backend=biber,style=ieee]{biblatex} % Giúp chèn tài liệu tham khảo
-
+\usepackage{longtable}
 \usepackage{listings}
 \usepackage{float}
 
@@ -202,28 +202,54 @@
 \subfile{Chapter/0_2_Phan_cong_nhiem_vu.tex} 
 
 %Tạo danh mục hình vẽ.
-\renewcommand{\listfigurename}{\large{DANH MỤC HÌNH VẼ}}
-{\let\oldnumberline\numberline
-\renewcommand{\numberline}{Hình~\oldnumberline}
-\listoffigures}
-\phantomsection\addcontentsline{toc}{chapter}{DANH MỤC HÌNH VẼ}
+\newpage % Ngắt trang để bắt đầu trang danh mục tổng hợp
+
+% Bắt đầu nhóm lệnh gộp trang
+\begingroup
+\let\clearpage\relax % Vô hiệu hóa lệnh ngắt trang
+\let\cleardoublepage\relax % Vô hiệu hóa ngắt trang đôi (nếu có)
+
+    % ----------------------------------------------------------
+    % DANH MỤC HÌNH VẼ
+    % ----------------------------------------------------------
+    \phantomsection
+    \addcontentsline{toc}{chapter}{DANH MỤC HÌNH VẼ}
+    \renewcommand{\listfigurename}{\large{DANH MỤC HÌNH VẼ}}
+    {
+        \let\oldnumberline\numberline
+        \renewcommand{\numberline}{Hình~\oldnumberline}
+        \listoffigures
+    }
+
+    \vspace{2cm} % Khoảng cách giữa Danh mục hình và Danh mục bảng (Tùy chỉnh)
+
+    % ----------------------------------------------------------
+    % DANH MỤC BẢNG BIỂU
+    % ----------------------------------------------------------
+    \phantomsection
+    \addcontentsline{toc}{chapter}{DANH MỤC BẢNG BIỂU}
+    \renewcommand{\listtablename}{\large{DANH MỤC BẢNG BIỂU}}
+    {
+        \let\oldnumberline\numberline
+        \renewcommand{\numberline}{Bảng~\oldnumberline}
+        \listoftables
+    }
+
+    \vspace{2cm} % Khoảng cách giữa Danh mục bảng và Thuật ngữ (Tùy chỉnh)
+
+    % ----------------------------------------------------------
+    % DANH MỤC THUẬT NGỮ
+    % ----------------------------------------------------------
+    % \glsaddall 
+    % % \renewcommand*{\glossaryname}{Danh sách thuật ngữ}
+    % \renewcommand*{\acronymname}{DANH MỤC THUẬT NGỮ VÀ TỪ VIẾT TẮT}
+    % \renewcommand*{\entryname}{Thuật ngữ}
+    % \renewcommand*{\descriptionname}{Ý nghĩa}
+    % \par
+    % \printnoidxglossary[type=acronym]
+% Kết thúc nhóm lệnh, trả lại tính năng ngắt trang bình thường cho các chương sau
+\endgroup 
 \newpage
-
-
- %Tạo danh mục bảng biểu.
-\renewcommand{\listtablename}{\large{DANH MỤC BẢNG BIỂU}}
-{\let\oldnumberline\numberline
-\renewcommand{\numberline}{Bảng~\oldnumberline}
-\listoftables}
-\phantomsection\addcontentsline{toc}{chapter}{DANH MỤC BẢNG BIỂU}
-
-\glsaddall 
-% \renewcommand*{\glossaryname}{Danh sách thuật ngữ}
-\renewcommand*{\acronymname}{\large{DANH MỤC THUẬT NGỮ VÀ TỪ VIẾT TẮT}}
-\renewcommand*{\entryname}{Thuật ngữ}
-\renewcommand*{\descriptionname}{Ý nghĩa}
-\printnoidxglossaries
-\phantomsection\addcontentsline{toc}{chapter}{DANH MỤC THUẬT NGỮ VÀ TỪ VIẾT TẮT}
 
 \renewcommand\appendixname{PHỤ LỤC}
 \renewcommand\appendixpagename{PHỤ LỤC}
@@ -250,14 +276,13 @@
 
 \newpage
 %\pagestyle{fancy} % Áp dụng header và footer
-\chapter{CÔNG NGHỆ SỬ DỤNG}
-\subfile{Chapter/2_Cong_nghe_su_dung.tex}
-
+\chapter{PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG}
+\subfile{Chapter/3_Phan_tich_va_thiet_ke.tex}
 
 \newpage
 %\pagestyle{fancy} % Áp dụng header và footer
-\chapter{PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG}
-\subfile{Chapter/3_Phan_tich_va_thiet_ke.tex}
+\chapter{CÔNG NGHỆ SỬ DỤNG}
+\subfile{Chapter/2_Cong_nghe_su_dung.tex}
 
 \newpage
 %\pagestyle{fancy} % Áp dụng header và footer
@@ -274,15 +299,12 @@
 \subfile{Chapter/6_Ket_luan.tex}
 \newpage
 %\pagestyle{fancy} % Áp dụng header và footer
-\chapter*{TÀI LIỆU THAM KHẢO}
-\label{chapter:reference}
+\phantomsection
+\addcontentsline{toc}{chapter}{TÀI LIỆU THAM KHẢO}
+\renewcommand\bibname{TÀI LIỆU THAM KHẢO}
 \subfile{Chapter/7_Tai_lieu_tham_khao.tex}
 
 % ===================================================
-\newpage
-\renewcommand\bibname{TÀI LIỆU THAM KHẢO}
-\printbibliography
-\phantomsection\addcontentsline{toc}{chapter}{TÀI LIỆU THAM KHẢO}
 
 % Comment out appendix section that causes errors
 % \appendixpage

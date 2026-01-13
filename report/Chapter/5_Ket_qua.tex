@@ -4,34 +4,118 @@
 \subsection{Màn hình xác thực và định danh}
 \begin{itemize}
     \item Giao diện Đăng nhập / Đăng ký: Thiết kế tối giản, tập trung vào trải nghiệm người dùng với các validation form rõ ràng.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_1_1_Dang_nhap.png}
+        \caption{Giao diện Đăng nhập}
+    \end{figure}
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_1_2_Dang_ky.png}
+        \caption{Giao diện Đăng ký}
+    \end{figure}
+    \item Giao diện Quên mật khẩu: Hướng dẫn người dùng qua các bước lấy lại mật khẩu thông qua email.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_1_3_Quen_mk.png}
+        \caption{Giao diện Quên mật khẩu}
+    \end{figure}
+    \item Giao diện Đặt lại mật khẩu: Cho phép người dùng tạo mật khẩu mới sau khi xác thực thành công.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_1_4_Dat_mk.png}
+        \caption{Giao diện Đặt lại mật khẩu}
+    \end{figure}
     \item Giao diện Xác thực OTP: Quy trình xác nhận email để kích hoạt tài khoản.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_1_5_OTP.png}
+        \caption{Giao diện Xác thực OTP}
+    \end{figure}
 \end{itemize}
 
 \subsection{Màn hình chính (Newsfeed)}
 \begin{itemize}
-    \item Hiển thị danh sách bài viết từ người dùng đang theo dõi và các nội dung đề xuất.
-    \item Tích hợp tính năng cuộn vô hạn (Infinite Scroll) để xem nội dung liền mạch.
-    \item Các nút tương tác trực quan: Thả tim, Bình luận, Chia sẻ.
+    \item Hiển thị danh sách bài viết từ người dùng và các nội dung đề xuất. 
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_2_1_home.png}
+        \caption{Giao diện Newsfeed}
+    \end{figure}
+    \item Chức năng đăng bài viết mới với hình ảnh/video cùng với âm thanh và mô tả.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_2_2_Dang_bai.png}
+        \caption{Giao diện Đăng bài viết mới}
+    \end{figure}
+    \item Xem bài viết với các nút tương tác trực quan: Thả tim, Bình luận, Chia sẻ.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_2_3_Xem_bai.png}
+        \caption{Giao diện Xem bài viết}
+    \end{figure}
 \end{itemize}
 
 \subsection{Màn hình Khám phá \& Tìm kiếm}
 \begin{itemize}
     \item Grid view hiển thị hình ảnh/video thịnh hành.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_3_1_Kham_pha.png}
+        \caption{Giao diện Khám phá}
+    \end{figure}
     \item Thanh tìm kiếm hỗ trợ tìm theo tên người dùng hoặc Hashtag (\#).
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_3_2_Tim_kiem.png}
+        \caption{Giao diện Tìm kiếm}
+    \end{figure}
 \end{itemize}
 
 \subsection{Màn hình Nhắn tin (Chat)}
 \begin{itemize}
-    \item Danh sách các cuộc hội thoại gần đây.
-    \item Khung chat thời gian thực với trạng thái gửi/đã xem.
-    \item Tốc độ phản hồi tin nhắn tức thì nhờ kết nối WebSocket.
+    \item Danh sách các cuộc hội thoại gần đây. Khung chat thời gian thực với trạng thái gửi/đã xem.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_4_1_Nhan_tin.png}
+        \caption{Giao diện Nhắn tin}
+    \end{figure}
 \end{itemize}
 
 \subsection{Trang cá nhân (Profile)}
 \begin{itemize}
-    \item Hiển thị thông tin tổng quan: Avatar, Bio, số lượng người theo dõi/đang theo dõi.
-    \item Grid các bài viết cá nhân và tab bài viết đã lưu.
-    \item Chức năng chỉnh sửa thông tin cá nhân.
+    \item Hiển thị thông tin tổng quan: Avatar, số lượng người theo dõi/đang theo dõi, cùng với grid các bài viết cá nhân tab bài viết đã lưu, đã chia sẻ, đã thích.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_5_1_Profile.png}
+        \caption{Giao diện Trang cá nhân}
+    \end{figure}
+\end{itemize}
+
+\subsection{Chỉnh sửa thông tin}
+\begin{itemize}
+    \item Giao diện chỉnh sửa thông tin cá nhân: Cho phép người dùng cập nhật avatar, tên hiển thị, số điện thoại.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_6_1_Update_profile.png}
+        \caption{Giao diện Chỉnh sửa thông tin cá nhân}
+    \end{figure}
+    \item Giao diện thay đổi mật khẩu: Yêu cầu nhập mật khẩu cũ và xác nhận mật khẩu mới.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_6_2_Change_password.png}
+        \caption{Giao diện Thay đổi mật khẩu}
+    \end{figure}
+\end{itemize}
+
+\subsection{Giao diện Admin}
+\begin{itemize}
+    \item Quản lý người dùng: Xem danh sách các bài viết được báo cáo.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{figures/5_7_1_Admin.png}
+        \caption{Giao diện trang của Admin}
+    \end{figure}
 \end{itemize}
 
 \section{Đánh giá chức năng}
@@ -41,6 +125,13 @@
     \item \textbf{Đăng bài viết}: Đảm bảo hình ảnh được upload thành công lên Storage và dữ liệu bài viết hiển thị đúng trên Newsfeed.
     \item \textbf{Tương tác}: Kiểm tra tính đồng bộ số lượng like/comment giữa các người dùng khác nhau.
     \item \textbf{Real-time}: Kiểm tra độ trễ của tin nhắn và thông báo trên 2 thiết bị khác nhau.
+    \item \textbf{Tìm kiếm}: Đảm bảo kết quả tìm kiếm trả về đúng người dùng và hashtag liên quan.
+    \item \textbf{Quản lý tài khoản}: Kiểm tra việc cập nhật thông tin cá nhân và thay đổi mật khẩu có được lưu đúng trong cơ sở dữ liệu.
+    \item \textbf{Chức năng Admin}: Đảm bảo admin có thể xem và xóa các bài viết vi phạm được báo cáo.
+    \item \textbf{Bảo mật}: Kiểm tra các lỗ hổng bảo mật cơ bản như SQL Injection, XSS, và bảo vệ dữ liệu người dùng.
+    \item \textbf{Tương thích thiết bị}: Đảm bảo giao diện hoạt động tốt trên các trình duyệt phổ biến và thiết bị di động.
+    \item \textbf{Khôi phục lỗi}: Kiểm tra quy trình khôi phục mật khẩu qua email hoạt động chính xác.
+    \item \textbf{Xác thực OTP}: Đảm bảo mã OTP được gửi và xác thực đúng trong thời gian quy định.
 \end{itemize}
 
 \subsection{Kết quả đạt được}

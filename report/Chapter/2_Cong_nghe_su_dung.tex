@@ -1,16 +1,17 @@
 \documentclass[main.tex]{subfiles}
 \begin{document}
 \section{Frontend}
-Dự án sử dụng các công nghệ hiện đại nhất trong hệ sinh thái React để xây dựng giao diện người dùng tương tác, hiệu năng cao và dễ bảo trì:
+Dự án sử dụng các công nghệ trong hệ sinh thái React để xây dựng giao diện người dùng tương tác, hiệu năng cao và dễ bảo trì:
 
 \begin{itemize}
     \item \textbf{Next.js 15}: Framework React full-stack mạnh mẽ, được sử dụng làm nền tảng chính cho ứng dụng. Dự án tận dụng tính năng App Router mới nhất để quản lý routing, Server Components để tối ưu hóa hiệu suất render, và Server Actions để xử lý logic backend trực tiếp từ component.
-    \item \textbf{React 19}: Thư viện JavaScript cốt lõi để xây dựng giao diện người dùng theo tư duy component-based. Phiên bản 19 mang lại các cải tiến về hiệu suất và tính năng concurrent rendering.
+    \item \textbf{React 19}: Thư viện JavaScript cốt lõi để xây dựng giao diện người dùng theo tư duy component-based. 
     \item \textbf{TypeScript}: Ngôn ngữ lập trình siêu tập hợp của JavaScript, giúp phát hiện lỗi tĩnh trong quá trình phát triển (static typing), tăng cường tính an toàn và khả năng bảo trì của mã nguồn.
-    \item \textbf{Tailwind CSS 4}: Framework CSS ưu tiên tiện ích (utility-first), cho phép xây dựng giao diện nhanh chóng và nhất quán ngay trong lớp markup. Phiên bản 4 (đang phát triển hoặc mới phát hành) mang lại hiệu năng build tốt hơn.
+    \item \textbf{Tailwind CSS 4}: Framework CSS ưu tiên tiện ích, cho phép xây dựng giao diện nhanh chóng và nhất quán ngay trong lớp markup.
     \item \textbf{Thư viện UI \& Tiện ích}:
     \begin{itemize}
         \item \textbf{Framer Motion}: Thư viện xử lý animation mượt mà cho các hiệu ứng chuyển cảnh và tương tác.
+        \item \textbf{clsx}: Utility quản lý class names điều kiện.
         \item \textbf{date-fns}: Thư viện giúp xử lý và định dạng thời gian một cách đơn giản và nhất quán.
     \end{itemize}
 \end{itemize}
@@ -19,23 +20,30 @@ Dự án sử dụng các công nghệ hiện đại nhất trong hệ sinh thá
 Phần Backend được tích hợp trực tiếp trong Next.js (Serverless/Edge functions) kết hợp với các dịch vụ chuyên biệt:
 
 \begin{itemize}
-    \item \textbf{Node.js}: Môi trường runtime JavaScript phía server.
-    \item \textbf{NextAuth.js (v4)}: Giải pháp xác thực toàn diện, hỗ trợ đăng nhập qua mạng xã hội (Google, GitHub) và tài khoản mật khẩu (Credentials), quản lý session an toàn.
-    \item \textbf{Socket.io}: Thư viện WebSocket giúp xây dựng tính năng thời gian thực (Real-time). Được sử dụng cho hệ thống nhắn tin (chat) và thông báo (notifications) tức thì.
+    \item \textbf{Node.js}: Môi trường runtime JavaScript phía server(tích hợp trong Next.js).
+    \item \textbf{Next.js API Routes}: Hệ thống routing API RESTful cho backend serverless.
+    \item \textbf{NextAuth.js (v4)}: Giải pháp xác thực toàn diện, hỗ trợ đăng nhập qua mạng xã hội (Google OAuth) và tài khoản mật khẩu (Credentials), quản lý session an toàn.
+    \item \textbf{Socket.io}: Thư viện WebSocket giúp xây dựng tính năng thời gian thực (Real-time). Dùng cho tính năng nhắn tin.
+    \item \textbf{Supabase realtime}: Subscriptions real-time cho database. Dùng cho tính năng thông báo và nhắn tin
     \item \textbf{Prisma ORM}: Object-Relational Mapping (ORM) hiện đại giúp tương tác với cơ sở dữ liệu một cách trực quan, an toàn kiểu dữ liệu (type-safe) và dễ dàng quản lý schema.
     \item \textbf{Modules hỗ trợ}:
     \begin{itemize}
         \item \textbf{Bcrypt}: Mã hóa mật khẩu người dùng để đảm bảo bảo mật.
         \item \textbf{Nodemailer}: Dịch vụ gửi email (xác thực, quên mật khẩu...).
+        \item \textbf{JsonWebToken}: Tạo và xác minh JWT tokens cho authentication.
+        \item \textbf{Cookie}: Quản lý cookies an toàn.
+        \item \textbf{Axios}: HTTP client để gọi API.
+        \item \textbf{UUID}: Tạo ra các định danh không trùng lặp.
     \end{itemize}
 \end{itemize}
 
-\section{Cơ sở dữ liệu và Lưu trữ}
+\section{Cơ sở dữ liệu và Triển khai}
 Hệ thống sử dụng kiến trúc dữ liệu đa tầng với sự hỗ trợ mạnh mẽ từ nền tảng đám mây Supabase:
 
 \begin{itemize}
     \item \textbf{Supabase (PostgreSQL)}: Cung cấp cơ sở dữ liệu PostgreSQL dưới dạng dịch vụ (Database-as-a-Service). Đây là nơi lưu trữ toàn bộ dữ liệu có cấu trúc của ứng dụng (User, Blog, Comment...).
     \item \textbf{Redis (Upstash)}: Cơ sở dữ liệu in-memory dạng key-value. Được sử dụng để caching dữ liệu, quản lý session hiệu suất cao, và hỗ trợ các tính năng cần tốc độ truy xuất nhanh.
     \item \textbf{Supabase Storage}: Dịch vụ lưu trữ đối tượng (Object Storage). Được sử dụng để lưu trữ các tệp tin media như ảnh đại diện, ảnh bài viết do người dùng tải lên, giúp giảm tải cho server chính.
+    \item \textbf{Vercel}: Nền tảng triển khai đám mây được tối ưu cho các ứng dụng Next.js.
 \end{itemize}
 \end{document}

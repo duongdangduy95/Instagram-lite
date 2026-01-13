@@ -5,51 +5,99 @@
     \large \textbf{PHÂN CÔNG NHIỆM VỤ}
 \end{center}
 
+\section*{Bảng phân công nhiệm vụ}
+
 \begin{table}[H]
     \centering
-    \begin{tabular}{|c|c|c|l|c|}
+    \small 
+    \setlength{\tabcolsep}{5pt} 
+    \renewcommand{\arraystretch}{1.3} 
+
+    \begin{tabular}{|p{4cm}|c|p{9cm}|c|}
         \hline
-        \textbf{STT} & \textbf{Họ và tên} & \textbf{MSSV} & \textbf{Nhiệm vụ được giao} & \textbf{Hoàn thành} \\
+        \textbf{Họ và tên} & \textbf{MSSV} & \centering\textbf{Nhiệm vụ được giao} & \textbf{Hoàn thành} \\
         \hline
-        1 & Nguyễn Huy Được & 20225297 & 
-        \begin{minipage}[t]{6cm}
-            \begin{itemize}
-                \item 
-                \item 
-                \item 
-            \end{itemize}
-        \end{minipage} & 100\% \\
+        
+        Nguyễn Huy Được & 20225297 & 
+        % before=\vspace*{-0.6\baselineskip}: Kéo danh sách lên trên để ngang với tên
+        \begin{itemize}[nosep, leftmargin=1em, before=\vspace*{-0.6\baselineskip}]
+            \item Cùng tham gia thiết kế kiến trúc tổng thể hệ thống.
+            \item Phát triển cơ sở dữ liệu và xây dựng schema với Prisma.
+            \item Xây dựng các API backend chính cho chức năng người dùng (đăng ký, đăng nhập, xác thực quản lý tài khoản).
+            \item Cùng phát triển giao diện và backend.
+            \item Kiểm thử các chức năng cơ bản, yêu cầu bảo mật và hoàn thiện hệ thống.
+            \item Quản lý dự án, tổng hợp báo cáo tiến độ.
+        \end{itemize}
+        & 100\% \\
         \hline
-        2 & Trần Hoàng Dương & 20225184 & 
-        \begin{minipage}[t]{6cm}
-            \begin{itemize}
-                \item 
-                \item 
-                \item 
-            \end{itemize}
-        \end{minipage} & 100\% \\
+        
+        Trần Hoàng Dương & 20225184 & 
+        \begin{itemize}[nosep, leftmargin=1em, before=\vspace*{-0.6\baselineskip}]
+            \item Cùng tham gia thiết kế kiến trúc tổng thể hệ thống.
+            \item Phụ trách chính về Frontend, UI/UX, tối ưu trải nghiệm người dùng.
+            \item Xây dựng chức năng khám phá người dùng gợi ý theo dõi.
+            \item Phát triển thêm tính năng thêm âm nhạc vào bài viết.
+            \item Xây dựng yêu cầu bảo mật.
+            \item Kiểm thử và hoàn thiện giao diện người dùng.
+        \end{itemize}
+        & 100\% \\
         \hline
-        3 & Dương Đăng Duy & 20225185 & 
-        \begin{minipage}[t]{6cm}
-            \begin{itemize}
-                \item 
-                \item 
-                \item 
-            \end{itemize}
-        \end{minipage} & 100\% \\
+        
+        Dương Đăng Duy & 20225185 & 
+        \begin{itemize}[nosep, leftmargin=1em, before=\vspace*{-0.6\baselineskip}]
+            \item Cùng tham gia thiết kế kiến trúc tổng thể hệ thống.
+            \item Phụ trách chính về Backend, API.
+            \item Triển khai cơ sở dữ liệu và quản lý dữ liệu, triển khai hệ thống trực tuyến.
+            \item Xây dựng các chức năng cơ bản của hệ thống: Nhắn tin, Tương tác bài viết, Thông báo.
+            \item Xây dựng chức năng real-time với Socket.io và Supabase Realtime.
+            \item Cải thiện hiệu năng hệ thống với Redis (Upstash).
+        \end{itemize}
+        & 100\% \\
         \hline
-        4 & Đinh Ngọc Duyên & 20225124 & 
-        \begin{minipage}[t]{6cm}
-            \begin{itemize}
-                \item 
-                \item 
-                \item 
-            \end{itemize}
-        \end{minipage} & 100\% \\
+        
+        Đinh Ngọc Duyên & 20225124 & 
+        \begin{itemize}[nosep, leftmargin=1em, before=\vspace*{-0.6\baselineskip}]
+            \item Cùng tham gia thiết kế kiến trúc tổng thể hệ thống.
+            \item Phát triển các chức năng tìm kiếm, hashtag.
+            \item Xây dựng chức năng báo cáo bài viết vi phạm và quản lý nội dung cho admin.
+            \item Xây dựng chức năng bình luận.
+            \item Cùng phát triển giao diện và backend.
+            \item Kiểm thử và hoàn thiện hệ thống.
+        \end{itemize}
+        & 100\% \\
         \hline
     \end{tabular}
-    \caption{Bảng phân công nhiệm vụ thành viên nhóm 9}
+    \caption{Bảng phân công nhiệm vụ thành viên nhóm}
     \label{tab:task_assignment}
 \end{table}
+
+\vspace{0.8cm}   % tạo khoảng cách giữa bảng và nội dung bên dưới
+
+\noindent
+\section*{Công cụ hỗ trợ quản lý dự án}
+
+\begin{itemize}
+    \item \textbf{Công cụ quản lý dự án:} Github
+    \begin{itemize}
+        \item Link Github dự án: https://github.com/duongdangduy95/Instagram-lite
+    \end{itemize}
+    
+    \item \textbf{Công cụ trao đổi thông tin và phân chia nhiệm vụ:} Google Meet, Trello
+    \begin{itemize}
+        \item Link Trello: https://trello.com/b/POawf0uG/btl-web
+    \end{itemize}
+\end{itemize}
+
+\vspace{0.8cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/commit.png}
+    \caption{Thống kê commits Github của mỗi thành viên}
+    \label{fig:github_commit}
+\end{figure}
+
+    
+    
+
 
 \end{document}

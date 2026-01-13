@@ -2,11 +2,11 @@
 \begin{document}
 \section{Phân tích yêu cầu hệ thống}
 
-\subsection{Xác định tác nhân (Actors)}
+\subsection{Xác định tác nhân}
 Hệ thống được thiết kế phục vụ hai nhóm tác nhân chính:
 \begin{itemize}
-    \item \textbf{Khách (Guest):} Người dùng chưa đăng nhập vào hệ thống. Quyền hạn bị hạn chế, chỉ có thể thực hiện các thao tác cơ bản như Đăng ký, Đăng nhập hoặc xem các trang công khai (nếu được cấu hình).
-    \item \textbf{Thành viên (Authenticated User):} Người dùng đã có tài khoản và đăng nhập thành công. Có toàn quyền sử dụng các tính năng mạng xã hội của hệ thống.
+    \item \textbf{Người dùng (User):} Là người đã đăng ký tài khoản và đăng nhập vào hệ thống. Người dùng có thể tạo và quản lý hồ sơ cá nhân, đăng tải bài viết (hình ảnh, video), tương tác với bài viết của người khác thông qua like, bình luận, theo dõi (follow) và nhắn tin.
+    \item \textbf{Quản trị viên (Admin):} Là người có quyền quản lý hệ thống. Quản trị viên có thể kiểm duyệt nội dung, xử lý các báo cáo vi phạm nhằm đảm bảo hoạt động an toàn và phù hợp tiêu chuẩn.
 \end{itemize}
 
 \subsection{Yêu cầu chức năng}
@@ -14,30 +14,40 @@ Dựa trên hiện trạng mã nguồn, các yêu cầu chức năng được ph
 
 \subsubsection{Phân hệ Quản lý tài khoản (Authentication)}
 \begin{itemize}
-    \item \textbf{Đăng ký (Sign up):} Cho phép người dùng tạo tài khoản mới bằng email. Hệ thống kiểm tra tính duy nhất của email và yêu cầu xác thực qua mã OTP gửi về email.
-    \item \textbf{Đăng nhập (Sign in):} Hỗ trợ đăng nhập bằng Email/Mật khẩu hoặc tài khoản Google (OAuth 2.0).
+    \item \textbf{Đăng ký:} Cho phép người dùng tạo tài khoản mới bằng email. Hệ thống kiểm tra tính duy nhất của email và yêu cầu xác thực qua mã OTP gửi về email.
+    \item \textbf{Đăng nhập:} Hỗ trợ đăng nhập bằng Email/Mật khẩu hoặc tài khoản Google.
+    \item \textbf{Xác thực Email:} Gửi mã OTP 6 chữ số về email sau khi đăng ký và mã OTP hết hạn sau 10 phút.
     \item \textbf{Quên mật khẩu:} Quy trình gửi liên kết hoặc mã OTP để đặt lại mật khẩu khi người dùng quên.
-    \item \textbf{Cập nhật thông tin (Update Profile):} Cho phép người dùng thay đổi ảnh đại diện (Avatar), tên hiển thị (Display Name), và tiểu sử (Bio).
+    \item \textbf{Đặt lại Mật khẩu:} Người dùng nhập mật khẩu mới thông qua link trong email.
+    \item \textbf{Đổi Mật khẩu:} Người dùng đã đăng nhập có thể đổi mật khẩu.
+    \item \textbf{Đăng nhập admin:} Admin sử dụng username + mật khẩu riêng biệt.
+    \item \textbf{Cập nhật thông tin (Update Profile):} Cho phép người dùng thay đổi ảnh đại diện (Avatar), tên hiển thị (Display Name).
 \end{itemize}
 
 \subsubsection{Phân hệ Mạng xã hội (Social Features)}
 \begin{itemize}
     \item \textbf{Quản lý bài viết (Blog/Post):}
         \begin{itemize}
-            \item Tạo bài viết mới với nội dung văn bản và hình ảnh (hỗ trợ upload nhiều ảnh).
+            \item Tạo bài viết mới với nội dung văn bản kèm theo đó là hình ảnh, video và nhạc(hỗ trợ upload nhiều nội dung đa phương tiện).
             \item Hiển thị danh sách bài viết trên Newsfeed theo thời gian thực (từ mới đến cũ).
             \item Lưu bài viết vào danh sách yêu thích cá nhân (Saved Posts).
         \end{itemize}
     \item \textbf{Tương tác (Interaction):}
         \begin{itemize}
-            \item Thả tim (Like) hoặc bỏ tim bài viết và bình luận.
+            \item Thả tim (Like) và bỏ tim bài viết hoặc bình luận.
             \item Bình luận (Comment) và trả lời bình luận (Reply) tại các bài viết.
             \item Chia sẻ (Share) bài viết công khai.
+            \item Lưu (Save) bài viết về tài khoản của mình.
+            \item Báo cáo (Report) các bài viết mà cảm thấy là vi phạm.
+            \item Chỉnh sửa (Edit) bài viết của bản thân.
+            \item Xóa (Delete) bài viết của bản thân hoặc quản trị viên xóa bài vi phạm.
+            \item Xem (View) chi tiết về bài viết bản thân hứng thú.
         \end{itemize}
     \item \textbf{Kết nối người dùng (Follow System):}
         \begin{itemize}
             \item Theo dõi (Follow) và Hủy theo dõi (Unfollow) người dùng khác.
             \item Xem danh sách người theo dõi mình (Followers) và người mình đang theo dõi (Following).
+            \item Xem hồ sơ người dùng khác hoặc hồ sơ bản thân.
         \end{itemize}
 \end{itemize}
 
@@ -45,101 +55,413 @@ Dựa trên hiện trạng mã nguồn, các yêu cầu chức năng được ph
 \begin{itemize}
     \item \textbf{Tin nhắn (Messaging):}
         \begin{itemize}
-            \item Gửi và nhận tin nhắn văn bản, hình ảnh trong thời gian thực (Real-time).
+            \item Gửi và nhận tin nhắn văn bản, hình ảnh, tệp trong thời gian thực (Real-time).
             \item Hiển thị trạng thái "Đang nhập..." (Typing indicator).
             \item Hiển thị danh sách các đoạn hội thoại gần đây.
+            \item Chia ra loại tin nhắn khi chưa follow(tin nhắn chờ) và đã follow nhau.
         \end{itemize}
     \item \textbf{Thông báo (Notifications):}
         \begin{itemize}
-            \item Nhận thông báo khi có người Like, Comment vào bài viết của mình.
+            \item Nhận thông báo khi có người Like, Comment, Share bài viết của mình.
             \item Nhận thông báo khi có người mới theo dõi.
+            \item Nhận thông báo khi người mình theo dõi đăng bài.
+            \item Nhận thông báo khi có người phản hồi comment.
+            \item Nhận thông báo khi bài viết bị quản trị viên xóa.
             \item Thông báo được cập nhật tức thì không cần tải lại trang.
         \end{itemize}
 \end{itemize}
 
-\subsubsection{Phân hệ Tìm kiếm \& Khám phá}
+\subsubsection{Phân hệ Tìm kiếm, Khám phá \& Hashtag}
 \begin{itemize}
-    \item \textbf{Tìm kiếm (Search):} Tìm kiếm người dùng theo tên đăng nhập hoặc tên hiển thị. Tìm kiếm bài viết thông qua Hashtag.
+    \item \textbf{Tìm kiếm (Search):} Tìm kiếm người dùng theo tên đăng nhập hoặc tên hiển thị.
     \item \textbf{Khám phá (Explore):} Gợi ý các bài viết nổi bật hoặc ngẫu nhiên từ cộng đồng để tăng tính tương tác.
+    \item \textbf{Hashtag:} Tự động trích xuất hashtag từ caption, khi nhấn vào hashtag sẽ hiện ra các bài viết có hashtag đấy.
+\end{itemize}
+
+\subsubsection{Phân hệ quản trị}
+\begin{itemize}
+    \item \textbf{Phê duyệt Báo cáo:} Quản trị viên có thể tương tác với các báo cáo mà người dùng báo cáo như bỏ qua báo cáo hoặc xóa bài viết bị báo cáo.
+    \item \textbf{Lịch sử:} Quản trị viên có thể xem được toàn bộ thao tác của mình đối với các báo cáo.
 \end{itemize}
 
 \subsection{Yêu cầu phi chức năng}
 \begin{itemize}
-    \item \textbf{Hiệu năng:} Thời gian phản hồi cho các thao tác thông thường (like, comment) phải nhanh. Tính năng chat phải đạt độ trễ thấp (Real-time).
-    \item \textbf{Bảo mật:} Mật khẩu người dùng phải được mã hóa. API phải có cơ chế xác thực (Authentication) và phân quyền (Authorization) chặt chẽ. Phải có biện pháp chống tấn công phổ biến (SQL injection, XSS, CSRF ...).
-    \item \textbf{Giao diện:} Thiết kế Responsive, hiển thị tốt trên cả Desktop, Tablet và Mobile.
+    \item \textbf{Tính Hiệu năng:} Hệ thống phải hoạt động ổn định khi có nhiều người dùng truy cập đồng thời. Thời gian phản hồi cho các thao tác thông thường (like, comment) phải nhanh. Tính năng chat phải đạt độ trễ thấp (Real-time).
+    \item \textbf{Tính Bảo mật:} Mật khẩu người dùng phải được mã hóa. API phải có cơ chế xác thực (Authentication) và phân quyền (Authorization) chặt chẽ. Phải có biện pháp chống tấn công phổ biến (SQL injection, XSS, CSRF ...).
+    \item \textbf{Tính thân thiện:} 
+    Giao diện người dùng cần được thiết kế trực quan, đơn giản và dễ thao tác, phù hợp với nhiều đối tượng người dùng. Các chức năng như đăng bài, xem ảnh, tương tác và quản lý tài khoản phải được bố trí hợp lý nhằm nâng cao trải nghiệm người dùng.
+    \item \textbf{Khả năng mở rộng:} 
+    Kiến trúc hệ thống cần được thiết kế theo hướng mô-đun, cho phép dễ dàng mở rộng và nâng cấp trong tương lai, chẳng hạn như bổ sung chức năng livestream, story, gợi ý bạn bè hoặc quảng cáo mà không ảnh hưởng đến hoạt động hiện tại của hệ thống.
+    \item \textbf{Khả năng tương thích đa nền tảng:} 
+    Hệ thống phải hoạt động tốt trên nhiều thiết bị và nền tảng khác nhau như máy tính để bàn, máy tính bảng và điện thoại di động. Giao diện phải hỗ trợ Responsive Design để hiển thị phù hợp với các kích thước màn hình khác nhau.
 \end{itemize}
+
 
 \section{Mô hình hóa hệ thống}
 \subsection{Biểu đồ Use case tổng quan}
-
+% \setcounter{figure}{1}
+% \renewcommand{\thefigure}{\arabic{figure}}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{figures/usecase.png}
+    \caption{Sơ đồ Usecase tổng quan}
+    \label{fig:usecase_overview}
+\end{figure}
 
 \subsection{Đặc tả Use case chi tiết}
+
+Biểu đồ Use case tổng quan ở Hình 2 mô tả các tác nhân và các chức năng chính của hệ thống mạng xã hội. Hệ thống được thiết kế phục vụ hai tác nhân chính là \textbf{User} và \textbf{Admin}, với phạm vi quyền hạn và chức năng khác nhau nhằm đảm bảo tính linh hoạt, an toàn và hiệu quả trong quá trình vận hành.
+
+\subsubsection*{Tác nhân User}
+
+User (Người dùng) là người đã đăng ký tài khoản và đăng nhập vào hệ thống. User là tác nhân trung tâm của hệ thống mạng xã hội, thực hiện hầu hết các hoạt động liên quan đến nội dung và tương tác. Các nhóm chức năng chính của User bao gồm:
+
+\begin{itemize}
+    \item \textbf{Quản lý tài khoản:} User có thể đăng ký tài khoản, đăng nhập, đăng xuất, thay đổi mật khẩu và khôi phục mật khẩu khi quên.
+    
+    \item \textbf{Quản lý hồ sơ cá nhân:} User có thể cập nhật ảnh đại diện, tên hiển thị và các thông tin cá nhân khác để xây dựng hồ sơ cá nhân của mình trên hệ thống.
+    
+    \item \textbf{Quản lý bài viết:} User có thể tạo bài viết mới, đăng tải hình ảnh hoặc video kèm nhạc, chỉnh sửa nội dung bài viết của mình và xóa các bài viết không còn cần thiết.
+    
+    \item \textbf{Tương tác với bài viết:} User có thể thực hiện các hành động như like, bình luận, trả lời bình luận, chia sẻ hoặc lưu bài viết của người khác.
+    
+    \item \textbf{Tương tác người dùng:} User có thể theo dõi (follow) hoặc hủy theo dõi (unfollow) người dùng khác, xem hồ sơ cá nhân và danh sách người theo dõi.
+    
+    \item \textbf{Nhắn tin:} User có thể gửi và nhận tin nhắn trực tiếp với người dùng khác để trao đổi thông tin trong thời gian thực.
+    
+    \item \textbf{Nhận thông báo:} User nhận được các thông báo khi có người like, comment, theo dõi, nhắn tin hoặc khi có hoạt động liên quan đến bài viết của mình.
+    
+    \item \textbf{Tìm kiếm và khám phá:} User có thể tìm kiếm người dùng và khám phá các nội dung bài viết được đề xuất.
+\end{itemize}
+
+\subsubsection*{Tác nhân Admin}
+
+Admin (Quản trị viên) là người chịu trách nhiệm giám sát và đảm bảo hệ thống hoạt động đúng quy định. Admin có các chức năng chính sau:
+
+\begin{itemize}
+    \item \textbf{Kiểm duyệt nội dung:} Admin có quyền xem, đánh giá và xử lý các bài viết bị người dùng báo cáo, bao gồm việc xóa nội dung vi phạm hoặc giữ nguyên nếu không phát hiện sai phạm.
+    
+    \item \textbf{Lưu vết hành động:} Admin có thể theo dõi và xem lịch sử các thao tác quản trị như xử lý báo cáo, xóa bài viết hoặc can thiệp vào hoạt động của hệ thống nhằm đảm bảo tính minh bạch và khả năng truy vết.
+\end{itemize}
+
+\subsubsection*{Mối quan hệ giữa các tác nhân}
+
+Trong hệ thống, Admin có phạm vi quyền hạn cao hơn User. Admin có thể thực hiện các chức năng giám sát và quản lý nội dung do User tạo ra, trong khi User chỉ được thao tác trong phạm vi tài khoản và nội dung của mình.
+
+Biểu đồ Use case tổng quan thể hiện rõ sự phân chia vai trò và quyền hạn giữa User và Admin, từ đó đảm bảo hệ thống vận hành an toàn, hạn chế các hành vi vi phạm và đồng thời vẫn đảm bảo trải nghiệm sử dụng thuận tiện cho người dùng cuối.
+
 
 
 
 \section{Thiết kế cơ sở dữ liệu}
+
+% \setcounter{figure}{2}
+% \renewcommand{\thefigure}{\arabic{figure}}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/supabase.png}
+    \caption{Biểu đồ UML hệ thống}
+    \label{fig:supabase_overview}
+\end{figure}
+
 Hệ thống lưu trữ dữ liệu với các bảng chính sau:
+\setcounter{table}{1}
+\renewcommand{\thetable}{\arabic{table}}
+
+% Thiết lập giãn dòng
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{6pt}
+
+\begin{longtable}{|p{4cm}|p{10cm}|}
+    % --- PHẦN 1: TIÊU ĐỀ CHO TRANG ĐẦU TIÊN ---
+    \caption{Mô tả chức năng các bảng trong cơ sở dữ liệu hệ thống} \label{tab:db_tables} \\
+    \hline
+    \textbf{Tên bảng} & \textbf{Chức năng} \\
+    \hline
+    \endfirsthead
+
+    % --- PHẦN 2: TIÊU ĐỀ LẶP LẠI KHI SANG TRANG MỚI ---
+    % Chỉ lặp lại tên cột, không thêm dòng chữ thông báo nào khác
+    \hline
+    \textbf{Tên bảng} & \textbf{Chức năng} \\
+    \hline
+    \endhead
+
+    % --- PHẦN 3: CHÂN BẢNG KHI NGẮT TRANG ---
+    % Để trống hoặc chỉ để dòng kẻ để đóng khung bảng ở cuối trang
+    \hline
+    \endfoot
+
+    % --- PHẦN 4: CHÂN BẢNG KHI KẾT THÚC ---
+    \hline
+    \endlastfoot
+
+    % --- NỘI DUNG DỮ LIỆU ---
+    User &
+    Lưu trữ thông tin người dùng hệ thống bao gồm tên đăng nhập, email, mật khẩu, ảnh đại diện và các thông tin cá nhân. \\
+    \hline
+
+    Account &
+    Lưu thông tin liên kết tài khoản OAuth (Google, v.v.) phục vụ đăng nhập bằng bên thứ ba thông qua NextAuth. \\
+    \hline
+
+    Session &
+    Quản lý phiên đăng nhập của người dùng khi sử dụng hệ thống. \\
+    \hline
+
+    VerificationToken &
+    Lưu token xác thực khi đăng nhập OAuth hoặc xác minh người dùng. \\
+    \hline
+
+    EmailOTP &
+    Lưu mã OTP gửi qua email phục vụ xác minh tài khoản và đặt lại mật khẩu. \\
+    \hline
+
+    Blog &
+    Lưu bài viết do người dùng tạo. \\
+    \hline
+
+    Comment &
+    Lưu bình luận và phản hồi bình luận trên các bài viết. \\
+    \hline
+
+    Like &
+    Lưu lượt thích (like) cho bài viết hoặc bình luận của người dùng. \\
+    \hline
+
+    SavedPost &
+    Lưu danh sách bài viết mà người dùng đã lưu (bookmark). \\
+    \hline
+
+    Follow &
+    Quản lý mối quan hệ theo dõi giữa các người dùng. \\
+    \hline
+
+    Conversation &
+    Lưu thông tin các cuộc hội thoại (chat). \\
+    \hline
+
+    Participant &
+    Quản lý danh sách người tham gia trong từng cuộc hội thoại. \\
+    \hline
+
+    Message &
+    Lưu nội dung tin nhắn được gửi trong các cuộc hội thoại, bao gồm văn bản và file đính kèm. \\
+    \hline
+
+    MessageReadBy &
+    Lưu trạng thái người dùng đã đọc tin nhắn nào trong mỗi cuộc hội thoại. \\
+    \hline
+
+    Notification &
+    Lưu các thông báo gửi đến người dùng khi có like, comment, follow, tin nhắn hoặc hoạt động liên quan. \\
+    \hline
+
+    hashtag &
+    Lưu danh sách hashtag được tạo và số lần xuất hiện. \\
+    \hline
+
+    blog\_hashtag &
+    Bảng liên kết giữa bài viết và hashtag. \\
+    \hline
+
+    report &
+    Lưu các báo cáo vi phạm do người dùng gửi đối với bài viết. \\
+    \hline
+
+    admin &
+    Lưu tài khoản quản trị viên. \\
+    \hline
+
+    adminsession &
+    Quản lý phiên đăng nhập của quản trị viên. \\
+    \hline
+
+    adminactionlog &
+    Lưu lịch sử hành động của admin như xóa bài viết, xử lý báo cáo nhằm phục vụ truy vết. \\
+    \hline
+
+    Submission &
+    Lưu dữ liệu biểu mẫu liên hệ hoặc form gửi thông tin từ website. \\
+    \hline
+
+    login\_web &
+    Lưu tài khoản đăng nhập nội bộ cho một số chức năng web phụ trợ. \\
+    \hline
+
+    prisma\_migrations &
+    Quản lý lịch sử migration của Prisma ORM. \\
+
+\end{longtable}
 
 
 \section{Thiết kế kiến trúc hệ thống và API}
 
 \subsection{Kiến trúc tổng thể}
-Hệ thống được xây dựng theo kiến trúc \textbf{Monolithic Modular} trên nền tảng \textbf{Next.js App Router}, kết hợp với các dịch vụ Microservices bổ trợ (Database, Cache, Storage).
+Hệ thống được xây dựng theo kiến trúc \textbf{Monolithic Modular} trên nền tảng \textbf{Next.js 15 App Router}, kết hợp với các dịch vụ cloud Microservices bổ trợ (Database, Cache, Storage, Real-time Messaging).
 
 \begin{itemize}
     \item \textbf{Client Layer (Frontend):}
     \begin{itemize}
-        \item Được xây dựng bằng React Server Components (RSC) mặc định để tối ưu SEO và tải trang ban đầu.
-        \item Client Components (`use client`) được sử dụng cho các tương tác người dùng (Form, Buttons, Chat UI).
-        \item Giao tiếp với Backend thông qua Server Actions (cho đột biến dữ liệu) và API Routes (cho truy vấn dữ liệu).
+        \item Được xây dựng bằng \textbf{React 19 Server Components (RSC)} mặc định để tối ưu SEO, giảm JavaScript bundle size và tải trang ban đầu nhanh.
+        \item \textbf{Client Components} (sử dụng directive \texttt{`use client`}) được sử dụng cho các tương tác người dùng (Form, Buttons, Chat UI, Modals).
+        \item Giao tiếp với Backend qua ba cơ chế:
+        \begin{itemize}
+            \item \textbf{Server Actions}: Gọi hàm backend trực tiếp từ form hoặc event handler mà không cần fetch API route.
+            \item \textbf{API Routes (Next.js Route Handlers)}: Gọi qua \texttt{fetch()} cho các truy vấn và thay đổi dữ liệu.
+            \item \textbf{Supabase Realtime}: Kết nối WebSocket Supabase để nhận cập nhật tức thì về tin nhắn và thông báo.
+        \end{itemize}
+        \item \textbf{Socket.io Client}: Kết nối WebSocket độc lập tới Socket Server để xử lý typing indicator.
+        \item \textbf{Tailwind CSS 4} + \textbf{Framer Motion}: Styling responsive và animation.
     \end{itemize}
+    
     \item \textbf{Server Layer (Backend):}
     \begin{itemize}
-        \item **Next.js Route Handlers**: Xử lý các yêu cầu API RESTful.
-        \item **Middleware**: Kiểm soát quyền truy cập và bảo vệ route dựa trên NextAuth Session.
-        \item **Socket Server**: Module xử lý kết nối WebSocket thời gian thực, chạy song song với HTTP Server.
+        \item \textbf{Next.js Route Handlers}: Xử lý các yêu cầu API RESTful tại \texttt{app/api/*}, hỗ trợ GET, POST, PATCH, DELETE.
+        \item \textbf{Middleware} (\texttt{middleware.ts}): Kiểm soát quyền truy cập dựa trên NextAuth Session, bảo vệ route riêng tư, xác thực OTP cho người dùng mới.
+        \item \textbf{Server Actions}: Hàm backend được gọi trực tiếp từ form hoặc client component, tự động xác thực session, giảm boilerplate.
+        \item \textbf{Supabase Realtime}: Cơ chế pub-sub tích hợp trong Supabase để phát sóng sự kiện (INSERT, UPDATE, DELETE) trên các bảng (Message, Notification) cho các client đăng ký nghe.
+        \item \textbf{Socket.io Server}: Module Node.js độc lập xử lý kết nối WebSocket cho typing indicator, chạy song song với HTTP Server của Next.js.
+        \item \textbf{NextAuth.js v4}: Quản lý xác thực, session, OAuth (Google), credentials (Email/Password), OTP verification.
     \end{itemize}
-    \item \textbf{Data Layer (Persistance):}
+    
+    \item \textbf{Data Layer (Persistence):}
     \begin{itemize}
-        \item **Supabase (PostgreSQL)**: Dịch vụ cơ sở dữ liệu đám mây chính, lưu trữ toàn bộ các bảng dữ liệu, được truy xuất thông qua Prisma ORM.
-        \item **Redis (Upstash)**: Lưu trữ tạm thời Session, Cache API response.
-        \item **Supabase Storage**: Dịch vụ lưu trữ đối tượng cho hình ảnh/media.
+        \item \textbf{Supabase (PostgreSQL)}: Dịch vụ cơ sở dữ liệu đám mây chính, lưu trữ toàn bộ dữ liệu có cấu trúc (User, Blog, Comment, Message, Notification, etc.), được truy xuất thông qua \textbf{Prisma ORM}.
+        \item \textbf{Redis (Upstash)}: Cơ sở dữ liệu in-memory được sử dụng để:
+        \begin{itemize}
+            \item Lưu trữ phiên session (Session tokens).
+            \item Caching các API response (home feed, user profile, search results).
+            \item Quản lý versioned cache keys để hỗ trợ invalidation O(1).
+        \end{itemize}
+        \item \textbf{Supabase Storage}: Dịch vụ lưu trữ đối tượng (Object Storage) cho hình ảnh/media được tải lên bởi người dùng (Avatar, Blog images).
+    \end{itemize}
+    
+    \item \textbf{External Services:}
+    \begin{itemize}
+        \item \textbf{Google OAuth 2.0}: Cung cấp đăng nhập xã hội thông qua NextAuth.js.
+        \item \textbf{Deezer API (Public)}: API công khai không yêu cầu API key, được sử dụng để tìm kiếm nhạc, lấy danh sách trending tracks, và 30-second preview URL cho các bài hát.
+        \item \textbf{Nodemailer}: Dịch vụ gửi email (xác thực OTP, quên mật khẩu, thông báo).
     \end{itemize}
 \end{itemize}
 
 \subsection{Thiết kế API (RESTful Endpoints)}
-Hệ thống cung cấp các nhóm API chính đặt tại thư mục `app/api/`:
+Hệ thống cung cấp các nhóm API chính đặt tại thư mục \texttt{app/api/*}. Tất cả các endpoint đều yêu cầu xác thực (authentication) ngoại trừ \textbf{/api/signup}, \textbf{/api/login}, \textbf{/api/auth/*}.
 
 \begin{itemize}
-    \item \textbf{Authentication API:}
+    \item \textbf{Authentication API} (\texttt{/api/auth/*}, \texttt{/api/signup}, \texttt{/api/login}):
     \begin{itemize}
-        \item `POST /api/signup`: Đăng ký tài khoản mới.
-        \item `POST /api/login`: Xử lý đăng nhập.
-        \item `POST /api/auth/[...nextauth]`: Các endpoints xác thực của NextAuth.js.
+        \item \textbf{POST /api/signup}: Đăng ký tài khoản mới với email + password.
+        \item \textbf{POST /api/login}: Đăng nhập với email + password hoặc OAuth (Google).
+        \item \textbf{POST /api/auth/[...nextauth]}: Các endpoints xác thực của NextAuth.js (callback, signin, signout, session).
+        \item \textbf{POST /api/auth/send-otp}: Gửi mã OTP 6 chữ số qua email (thời hạn 10 phút).
+        \item \textbf{POST /api/auth/verify-otp}: Xác thực mã OTP để verify email sau khi đăng ký.
+        \item \textbf{POST /api/auth/forgot-password}: Gửi link đặt lại mật khẩu qua email (thời hạn 1 giờ).
+        \item \textbf{POST /api/auth/reset-password}: Đặt lại mật khẩu bằng token từ forgot-password.
+        \item \textbf{POST /api/auth/change-password}: Đổi mật khẩu cho user đã đăng nhập (yêu cầu mật khẩu hiện tại).
+        \item \textbf{POST /api/logout}: Đăng xuất, xóa session cookie.
     \end{itemize}
     
-    \item \textbf{User API:}
+    \item \textbf{User API} (\texttt{/api/user/*}, \texttt{/api/me/*}):
     \begin{itemize}
-        \item `GET /api/me`: Lấy thông tin người dùng hiện tại (Session).
-        \item `GET /api/user/[id]`: Lấy profile công khai của người dùng khác.
-        \item `POST /api/follow`: Thực hiện hành động Follow/Unfollow.
-        \item `PUT /api/user`: Cập nhật thông tin profile.
+        \item \textbf{GET /api/me}: Lấy thông tin user hiện tại (Session).
+        \item \textbf{GET /api/me/profile}: Lấy profile đầy đủ của user hiện tại.
+        \item \textbf{GET /api/me/basic}: Lấy thông tin cơ bản của user hiện tại.
+        \item \textbf{PATCH /api/me}: Cập nhật thông tin profile (avatar, fullname, bio).
+        \item \textbf{GET /api/user/[id]}: Lấy profile công khai của user khác (với pagination).
+        \item \textbf{GET /api/user/[id]/followers}: Lấy danh sách người theo dõi user.
+        \item \textbf{GET /api/user/[id]/following}: Lấy danh sách user đang theo dõi.
+        \item \textbf{GET /api/user/saved}: Lấy danh sách bài viết đã lưu (Saved Posts).
     \end{itemize}
     
-    \item \textbf{Content API (Blog/Post):}
+    \item \textbf{Follow API} (\texttt{/api/follow/*}):
     \begin{itemize}
-        \item `GET /api/home`: Lấy danh sách bài viết cho trang chủ (có phân trang).
-        \item `GET /api/explore`: Lấy danh sách bài viết gợi ý.
-        \item `POST /api/blog`: Tạo bài viết mới.
-        \item `GET /api/search`: Tìm kiếm người dùng và Hashtag.
+        \item \textbf{POST /api/follow/[id]}: Follow một user.
+        \item \textbf{DELETE /api/follow/[id]}: Unfollow một user.
+        \item \textbf{GET /api/follow/following}: Lấy danh sách user đang theo dõi (của user hiện tại).
     \end{itemize}
     
-    \item \textbf{Messaging \& Notification API:}
+    \item \textbf{Blog/Post API} (\texttt{/api/blog/*}):
     \begin{itemize}
-        \item `GET /api/conversations`: Lấy danh sách các cuộc hội thoại.
-        \item `GET /api/messages`: Lấy chi tiết tin nhắn trong hội thoại.
-        \item `GET /api/notifications`: Lấy danh sách thông báo mới.
+        \item \textbf{GET /api/home}: Lấy danh sách bài viết cho Newsfeed (từ những user mà user đang follow), có phân trang và caching via Redis.
+        \item \textbf{GET /api/explore}: Lấy danh sách bài viết gợi ý/trending từ cộng đồng.
+        \item \textbf{POST /api/blog}: Tạo bài viết mới (Server Action).
+        \item \textbf{POST /api/blog/create}: Tạo bài viết mới (với upload media).
+        \item \textbf{GET /api/blog/[id]}: Lấy chi tiết bài viết (hình ảnh, caption, comments, likes, shares).
+        \item \textbf{PATCH /api/blog/[id]}: Chỉnh sửa bài viết (chỉ creator hoặc admin).
+        \item \textbf{DELETE /api/blog/[id]}: Xóa bài viết (chỉ creator hoặc admin).
+        \item \textbf{POST /api/blog/[id]/like}: Thả tim (Like) bài viết.
+        \item \textbf{POST /api/blog/[id]/save}: Lưu bài viết vào Saved Posts.
+        \item \textbf{POST /api/blog/[id]/report}: Báo cáo bài viết vi phạm.
+        \item \textbf{POST /api/blog/share}: Chia sẻ (Share) bài viết.
+        \item \textbf{GET /api/blog/[id]/comment}: Lấy danh sách bình luận trên bài viết (phân trang).
+        \item \textbf{POST /api/blog/[id]/comment}: Bình luận trên bài viết.
+        \item \textbf{PATCH /api/blog/[id]/comment}: Chỉnh sửa bình luận.
+        \item \textbf{DELETE /api/blog/[id]/comment}: Xóa bình luận.
+        \item \textbf{POST /api/blog/[id]/comment/[cmtid]/like}: Thả tim bình luận.
+    \end{itemize}
+    
+    \item \textbf{Hashtag API} (\texttt{/api/hashtag/*}):
+    \begin{itemize}
+        \item \textbf{GET /api/hashtag/[name]/blogs}: Lấy danh sách bài viết có hashtag được chỉ định (phân trang).
+    \end{itemize}
+    
+    \item \textbf{Messaging API} (\texttt{/api/messages/*}, \texttt{/api/conversations/*}):
+    \begin{itemize}
+        \item \textbf{GET /api/conversations}: Lấy danh sách cuộc hội thoại.
+        \item \textbf{POST /api/conversations}: Tạo cuộc hội thoại mới .
+        \item \textbf{GET /api/conversations/[id]/messages}: Lấy tin nhắn trong cuộc hội thoại (phân trang, realtime via Supabase).
+        \item \textbf{POST /api/conversations/[id]/messages}: Gửi tin nhắn mới.
+        \item \textbf{GET /api/messages}: Lấy tin nhắn (deprecated, dùng /api/conversations/[id]/messages).
+        \item \textbf{POST /api/messages}: Gửi tin nhắn (deprecated).
+        \item \textbf{PATCH /api/messages}: Đánh dấu tin nhắn đã đọc.
+        \item \textbf{PUT /api/messages}: Cập nhật tin nhắn.
+        \item \textbf{DELETE /api/messages}: Xóa tin nhắn.
+        \item \textbf{GET /api/messages/unread-messages}: Lấy số lượng tin nhắn chưa đọc.
+    \end{itemize}
+    
+    \item \textbf{Notification API} (\texttt{/api/notifications/*}):
+    \begin{itemize}
+        \item \textbf{GET /api/notifications}: Lấy danh sách thông báo mới (realtime via Supabase Realtime).
+        \item \textbf{GET /api/notifications/[id]}: Lấy chi tiết thông báo.
+        \item \textbf{PATCH /api/notifications/[id]}: Đánh dấu thông báo đã đọc.
+        \item \textbf{POST /api/notifications/mark-all-read}: Đánh dấu tất cả thông báo đã đọc.
+    \end{itemize}
+    
+    \item \textbf{Search API} (\texttt{/api/search/*}):
+    \begin{itemize}
+        \item \textbf{GET /api/search}: Tìm kiếm user theo tên đăng nhập hoặc tên hiển thị (full-text search via PostgreSQL).
+        \item \textbf{GET /api/search/blogs}: Tìm kiếm bài viết theo caption (full-text search via PostgreSQL, hỗ trợ tiếng Việt với unaccent).
+    \end{itemize}
+    
+    \item \textbf{Music API} (\texttt{/api/music/deezer/*}):
+    \begin{itemize}
+        \item \textbf{GET /api/music/deezer/search}: Tìm kiếm bài hát trên Deezer (query parameter).
+        \item \textbf{GET /api/music/deezer/trending}: Lấy danh sách bài hát trending từ Deezer (phân trang).
+        \item \textbf{GET /api/music/deezer/refresh}: Làm mới preview URL của track từ Deezer (khi link hết hạn).
+        \item \textbf{GET /api/music/proxy}: Proxy request để bypass CORS khi lấy Deezer preview image.
+    \end{itemize}
+    
+    \item \textbf{Admin API} (\texttt{/api/admin/*}):
+    \begin{itemize}
+        \item \textbf{POST /api/admin/login}: Admin đăng nhập bằng username + password.
+        \item \textbf{POST /api/admin/logout}: Admin đăng xuất.
+        \item \textbf{GET /api/admin/dashboard}: Lấy danh sách báo cáo chờ xử lý (PENDING).
+        \item \textbf{POST /api/admin/report/[id]/delete}: Admin xóa bài viết báo cáo (vi phạm).
+        \item \textbf{POST /api/admin/report/[id]/reject}: Admin bỏ qua báo cáo (không vi phạm).
+        \item \textbf{GET /api/admin/history}: Lấy lịch sử hành động của admin (audit log).
+    \end{itemize}
+    
+    \item \textbf{Real-time API} (\texttt{/api/socket/}, \texttt{/api/ws}):
+    \begin{itemize}
+        \item \textbf{GET /api/socket}: Endpoint placeholder cho Socket.io (noop in App Router).
+        \item \textbf{GET /api/ws}: Endpoint WebSocket để hỗ trợ connection.
+    \end{itemize}
+    
+    \item \textbf{Debug API} (\texttt{/api/debug/*}):
+    \begin{itemize}
+        \item \textbf{GET /api/debug/session}: Lấy session hiện tại (chỉ trong development).
+        \item \textbf{GET /api/debug/redis}: Lấy thống kê Redis (chỉ trong development).
     \end{itemize}
 \end{itemize}
 
