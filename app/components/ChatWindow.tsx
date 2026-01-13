@@ -110,6 +110,17 @@ export default function ChatWindow({
         handleVisibility
       )
   }, [])
+    useEffect(() => {
+  if (!socketRef.current) return
+  if (!convIdRef.current) return
+
+  socketRef.current.emit(
+    "join_conversation",
+    convIdRef.current
+  )
+
+  console.log("✅ Joined conversation:", convIdRef.current)
+}, [convIdRef.current])
 
   /* ================= MARK SEEN ================= */
   const markSeen = async () => {
